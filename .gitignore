@@ -1,6 +1,3 @@
-# Databricks Asset Bundle files
-.databricks/
-
 # IDE files
 .vscode/
 .idea/
@@ -19,9 +16,16 @@ __pycache__/
 dist/
 build/
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
+# Local agent skill installs (project consumers)
+.claude/skills/
+.cursor/skills/
+.agents/skills/
 
-# Environment files
+# Local reference clones
+.ref-*/
+.ref-tmp/
+
+# Environment / secrets
 .env
-.env.local 
+.env.local
+*.pem

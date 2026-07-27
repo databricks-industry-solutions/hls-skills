@@ -1,38 +1,81 @@
-# Databricks Solution Accelerator Template - MODIFY THIS README.md
+# HLS Skills
 
-[![Databricks](https://img.shields.io/badge/Databricks-Solution_Accelerator-FF3621?style=for-the-badge&logo=databricks)](https://databricks.com)
-[![Unity Catalog](https://img.shields.io/badge/Unity_Catalog-Enabled-00A1C9?style=for-the-badge)](https://docs.databricks.com/en/data-governance/unity-catalog/index.html)
-[![Serverless](https://img.shields.io/badge/Serverless-Compute-00C851?style=for-the-badge)](https://docs.databricks.com/en/compute/serverless.html)
+Agent skills for Health & Life Sciences / drug-discovery workflows. Each skill is a `SKILL.md` folder that teaches coding agents (Claude Code, Cursor, and others following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with MCP tools such as Open Targets, PubChem, and PubMed.
 
-## Installation Guidelines
+Repo layout and skill templates follow the patterns in [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills) (templates + categories only — skills here are HLS-specific).
 
-1. Clone the project you'd like to run into your Databricks Workspace
+## Installation
 
-<img width="1726" height="677" alt="Screenshot 2025-07-23 at 11 05 25 AM" src="https://github.com/user-attachments/assets/55b1729f-ad07-420e-a271-843266abfb71" />
+```bash
+# Install all skills into .claude/skills
+curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash
 
-2. Open the Asset Bundle Editor in the Databricks UI
+# Specific skills
+curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash -s -- adme-assessment hit-identification
 
-<img width="1120" height="665" alt="Screenshot 2025-07-23 at 11 06 12 AM" src="https://github.com/user-attachments/assets/d1f91256-eb8f-4456-8d88-c0a37b1bd4c5" />
+# Cursor
+curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash -s -- --cursor
 
-3. Click on "Deploy"
+# Claude + Cursor
+curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash -s -- --both
+```
 
-<img width="1523" height="902" alt="Screenshot 2025-07-23 at 11 09 37 AM" src="https://github.com/user-attachments/assets/9564cbdd-c5c5-4210-bf27-2b19e6efc85b" />
+From a local checkout:
 
-4. Navigate to the Deployments tab in the Asset Bundle UI (🚀 icon) and click "Run" on the job available. This will run the notebooks from this project sequentially.
+```bash
+./install_skills.sh --local
+./install_skills.sh --local --cursor
+./install_skills.sh --list
+```
 
-<img width="1527" height="880" alt="Screenshot 2025-07-23 at 11 10 13 AM" src="https://github.com/user-attachments/assets/0f612882-7123-449b-8349-1835bc59523c" />
+## Available Skills
 
-## Contributing
+| Skill | Category | Description |
+|-------|----------|-------------|
+| **druggable-targets** | target-discovery | Prioritize druggable targets for a disease (Open Targets + PubMed) |
+| **hit-identification** | hit-to-lead | Find small-molecule hits for a gene/protein (Open Targets + PubChem) |
+| **adme-assessment** | compound-assessment | ADME / drug-likeness via PubChem |
+| **safety-assessment** | compound-assessment | Safety / toxicity via PubChem + PubMed |
 
-1. **git clone** this project locally
-2. Utilize the Databricks CLI to test your changes against a Databricks workspace of your choice
-3. Contribute to repositories with pull requests (PRs), ensuring that you always have a second-party review from a capable teammate
+## Repository Layout
 
+```
+hls-skills/
+├── AGENTS.md                 # Skill authoring guide
+├── CLAUDE.md                 # Compatibility shim → AGENTS.md
+├── install_skills.sh
+├── templates/                # Pipeline / toolkit / guide templates
+├── integration-templates/    # Consumer snippets for Codex / Cursor / Windsurf
+├── .claude-plugin/           # Claude Code plugin manifest
+└── skills/
+    ├── target-discovery/
+    ├── hit-to-lead/
+    └── compound-assessment/
+```
 
-## 📄 Third-Party Package Licenses - FILL IN WITH YOUR PROJECT'S OPEN SOURCE PACKAGES + LICENSING
+Each skill:
 
-&copy; 2025 Databricks, Inc. All rights reserved. The source in this project is provided subject to the Databricks License [https://databricks.com/db-license-source]. All included or referenced third party libraries are subject to the licenses set forth below.
+```
+skills/<category>/<skill-name>/
+├── SKILL.md          # Required
+├── references/       # Optional — loaded on demand
+├── assets/           # Optional
+└── scripts/          # Optional
+```
 
-| Package | License | Copyright |
-|---------|---------|-----------|
-| | | |
+## Creating a Skill
+
+1. Read [AGENTS.md](AGENTS.md)
+2. Copy the right template from `templates/`
+3. Place it at `skills/<category>/<skill-name>/SKILL.md`
+4. Ensure frontmatter `name` matches the folder name
+
+| Template | Use when |
+|----------|----------|
+| `SKILL_TEMPLATE.md` | Linear pipeline |
+| `SKILL_TEMPLATE_TOOLKIT.md` | Toolkit or database/MCP API surface |
+| `SKILL_TEMPLATE_PROSE.md` | Decision guide |
+
+## License
+
+Licensed under the Databricks License. See [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md).
