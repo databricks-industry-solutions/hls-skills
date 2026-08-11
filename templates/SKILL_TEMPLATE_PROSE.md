@@ -1,12 +1,13 @@
 <!-- Template: Guide Sub-type (prose-centric) — for decision frameworks and best practices.
      For code/MCP-centric entries, use SKILL_TEMPLATE.md or SKILL_TEMPLATE_TOOLKIT.md. -->
 ---
-name: "guide-name-here"
+name: guide-name-here
+description: <Domain or decision-space keyword> <what it covers>. <When to consult>. <Disambiguation>
 # Description rules (AGENTS.md):
 #   - Length ≤ 1024 chars; first 120 chars carry discovery weight
 #   - Lead with the domain or decision-space keyword — NOT stop verbs
-description: "<Domain or decision-space keyword> <what it covers>. <When to consult>. <Disambiguation>."
-license: "Databricks License"
+author: your name
+license: Databricks License
 ---
 
 # Skill Name Here

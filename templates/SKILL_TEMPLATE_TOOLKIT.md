@@ -2,13 +2,14 @@
      For linear pipelines, use SKILL_TEMPLATE.md.
      For database/API wrappers, use this template and organize Core API by query type. -->
 ---
-name: "toolkit-name-here"
+name: toolkit-name-here
+description: "<Tool/Domain keyword> <what it does>. <Module coverage>. <Disambiguation: for X use Y>."
 # Description rules (AGENTS.md):
 #   - Length ≤ 1024 chars; first 120 chars carry discovery weight
 #   - Lead with tool name or domain keyword — NOT stop verbs
 #   - Cross-references ("For X use Y") go at the END
-description: "<Tool/Domain keyword> <what it does>. <Module coverage>. <Disambiguation: for X use Y>."
-license: "Databricks License"
+author: your name
+license: Databricks License
 ---
 
 # Toolkit Name Here

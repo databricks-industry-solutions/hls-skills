@@ -2,14 +2,15 @@
      For toolkit-style skills (multiple independent modules), use SKILL_TEMPLATE_TOOLKIT.md.
      For prose/decision guides, use SKILL_TEMPLATE_PROSE.md. -->
 ---
-name: "skill-name-here"
+name: skill-name-here
+description: <Tool/Domain keyword> <what it does>. <Inputs → outputs>. <Disambiguation: for X use Y>
 # Description rules (AGENTS.md):
 #   - Length ≤ 1024 chars; first 120 chars carry discovery weight
 #   - Lead with tool name or domain keyword — NOT stop verbs (Use/A/An/The/Query/Fetch/Run)
 #   - Cross-references ("For X use Y") go at the END
 #   - No promotional adjectives (powerful/comprehensive/state-of-the-art/...)
-description: "<Tool/Domain keyword> <what it does>. <Inputs → outputs>. <Disambiguation: for X use Y>."
-license: "Databricks License"
+author: your name
+license: Databricks License
 ---
 
 # Skill Name Here
