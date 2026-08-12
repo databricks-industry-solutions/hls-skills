@@ -43,16 +43,16 @@ GSEApy provides Python implementations of GSEA and over-representation analysis 
 
 **ALWAYS produce these visualizations after running enrichment analysis.** Each method also gets its own additional diagnostic plots that make the differences in the table above visible in the output, not just in theory. Full implementations of every plot below live in the reference docs (see [Bundled Resources](#bundled-resources)).
 
-| Method used | MANDATORY outputs | Additional diagnostic outputs (method-specific) | ONLY when requested |
+| Method used | Recommended outputs | Additional diagnostic outputs (method-specific) | ONLY when requested |
 |-------------|-------------------|---------------------------------------------------|---------------------|
-| ORA (`gp.enrichr`) | Stratified bar plot + Network enrichment map | Up/down term-overlap comparison (reflects the mandatory directional split) + gene-set-size vs significance scatter (reflects "ignores magnitude" weakness) | Dot plot |
-| GSEA Prerank (`gp.prerank`) | Stratified NES bar plot + GSEA enrichment curves (top 3 terms per direction) + Network enrichment map | NES waterfall across all tested gene sets (reflects "handles both directions in one run") + leading-edge gene overlap heatmap (reflects "captures subtle distributed signals") | Dot plot |
+| ORA (`gp.enrichr`) | bar plot + Network enrichment map | Up/down term-overlap comparison (reflects the mandatory directional split) + gene-set-size vs significance scatter (reflects "ignores magnitude" weakness) | Dot plot |
+| GSEA Prerank (`gp.prerank`) | NES bar plot + GSEA enrichment curves (top 3 terms per direction) + Network enrichment map | NES waterfall across all tested gene sets (reflects "handles both directions in one run") + leading-edge gene overlap heatmap (reflects "captures subtle distributed signals") | Dot plot |
 | Both ORA + GSEA | All of the above for each | All of the above for each | Dot plot |
 
 **Rules:**
-- The **stratified bar plot** and **network enrichment map** are ALWAYS generated — do not skip them unless stated.
+- The **bar plot** and **network enrichment map** are ALWAYS generated — do not skip them unless stated.
 - The **dot plot** is generated ONLY when the user explicitly requests it (e.g., "show a dotplot", "make a dot plot").
-- The **GSEA enrichment curve** (running score plot) is MANDATORY whenever GSEA is used — show the top 3 enriched gene sets per direction.
+- The **GSEA enrichment curve** (running score plot) is recommended whenever GSEA is used — show the top 3 enriched gene sets per direction.
 - The **method-specific additional diagnostics** should be included whenever running a full analysis, not just a one-off Enrichr/prerank call.
 - All bar plots and dot plots must use `gseapy`'s built-in plotting functions (`gp.barplot`, `gseapy.plot.dotplot`) — NOT seaborn or matplotlib bar charts.
 
@@ -74,7 +74,7 @@ python -c "import gseapy; print(gseapy.__version__)"
 2. **Prepare the input.** For ORA, derive up- and down-regulated gene lists from DE results (see `references/ora_analysis_reference.md` → *Load Gene Lists*). For GSEA Prerank, build the full ranked gene list, e.g. `log2FoldChange` sorted descending (see `references/gsea_prerank_analysis_reference.md` → *Load Ranked Gene List*).
 3. **Run the analysis.** ORA runs separately per direction against one or more Enrichr databases (`gp.get_library_name(organism="human")` lists all 200+ options). GSEA Prerank runs once on the full list.
 4. **Save results** as full and significance-filtered tables (`references/*.md` → *Save Results*).
-5. **Generate the mandatory visualizations** (bar plot, network map, and — for GSEA — enrichment curves), then the method-specific additional diagnostics, per the [Required Visualization Outputs](#required-visualization-outputs) table.
+5. **Generate the recommended visualizations** (bar plot, network map, and — for GSEA — enrichment curves), then the method-specific additional diagnostics, per the [Required Visualization Outputs](#required-visualization-outputs) table.
 6. **Add the dot plot only if the user explicitly asks for one.**
 7. **For multiple comparisons** (e.g., several conditions or contrasts), repeat steps 2–6 per comparison and compare the resulting significant-term sets across runs.
 
@@ -98,12 +98,12 @@ See the [Reference Analysis Scripts](#bundled-resources) for the exact, copy-ada
 | Output pattern | Produced by | Description |
 |-----------------|-------------|--------------|
 | `ora_{up,down}_all_terms.tsv`, `ora_{up,down}_significant_terms.tsv` | ORA reference, *Save Results* | Full and adjusted-p-filtered ORA tables per direction |
-| `ora_{up,down}_barplot.png`, `ora_{up,down}_network_map.png` | ORA reference | MANDATORY stratified bar plot + network enrichment map |
+| `ora_{up,down}_barplot.png`, `ora_{up,down}_network_map.png` | ORA reference | Recommended bar plot + network enrichment map |
 | `ora_{up,down}_dotplot.png` | ORA reference | Optional dot plot (only when requested) |
 | `ora_updown_term_overlap.png`, `ora_updown_shared_terms.tsv` | ORA reference | Additional: shared vs unique enriched terms between up/down |
 | `ora_size_vs_significance.png` | ORA reference | Additional: gene-overlap-count vs -log10(padj) bubble plot |
 | `gsea_prerank_all_terms.tsv`, `gsea_prerank_significant_terms.tsv` | GSEA reference, *Save Results* | Full and FDR-filtered prerank tables |
-| `gsea_nes_barplot.png`, `gsea_curve_*_NES_*.png`, `gsea_network_map.png` | GSEA reference | MANDATORY NES bar plot + top-3-per-direction enrichment curves + network map |
+| `gsea_nes_barplot.png`, `gsea_curve_*_NES_*.png`, `gsea_network_map.png` | GSEA reference | Recommended NES bar plot + top-3-per-direction enrichment curves + network map |
 | `gsea_dotplot.png` | GSEA reference | Optional dot plot (only when requested) |
 | `gsea_nes_waterfall.png` | GSEA reference | Additional: NES across all tested gene sets, both directions |
 | `gsea_leading_edge_overlap.png` | GSEA reference | Additional: Jaccard overlap heatmap of leading-edge genes across top terms |
@@ -125,8 +125,8 @@ See the [Reference Analysis Scripts](#bundled-resources) for the exact, copy-ada
 
 These are plain, top-to-bottom code snippets organized by step — not reusable helper functions. Load the relevant file on demand, jump to the section for the current step, and adapt that snippet's variable names in place against whatever DESeq2/edgeR results DataFrame (or `dds`/`ds` objects) the user already has in the current Python session.
 
-- `references/ora_analysis_reference.md` — full ORA implementation: directional (up/down) Enrichr runs, mandatory bar/network plots, optional dot plot, plus the up/down term-overlap and gene-set-size-vs-significance diagnostics.
-- `references/gsea_prerank_analysis_reference.md` — full GSEA Prerank implementation: single-run prerank, mandatory NES bar/enrichment-curve/network plots, optional dot plot, plus the NES waterfall and leading-edge overlap diagnostics.
+- `references/ora_analysis_reference.md` — full ORA implementation: directional (up/down) Enrichr runs, recommended bar/network plots, optional dot plot, plus the up/down term-overlap and gene-set-size-vs-significance diagnostics.
+- `references/gsea_prerank_analysis_reference.md` — full GSEA Prerank implementation: single-run prerank, recommended NES bar/enrichment-curve/network plots, optional dot plot, plus the NES waterfall and leading-edge overlap diagnostics.
 
 ## References
 - Adapted from [SciAgent gseapy-genie-enrichment skill](https://github.com/jaechang-hits/SciAgent-Skills/blob/0d18706fe1a51239f12b395f046c8aa30fe632b4/skills/genomics-bioinformatics/rnaseq/gseapy-gene-enrichment/SKILL.md) to extend `gseapy` capabilities

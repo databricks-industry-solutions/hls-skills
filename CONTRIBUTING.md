@@ -19,7 +19,7 @@ If you are contributing on behalf of an organization, you confirm that you have 
 
 ## Adding or updating a skill
 
-1. Follow [AGENTS.md](AGENTS.md). See guidelines for authoring and testing skills.
+1. Follow [AGENTS.md](AGENTS.md) for guidelines on authoring and testing skills.
 2. Consider starting from the appropriate `templates/`. See guidance in [AGENTS.md](AGENTS.md)
 3. Put the skill at `skills/<category>/<skill-name>/SKILL.md`.
 4. Folder name must match frontmatter `name`.

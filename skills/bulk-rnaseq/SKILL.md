@@ -46,7 +46,7 @@ dds = DeseqDataSet(
 )
 dds.deseq2()
 
-# 4. PCA plot (MANDATORY QC step — always include)
+# 4. PCA plot
 #    See Visualization Guidelines > PCA Plot for full code
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -393,13 +393,13 @@ plt.show()
 
 ## Visualization Guidelines
 
-**REQUIRED visualizations for every DESeq2 analysis (always produce ALL of these):**
+**Recommended visualizations for every DESeq2 analysis:**
 1. **PCA plot** — sample clustering to verify condition separation and detect outliers/batch effects
 2. **Volcano plot** — significance vs effect size overview
-3. **Heatmap** (optional but recommended) — expression patterns of top DEGs
+3. **Heatmap** (optional) — expression patterns of top DEGs
 4. **MA plot** (optional) — fold change vs mean expression diagnostic
 
-The PCA plot must be generated immediately after fitting the DESeq2 model (after `dds.deseq2()`) and BEFORE statistical testing, as it serves as a critical quality-control step. If samples do not cluster by experimental condition, the downstream DE results may be unreliable and the design formula may need revision (e.g., adding a batch covariate).
+The PCA plot should be generated immediately after fitting the DESeq2 model (after `dds.deseq2()`) and BEFORE statistical testing, as it serves as a critical quality-control step. If samples do not cluster by experimental condition, the downstream DE results may be unreliable and the design formula may need revision (e.g., adding a batch covariate).
 
 ### Volcano Plot
 
@@ -465,9 +465,8 @@ plt.show()
 - Axis limits use `min() * 1.05` or `max() * 1.05` of finite values — never use `quantile()` which clips the most significant points
 - Include threshold dashed lines at log2FC = ±1 and -log10(0.05)
 
-### PCA Plot (MANDATORY)
-
-**Always include a PCA plot in every DESeq2 analysis.** This is a critical QC step that must be generated after model fitting (`dds.deseq2()`) and before interpreting DE results. It reveals whether samples cluster by experimental condition, detects outliers, and exposes confounding batch effects that would invalidate downstream results. Run PCA on variance-stabilized (log-transformed) counts.
+### PCA Plot
+Run PCA on variance-stabilized (log-transformed) counts.
 
 ```python
 import matplotlib.pyplot as plt

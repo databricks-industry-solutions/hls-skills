@@ -3,7 +3,7 @@
      For database/API wrappers, use this template and organize Core API by query type. -->
 ---
 name: toolkit-name-here
-description: "<Tool/Domain keyword> <what it does>. <Module coverage>. <Disambiguation: for X use Y>."
+description: <Tool/Domain keyword> <what it does>. <Module coverage>. <Disambiguation: for X use Y>
 # Description rules (AGENTS.md):
 #   - Length ≤ 1024 chars; first 120 chars carry discovery weight
 #   - Lead with tool name or domain keyword — NOT stop verbs
