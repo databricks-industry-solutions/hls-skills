@@ -32,7 +32,7 @@ Optional siblings next to `SKILL.md`: `references/`, `assets/`, `scripts/`.
 
 ## Workflow: Topic → Skill
 
-### Step 1. Classify
+### Step 1. Determine which skill template to use
 
 | Criteria | → Pipeline / Toolkit / Database | → Guide |
 |----------|----------------------------------|---------|
@@ -46,24 +46,15 @@ Optional siblings next to `SKILL.md`: `references/`, `assets/`, `scripts/`.
 | **Database** | API / MCP query wrapper | `templates/SKILL_TEMPLATE_TOOLKIT.md` (organize by query type) |
 | **Guide** | Prose decision framework | `templates/SKILL_TEMPLATE_PROSE.md` |
 
-### Step 2. Choose Category
 
-| Category | Scope |
-|----------|-------|
-| `target-discovery` | Disease–target association, tractability, target prioritization |
-| `hit-to-lead` | Hit finding, known chemical matter, bioactivity for a target |
-| `compound-assessment` | ADME, safety, tox, drug-likeness, physchem |
+### Step 2. Author the skill
 
-Add a new category only when an existing name no longer predicts what lives inside.
-
-### Step 3. Author
-
-1. Copy the matching template into `skills/{category}/{skill-name}/SKILL.md`
+1. Copy the matching template into `skills/{skill-name}/SKILL.md`
 2. Folder name must match frontmatter `name` (lowercase, hyphens, ≤64 chars)
 3. Prefer `{tool-or-domain}-{purpose}` naming (e.g. `druggable-targets`, `adme-assessment`)
 4. Keep `SKILL.md` concise; put long queries / API cheatsheets in `references/`
 
-### Step 4. Description Rules
+### Step 3. Description Rules
 
 The `description` field is the discovery hook agents use before loading the full file.
 
@@ -72,13 +63,20 @@ The `description` field is the discovery hook agents use before loading the full
 - Put disambiguation (`For X use Y`) at the **end**
 - No promotional adjectives (`powerful`, `comprehensive`, `state-of-the-art`)
 
-### Step 5. Bundled Resources
+### Step 4. Bundled Resources
 
 | Directory | Use for |
 |-----------|---------|
 | `references/` | On-demand markdown: GraphQL, API fields, decision tables |
 | `assets/` | Static templates / fixtures used as-is |
 | `scripts/` | Runnable helpers (>~80 lines or repeated boilerplate) |
+
+### Step 5. Testing and evaluation (TBD)
+1. Unit tests for code snippets in a `tests` subfolder within your skill
+2. Ensure your skill reliably loads in Genie Code
+3. Design 3-5 benchmarking tasks
+4. Report Genie Code performance on those tasks with and without your skill
+5. Peer testing can be done during the pull request.
 
 ---
 
