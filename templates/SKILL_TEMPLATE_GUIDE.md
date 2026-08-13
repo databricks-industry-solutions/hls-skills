@@ -6,6 +6,7 @@ description: <Domain or decision-space keyword> <what it covers>. <When to consu
 # Description rules (AGENTS.md):
 #   - Length ≤ 1024 chars; first 120 chars carry discovery weight
 #   - Lead with the domain or decision-space keyword — NOT stop verbs
+version: 1.0.0
 author: your name
 license: Databricks License
 ---
@@ -94,7 +95,12 @@ Question: What is your goal?
 3. **Guideline 3**: Description
 4. **Guideline 4**: Description
 
-## Further Reading
+## Guardrails
+
+1. Avoid retrying more than 3 times
+2. Ask to confirm before undertaking a heavy workload
+
+## References
 
 - [Reference 1](https://example.com) — Description
 - [Reference 2](https://example.com) — Description

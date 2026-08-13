@@ -33,6 +33,7 @@ PIPELINE_REQUIRED = {
     "## When to Use",
     "## Workflow",
     "## Troubleshooting",
+    "## Guardrails",
     "## References",
 }
 PIPELINE_RECOMMENDED = {
@@ -49,6 +50,7 @@ GUIDE_REQUIRED = {
     "## Decision Framework",
     "## Best Practices",
     "## Troubleshooting",
+    "## Guardrails",
     "## References",
 }
 GUIDE_RECOMMENDED = {
@@ -216,6 +218,12 @@ def validate_skill(path: Path, skill_type: str | None = None) -> ValidationResul
                 "lead with a tool/domain keyword instead"
             )
 
+    if "version" not in fm:
+        result.errors.append(f"[{label}] Missing frontmatter field: version")
+
+    if "author" not in fm:
+        result.errors.append(f"[{label}] Missing frontmatter field: author")
+
     if "license" not in fm:
         result.errors.append(f"[{label}] Missing frontmatter field: license")
 
@@ -374,6 +382,20 @@ if pytest is not None and ALL_SKILLS:
         assert desc, f"[{skill_path.parent.name}] Missing description"
         assert len(desc) <= 1024, (
             f"[{skill_path.parent.name}] description is {len(desc)} chars, max is 1024"
+        )
+
+    @pytest.mark.parametrize("skill_path", ALL_SKILLS, ids=_skill_id)
+    def test_frontmatter_version_exists(skill_path: Path):
+        fm = parse_frontmatter(skill_path.read_text(encoding="utf-8"))
+        assert "version" in fm, (
+            f"[{skill_path.parent.name}] Missing 'version' field in frontmatter"
+        )
+
+    @pytest.mark.parametrize("skill_path", ALL_SKILLS, ids=_skill_id)
+    def test_frontmatter_author_exists(skill_path: Path):
+        fm = parse_frontmatter(skill_path.read_text(encoding="utf-8"))
+        assert "author" in fm, (
+            f"[{skill_path.parent.name}] Missing 'author' field in frontmatter"
         )
 
     @pytest.mark.parametrize("skill_path", ALL_SKILLS, ids=_skill_id)
