@@ -74,7 +74,7 @@ skills/<category>/<skill-name>/
 |----------|----------|
 | `SKILL_TEMPLATE.md` | Linear pipeline |
 | `SKILL_TEMPLATE_TOOLKIT.md` | Toolkit or database/MCP API surface |
-| `SKILL_TEMPLATE_PROSE.md` | Decision guide |
+| `SKILL_TEMPLATE_GUIDE.md` | Decision guide |
 
 ## License
 

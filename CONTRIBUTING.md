@@ -19,10 +19,9 @@ If you are contributing on behalf of an organization, you confirm that you have 
 
 ## Adding or updating a skill
 
-1. Follow [AGENTS.md](AGENTS.md).
-2. Start from the matching file in `templates/`.
+1. Follow [AGENTS.md](AGENTS.md) for guidelines on authoring and testing skills.
+2. Consider starting from the appropriate `templates/`. See guidance in [AGENTS.md](AGENTS.md)
 3. Put the skill at `skills/<category>/<skill-name>/SKILL.md`.
 4. Folder name must match frontmatter `name`.
-5. If the skill is new, add it to the remote catalog in `install_skills.sh` (`remote_skill_catalog`).
-6. Update the skill table in `README.md`.
-7. Open a PR and request a second-party review.
+5. Update the skill table in `README.md`.
+6. Push to a new branch names feat/skill_name then open a PR and request a second-party review.

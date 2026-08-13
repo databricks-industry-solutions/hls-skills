@@ -1,4 +1,4 @@
-<!-- Template: Guide Sub-type (prose-centric) — for decision frameworks and best practices.
+<!-- Template: Guide Sub-type — for decision frameworks and best practices.
      For code/MCP-centric entries, use SKILL_TEMPLATE.md or SKILL_TEMPLATE_TOOLKIT.md. -->
 ---
 name: guide-name-here
@@ -15,6 +15,16 @@ license: Databricks License
 ## Overview
 
 Brief description of this guide (2-3 sentences). What domain does it cover? Why does it matter for research decisions?
+
+## When to Use
+
+<!-- 5+ items. Write from the USER'S TASK perspective, not keyword-matching. -->
+
+- Use case 1: description
+- Use case 2: description
+- Use case 3: description
+- Use case 4: description
+- Use case 5: description
 
 ## Key Concepts
 
@@ -54,7 +64,7 @@ Question: What is your goal?
 4. **Practice 4**: Description and rationale
 5. **Practice 5**: Description and rationale
 
-## Common Pitfalls
+## Troubleshooting
 
 1. **Pitfall 1**: What goes wrong and why
    - *How to avoid*: Preventive measure
