@@ -11,7 +11,6 @@ Layout inspired by [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-S
 ├── AGENTS.md
 ├── templates/
 │   ├── SKILL_TEMPLATE.md           ← Pipeline
-│   ├── SKILL_TEMPLATE_TOOLKIT.md   ← Toolkit / database-style
 │   └── SKILL_TEMPLATE_GUIDE.md     ← Guide
 ├── integration-templates/          ← AGENTS / Cursor / Windsurf consumer snippets
 └── skills/
@@ -42,8 +41,6 @@ Optional siblings next to `SKILL.md`: `references/`, `assets/`, `scripts/`.
 | Sub-type | When | Template |
 |----------|------|----------|
 | **Pipeline** | Linear input→process→output | `templates/SKILL_TEMPLATE.md` |
-| **Toolkit** | Multiple independent modules | `templates/SKILL_TEMPLATE_TOOLKIT.md` |
-| **Database** | API / MCP query wrapper | `templates/SKILL_TEMPLATE_TOOLKIT.md` (organize by query type) |
 | **Guide** | Prose decision framework | `templates/SKILL_TEMPLATE_GUIDE.md` |
 
 
@@ -72,11 +69,12 @@ The `description` field is the discovery hook agents use before loading the full
 | `scripts/` | Runnable helpers (>~80 lines or repeated boilerplate) |
 
 ### Step 5. Testing and evaluation (TBD)
-1. Unit tests for code snippets in a `tests` subfolder within your skill
-2. Ensure your skill reliably loads in Genie Code
-3. Design 3-5 benchmarking tasks
-4. Report Genie Code performance on those tasks with and without your skill
-5. Peer testing can be done during the pull request.
+1. Run `python tests/test_skill_quality.py skills/my-skill/SKILL.md` to validate skill format
+2. Add unit tests for code snippets in a `tests` subfolder within your skill
+3. Ensure your skill reliably loads in Genie Code
+4. Design 3-5 benchmarking tasks
+5. Report Genie Code performance on those tasks with and without your skill
+6. Peer testing can be done during the pull request.
 
 ---
 
