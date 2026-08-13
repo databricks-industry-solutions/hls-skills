@@ -1,41 +1,14 @@
 # HLS Skills
 
-Agent skills for Health & Life Sciences / drug-discovery workflows. Each skill is a `SKILL.md` folder that teaches coding agents (Claude Code, Cursor, and others following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with MCP tools such as Open Targets, PubChem, and PubMed.
+Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
 
-Repo layout and skill templates follow the patterns in [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills) (templates + categories only — skills here are HLS-specific).
-
-## Installation
-
-```bash
-# Install all skills into .claude/skills
-curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash
-
-# Specific skills
-curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash -s -- adme-assessment hit-identification
-
-# Cursor
-curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash -s -- --cursor
-
-# Claude + Cursor
-curl -sSL https://raw.githubusercontent.com/databricks-industry-solutions/hls-skills/main/install_skills.sh | bash -s -- --both
-```
-
-From a local checkout:
-
-```bash
-./install_skills.sh --local
-./install_skills.sh --local --cursor
-./install_skills.sh --list
-```
 
 ## Available Skills
 
-| Skill | Category | Description |
-|-------|----------|-------------|
-| **druggable-targets** | target-discovery | Prioritize druggable targets for a disease (Open Targets + PubMed) |
-| **hit-identification** | hit-to-lead | Find small-molecule hits for a gene/protein (Open Targets + PubChem) |
-| **adme-assessment** | compound-assessment | ADME / drug-likeness via PubChem |
-| **safety-assessment** | compound-assessment | Safety / toxicity via PubChem + PubMed |
+| Skill | Description |
+|-------|-------------|
+| **bulk-rnaseq** | Analyze for top differentially expressed genes (DEG) from bulk RNA-seq count data |
+| **pathway-enrichment-analysis** | Pathway enrichment for RNA-seq. Choose from ORA or GSEA |
 
 ## Repository Layout
 
@@ -43,14 +16,10 @@ From a local checkout:
 hls-skills/
 ├── AGENTS.md                 # Skill authoring guide
 ├── CLAUDE.md                 # Compatibility shim → AGENTS.md
-├── install_skills.sh
 ├── templates/                # Pipeline / toolkit / guide templates
-├── integration-templates/    # Consumer snippets for Codex / Cursor / Windsurf
-├── .claude-plugin/           # Claude Code plugin manifest
 └── skills/
-    ├── target-discovery/
-    ├── hit-to-lead/
-    └── compound-assessment/
+    ├── skill-1/
+    ├── skill-2/
 ```
 
 Each skill:
@@ -64,17 +33,21 @@ skills/<category>/<skill-name>/
 ```
 
 ## Creating a Skill
-
-1. Read [AGENTS.md](AGENTS.md)
-2. Copy the right template from `templates/`
-3. Place it at `skills/<category>/<skill-name>/SKILL.md`
-4. Ensure frontmatter `name` matches the folder name
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+1. Follow [AGENTS.md](AGENTS.md).
+2. Start from the matching file in `templates/`.
+3. Put the skill at `skills/<category>/<skill-name>/SKILL.md`.
+4. Folder name must match frontmatter `name`. 
+5. Update the skill table in `README.md` (Table to be created).
+6. Open a PR and request a second-party review.
 
 | Template | Use when |
 |----------|----------|
 | `SKILL_TEMPLATE.md` | Linear pipeline |
-| `SKILL_TEMPLATE_TOOLKIT.md` | Toolkit or database/MCP API surface |
 | `SKILL_TEMPLATE_GUIDE.md` | Decision guide |
+
+Repo layout and skill templates are inspired by the patterns in [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills)
+
 
 ## License
 
