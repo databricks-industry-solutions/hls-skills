@@ -1,6 +1,6 @@
 <!-- Template: Pipeline Sub-type — for skills with a linear input→processing→output flow.
      For toolkit-style skills (multiple independent modules), use SKILL_TEMPLATE_TOOLKIT.md.
-     For prose/decision guides, use SKILL_TEMPLATE_PROSE.md. -->
+     For decision guides, use SKILL_TEMPLATE_GUIDE.md. -->
 ---
 name: skill-name-here
 description: <Tool/Domain keyword> <what it does>. <Inputs → outputs>. <Disambiguation: for X use Y>

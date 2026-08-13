@@ -12,7 +12,7 @@ Layout inspired by [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-S
 ├── templates/
 │   ├── SKILL_TEMPLATE.md           ← Pipeline
 │   ├── SKILL_TEMPLATE_TOOLKIT.md   ← Toolkit / database-style
-│   └── SKILL_TEMPLATE_PROSE.md     ← Guide
+│   └── SKILL_TEMPLATE_GUIDE.md     ← Guide
 ├── integration-templates/          ← AGENTS / Cursor / Windsurf consumer snippets
 └── skills/
     ├── target-discovery/
@@ -44,7 +44,7 @@ Optional siblings next to `SKILL.md`: `references/`, `assets/`, `scripts/`.
 | **Pipeline** | Linear input→process→output | `templates/SKILL_TEMPLATE.md` |
 | **Toolkit** | Multiple independent modules | `templates/SKILL_TEMPLATE_TOOLKIT.md` |
 | **Database** | API / MCP query wrapper | `templates/SKILL_TEMPLATE_TOOLKIT.md` (organize by query type) |
-| **Guide** | Prose decision framework | `templates/SKILL_TEMPLATE_PROSE.md` |
+| **Guide** | Prose decision framework | `templates/SKILL_TEMPLATE_GUIDE.md` |
 
 
 ### Step 2. Author the skill
