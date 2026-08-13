@@ -9,6 +9,7 @@ description: <Tool/Domain keyword> <what it does>. <Inputs → outputs>. <Disamb
 #   - Lead with tool name or domain keyword — NOT stop verbs (Use/A/An/The/Query/Fetch/Run)
 #   - Cross-references ("For X use Y") go at the END
 #   - No promotional adjectives (powerful/comprehensive/state-of-the-art/...)
+version: 1.0.0
 author: your name
 license: Databricks License
 ---
@@ -132,6 +133,11 @@ When to use: brief scenario description.
 | Tool / MCP error | Server not configured | Check MCP server is available and authenticated |
 | Too many hits | Unfiltered query | Apply score / phase / Lipinski filters |
 | Conflicting evidence | Mixed literature signals | Prefer higher clinical precedence; cite both sides |
+
+## Guardrails
+
+1. Avoid retrying more than 3 times
+2. Ask to confirm before undertaking a heavy workload
 
 ## Bundled Resources
 
