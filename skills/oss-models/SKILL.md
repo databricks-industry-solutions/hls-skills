@@ -1,6 +1,7 @@
 ---
 name: oss-models
 description: Package, register, validate, and deploy open-source health and life-sciences models on Databricks. Use for Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz, or similar models whose code, checkpoints, databases, tokenizers, or scientific inputs come from Hugging Face, Git, Zenodo, or other external sources. Use this skill when a request involves custom PyFunc wrappers, Unity Catalog registration, Model Serving, Jobs, GPU/runtime selection, complex biological inputs, provenance, or AI Gateway inference tables.
+version: 0.0.1
 author: hengrumay
 license: Databricks License
 ---
@@ -240,6 +241,16 @@ Every new model reference should include:
 - `databricks-ml-training` — generic custom PyFunc, signatures, dependency packaging, and Unity Catalog registration this guide builds on.
 - `databricks-model-serving` — endpoint lifecycle, routing, and AI Gateway configuration for the serving path.
 - `databricks-mlflow-evaluation` — evaluation mechanics for validating model outputs.
+
+## Guardrails
+
+1. Pin every provenance-controlled input — code, weights, tokenizer, scientific database, and configuration — to an immutable commit SHA or content-addressed release with a recorded checksum; never trust a git tag, `latest` URL, or mutable branch, since tags can be re-pointed.
+2. Download weights, tokenizers, and reference databases at build time into a governed Volume or model artifact location; never fetch them at request time, and test an offline / network-restricted startup path.
+3. Never log raw sensitive payloads — patient, donor, sequence, structure, or compound data — to inference tables; classify and minimize/redact first, and log a hash, metadata record, or governed URI instead of the raw input.
+4. Honor and record both the model AND the dataset/weights licenses in the manifest before packaging or distributing; treat an unknown license as blocking, not as a default-permit.
+5. Validate the exact serving serializer against the deployed endpoint before depending on an SDK `params=` path, arrays, or nested lists; prefer explicit fields/columns for controls.
+6. When a model name is ambiguous, stop and ask for the exact upstream project (repository, package, model card) rather than guessing tensor shapes, tokenizer names, database paths, or APIs.
+7. Never treat a green technical deployment as scientific or clinical validity; report technical validation separately and defer scientific, clinical, and regulatory sign-off to the appropriate review.
 
 ## References
 
