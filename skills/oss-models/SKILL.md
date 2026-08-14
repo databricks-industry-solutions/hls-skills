@@ -28,7 +28,7 @@ For generic custom PyFunc, sklearn, or ordinary PyTorch packaging with no scient
 Reusable Databricks mechanics (PyFunc, signatures, UC registration, serving) live in the generic skills. This guide adds only the HLS-specific adapter behavior. Do not assume Genie Code has a formal skill-inheritance mechanism; if the generic skill is unavailable, restate only the minimum implementation checklist from `references/integration-contract.md` rather than copying the generic tutorial.
 
 ### Execution boundary
-Before writing code, record the exact upstream repository/package/model card, the model and code revision (immutable commit/tag), the checkpoint or weight source and revision, the model and dataset licenses, expected input modalities and output objects, preprocessing/postprocessing and reference-data dependencies, and whether the user needs online inference, batch scoring, an interactive app, or a multi-step workflow. If the model name is ambiguous, stop and ask for the exact upstream project, or select the closest reference while clearly marking assumptions.
+Before writing code, record the exact upstream repository/package/model card, the model and code revision (immutable commit — prefer a commit SHA, since git tags can be re-pointed), the checkpoint or weight source and revision, the model and dataset licenses, expected input modalities and output objects, preprocessing/postprocessing and reference-data dependencies, and whether the user needs online inference, batch scoring, an interactive app, or a multi-step workflow. If the model name is ambiguous, stop and ask for the exact upstream project, or select the closest reference while clearly marking assumptions.
 
 ### Provenance-controlled inputs
 Treat code, weights, tokenizers, scientific databases, and configuration as separate provenance-controlled inputs — each pinned to an immutable revision with URL, checksum, license, and acquisition date recorded in a manifest. A mutable branch, `latest` URL, or unpinned model card is non-reproducible until pinned.
@@ -175,7 +175,7 @@ artifacts:
 1. **Downloading weights at request time.** Slow, non-reproducible, and often fails in network-restricted serving.
    - *How to avoid*: Download at build time into a governed Volume or artifact location; test an offline startup path.
 2. **Unpinned or `latest` revisions.** A mutable branch or model card silently changes behavior.
-   - *How to avoid*: Pin an immutable commit/tag/DOI and record it in the manifest with a checksum.
+   - *How to avoid*: Pin an immutable commit SHA or content-addressed release/DOI (git tags can move) and record it in the manifest with a checksum.
 3. **Relying on an untested `params=` path.** The SDK `params=` route may not round-trip for a given custom PyFunc and deployment route.
    - *How to avoid*: Use explicit fields/columns for controls, and validate the exact serving serializer before depending on arrays or nested lists.
 4. **Logging raw sensitive payloads.** Inference tables can capture patient, donor, sequence, or compound data.

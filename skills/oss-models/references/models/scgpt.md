@@ -7,7 +7,7 @@ scGPT is a single-cell foundation-model family with model-version-specific token
 Reference sources:
 
 * [scGPT code](https://github.com/bowang-lab/scGPT)
-* [scGPT model resources](https://huggingface.co/ PangboHu/scGPT)
+* [scGPT weights — whole-human checkpoint (Model Zoo, Google Drive)](https://drive.google.com/drive/folders/1oWh_-ZRdhtoGQ2Fw24HP41FgLoomVo-y?usp=sharing) — checkpoint folder containing best_model.pt, args.json, vocab.json; code via the scgpt==0.2.4 package ([bowang-lab/scGPT](https://github.com/bowang-lab/scGPT))
 * [Genesis Workbench](https://github.com/databricks-industry-solutions/genesis-workbench)
 
 ## Inputs and outputs

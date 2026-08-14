@@ -16,7 +16,12 @@ What is checked:
   4. The SKILL.md worked example has an HTTP request (dataframe_records with
      genes + expression), a response envelope (predictions), and a Geneformer
      provenance manifest.
-  5. Each of the five model reference files contains an input_example JSON block.
+  5. Each of the five model reference files has an explicit "input example"
+     heading whose section contains a ```json block that parses to a JSON
+     object. (A stray config/metadata JSON block elsewhere does NOT satisfy
+     this — the check is anchored to the input-example heading.)
+  6. No markdown link in the skill's *.md files has a malformed target
+     (e.g. whitespace inside the URL, as in `https://host/ path`).
 
 Run:
   python3 -m pytest skills/oss-models/tests/ -q
@@ -43,7 +48,7 @@ MODEL_FILES = [
     MODELS_DIR / "boltz.md",
 ]
 
-# Markdown files whose fenced code blocks we scan.
+# Markdown files whose fenced code blocks and links we scan.
 MD_FILES = sorted({SKILL_MD, *REFERENCES_DIR.rglob("*.md")})
 
 # Required manifest keys, mirrored from references/integration-contract.md.
@@ -51,6 +56,11 @@ REQUIRED_MANIFEST_TOP = {"model", "code", "weights", "license", "runtime", "arti
 REQUIRED_MODEL_KEYS = {"name", "upstream_revision", "reviewed_at"}
 
 _FENCE = re.compile(r"```([A-Za-z0-9_+-]+)\n(.*?)```", re.DOTALL)
+_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$", re.MULTILINE)
+# Inline markdown link: capture the target inside `](...)`.
+_MD_LINK = re.compile(r"\]\(\s*([^)]*?)\s*\)")
+# A link target may carry an optional `"title"` / 'title' suffix after the URL.
+_LINK_TITLE = re.compile(r"""^(\S+)\s+["'].*["']$""")
 
 
 def fenced_blocks(text: str, lang: str) -> list[str]:
@@ -64,6 +74,20 @@ def json_blocks(path: Path) -> list[str]:
 
 def yaml_blocks(path: Path) -> list[str]:
     return fenced_blocks(path.read_text(encoding="utf-8"), "yaml")
+
+
+def heading_sections(text: str):
+    """Yield (level, title, body) for each markdown heading.
+
+    `body` is the text from just after the heading line up to the next
+    heading (any level), so a fenced block inside `body` belongs to that
+    heading's section.
+    """
+    matches = list(_HEADING.finditer(text))
+    for i, m in enumerate(matches):
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        yield len(m.group(1)), m.group(2).strip(), text[start:end]
 
 
 # ---------------------------------------------------------------------------
@@ -153,10 +177,57 @@ def check_skill_worked_example() -> None:
 
 
 def check_model_has_input_example(path: Path) -> None:
-    dict_blocks = [
-        b for b in (json.loads(x) for x in json_blocks(path)) if isinstance(b, dict)
-    ]
-    assert dict_blocks, f"{path.name}: no JSON input_example object found"
+    """Require an explicit input-example heading with a parseable JSON object.
+
+    This is anchored to a heading whose text contains 'input example'
+    (case-insensitive); the ```json block must live in that heading's section.
+    A JSON object elsewhere in the file (config, response, metadata) does NOT
+    satisfy the check — that was the reviewer's concern.
+    """
+    text = path.read_text(encoding="utf-8")
+    matched_heading = None
+    for _level, title, body in heading_sections(text):
+        if "input example" in title.lower():
+            matched_heading = title
+            json_bodies = fenced_blocks(body, "json")
+            assert json_bodies, (
+                f"{path.name}: heading '{title}' has no ```json block in its section"
+            )
+            parsed_objects = []
+            for j, blk in enumerate(json_bodies):
+                try:
+                    parsed = json.loads(blk)
+                except json.JSONDecodeError as exc:
+                    raise AssertionError(
+                        f"{path.name}: json under '{title}' (#{j}) does not parse: {exc}"
+                    )
+                parsed_objects.append(parsed)
+            assert any(isinstance(p, dict) for p in parsed_objects), (
+                f"{path.name}: input example under '{title}' must be a JSON object"
+            )
+            return
+    raise AssertionError(
+        f"{path.name}: no heading containing 'input example' with a ```json block "
+        f"(matched heading: {matched_heading!r})"
+    )
+
+
+def check_no_malformed_urls(path: Path) -> None:
+    """Fail on any inline-markdown link whose URL target contains whitespace.
+
+    This is exactly what would have caught the malformed scGPT link
+    `https://huggingface.co/ PangboHu/scGPT`. An optional `"title"` suffix
+    after the URL is allowed (valid markdown); whitespace inside the URL is not.
+    """
+    text = path.read_text(encoding="utf-8")
+    for target in _MD_LINK.findall(text):
+        url = target
+        title_match = _LINK_TITLE.match(target)
+        if title_match:
+            url = title_match.group(1)
+        assert not re.search(r"\s", url), (
+            f"{path.name}: malformed markdown link target with whitespace in URL: {target!r}"
+        )
 
 
 if pytest is not None:
@@ -178,6 +249,10 @@ if pytest is not None:
     @pytest.mark.parametrize("path", MODEL_FILES, ids=lambda p: p.name)
     def test_model_has_input_example(path: Path):
         check_model_has_input_example(path)
+
+    @pytest.mark.parametrize("path", MD_FILES, ids=lambda p: p.name)
+    def test_no_malformed_urls(path: Path):
+        check_no_malformed_urls(path)
 
 
 def _main() -> int:
@@ -205,6 +280,8 @@ def _main() -> int:
         print("SKIP  yaml checks (PyYAML not installed)")
     for path in MODEL_FILES:
         run(f"model has input_example [{path.name}]", check_model_has_input_example, path)
+    for path in MD_FILES:
+        run(f"no malformed urls [{path.name}]", check_no_malformed_urls, path)
 
     print()
     if failures:
