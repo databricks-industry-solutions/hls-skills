@@ -11,6 +11,8 @@ license: Databricks License
 
 This guide is a Health & Life Sciences (HLS) extension layer for packaging, registering, validating, and deploying open-source scientific models on Databricks. It does not reproduce generic MLflow or custom PyFunc mechanics — it supplies the model-family decisions that generic guidance cannot know: scientific preprocessing, checkpoint and database requirements, GPU and runtime constraints, serving-versus-Jobs suitability, provenance, and biological sanity checks. When the request needs standard logging, signatures, dependency packaging, Unity Catalog registration, Model Serving, or MLflow evaluation, use the existing Databricks ML training and Model Serving skills as the implementation foundation and layer this guide on top.
 
+These five model families (single-cell; protein/biomolecular structure) are an initial, representative set. The skill is designed to extend — see `references/models/index.md` and `references/model-template.md` to add a family. Coverage grows as demand and validated models arrive.
+
 ## When to Use
 
 - The request names an HLS model (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz, or similar) whose code or weights come from an external source.
