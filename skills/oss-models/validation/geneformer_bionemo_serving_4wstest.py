@@ -1,8 +1,8 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Spike — Geneformer (NVIDIA BioNeMo TransformerEngine checkpoint) → MLflow PyFunc → Unity Catalog → GPU Model Serving
+# MAGIC # Serving validation — Geneformer (NVIDIA BioNeMo TransformerEngine checkpoint) → MLflow PyFunc → Unity Catalog → GPU Model Serving
 # MAGIC
-# MAGIC **What this is.** A hands-on spike (a throwaway proof) that walks the full path for ONE model:
+# MAGIC **What this is.** A hands-on validation notebook that walks the full path for ONE model:
 # MAGIC acquire the weights from Hugging Face → wrap them in an MLflow PyFunc model → register to Unity Catalog →
 # MAGIC deploy to a GPU Model Serving endpoint → score one request → tear the endpoint down. It doubles as the
 # MAGIC eventual tested worked-example for the `oss-models` skill.
@@ -10,7 +10,7 @@
 # MAGIC **The specific unknown this resolves.** Whether NVIDIA's TransformerEngine (TE) PyTorch extension — a CUDA
 # MAGIC source build, like `flash-attn` — actually **builds and runs inside the Databricks Model Serving container**,
 # MAGIC and whether the resulting model serves under a PyFunc. Roadmap §8 grades this **"PLAUSIBLE — needs a
-# MAGIC hands-on spike"**: no hard block found (it is not FP8-only, and Docker is recommended-not-required for
+# MAGIC hands-on validation"**: no hard block found (it is not FP8-only, and Docker is recommended-not-required for
 # MAGIC inference), but the TE-in-Serving link is unproven. If TE will not build in Serving, the documented fallback
 # MAGIC is a **GPU Jobs batch-inference** path instead of Serving.
 # MAGIC
@@ -69,7 +69,7 @@ dbutils.library.restartPython()
 dbutils.widgets.text("catalog",       "<catalog>",                          "Unity Catalog catalog")
 dbutils.widgets.text("schema",        "<schema>",                           "Unity Catalog schema")
 dbutils.widgets.text("model",         "geneformer_bionemo",                 "UC model name")
-dbutils.widgets.text("endpoint_name", "geneformer-bionemo-spike",           "Serving endpoint name")
+dbutils.widgets.text("endpoint_name", "geneformer-bionemo-serving-test",           "Serving endpoint name")
 # RUN-GATE: the side-effecting cells (Steps 5-7) execute ONLY when run_go == "true". Defaults to "false" so the
 # notebook is inert on import / Run-All — a human must flip it to run the costed steps.
 dbutils.widgets.dropdown("run_go", "false", ["false", "true"], "Run gate (side effects)")
@@ -235,7 +235,7 @@ else:
     mlflow.set_registry_uri("databricks-uc")   # MUST precede log_model — else lands in workspace registry.
     mlflow.set_experiment(f"/Users/<you>/{MODEL}")   # CONFIRM ON RUN — parent folder must already exist.
 
-    with mlflow.start_run(run_name="geneformer-bionemo-spike"):
+    with mlflow.start_run(run_name="geneformer-bionemo-serving-test"):
         info = mlflow.pyfunc.log_model(
             name="model",
             python_model="model.py",              # file path, not an instance (Models from Code)
@@ -330,7 +330,7 @@ else:
 # MAGIC
 # MAGIC **What.** Send exactly ONE request to validate the deployed model, then **delete the endpoint immediately.**
 # MAGIC
-# MAGIC **Why.** This is the whole point of the spike — prove one live inference works end-to-end through Serving. A GPU
+# MAGIC **Why.** This is the whole point of the validation — prove one live inference works end-to-end through Serving. A GPU
 # MAGIC endpoint keeps billing while it exists, so teardown is not optional. **Both cells are documented, not executed.**
 
 # COMMAND ----------

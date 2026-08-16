@@ -1,26 +1,20 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Spike — kaiko-ai/midnight (pathology tile-embedding encoder) → MLflow PyFunc → Unity Catalog → GPU Model Serving
+# MAGIC # Serving validation — DNABERT-2 (genomics) → MLflow PyFunc → Unity Catalog → GPU Model Serving
 # MAGIC
-# MAGIC **What this is.** A hands-on spike (a throwaway proof) that walks the full path for ONE model:
+# MAGIC **What this is.** A hands-on validation notebook that walks the full path for ONE model:
 # MAGIC acquire the weights from Hugging Face → wrap them in an MLflow PyFunc model → register to Unity Catalog →
 # MAGIC deploy to a GPU Model Serving endpoint → score one request → tear the endpoint down. It doubles as the
-# MAGIC eventual tested worked-example for the `oss-models` skill.
+# MAGIC eventual tested worked-example for the `oss-models` skill. DNABERT-2 opens the **DNA / genomics** modality that
+# MAGIC is missing from both the skill and Genesis Workbench (roadmap §3 — ranked add #1, Apache-2.0, ungated).
 # MAGIC
-# MAGIC **This is the FIRST imaging-modality entry, and its I/O contract differs from the sequence/structure models.**
-# MAGIC `kaiko-ai/midnight` (MIT, ungated — roadmap §5, cleanest pathology add) is a **pathology tile-embedding
-# MAGIC encoder**: it maps a **histopathology image tile → a fixed-length embedding vector**. It is **NOT a
-# MAGIC vision-language model (VLM)** — there is no text input and no text output. Because the input is an image, this
-# MAGIC notebook adds an explicit **image-preprocessing sub-step** (Step 3a) that the sequence/structure spikes do not
-# MAGIC have. This is exactly the point (roadmap §1a) where the shared `oss-models` scaffolding first bends for imaging.
-# MAGIC
-# MAGIC **The specific unknown this resolves.** Whether a preprocessed histopathology tile flows cleanly through Midnight
-# MAGIC to an embedding vector **under a PyFunc on a GPU Serving endpoint**, and what the exact expected patch size /
-# MAGIC normalization and output embedding dimension actually are (all unknown until the run — see placeholders in
-# MAGIC Steps 3a, 3, 5).
+# MAGIC **The specific unknown this resolves.** Whether a DNA nucleotide sequence string flows cleanly through
+# MAGIC DNABERT-2's tokenizer and model to a usable embedding **under a PyFunc on a GPU Serving endpoint** — and what the
+# MAGIC exact tokenizer / extra build dependencies and output embedding shape actually are (both unknown until the run;
+# MAGIC see the placeholders in Steps 1, 3, and 5). Unlike Geneformer, **there is no TransformerEngine requirement** here.
 # MAGIC
 # MAGIC **Prerequisites.**
-# MAGIC - A GPU-backed runtime for authoring/smoke test.
+# MAGIC - A GPU-backed runtime for authoring/smoke test (a modest GPU is expected to suffice — see Step 6).
 # MAGIC - Unity Catalog write access to the target `<catalog>.<schema>`.
 # MAGIC - Permission to create a GPU Model Serving endpoint in this workspace.
 # MAGIC - A chosen Databricks CLI `--profile` for any CLI step (never auto-selected).
@@ -38,23 +32,23 @@
 # MAGIC %md
 # MAGIC ## Step 1 — Environment, dependencies, and GPU requirements
 # MAGIC
-# MAGIC **What.** Install the deps needed to load the encoder and preprocess an image tile, then declare the run
+# MAGIC **What.** Install `transformers` (plus any tokenizer/build deps the model card names), then declare the run
 # MAGIC parameters (catalog / schema / model / endpoint) as notebook widgets so nothing workspace-specific is hardcoded.
 # MAGIC
-# MAGIC **Why.** Midnight is an HF-hosted vision encoder; loading it needs `transformers`, and image preprocessing needs
-# MAGIC an imaging stack (`Pillow` for tiles, `torchvision` for resize/normalize transforms are the usual choices).
-# MAGIC **Whether Midnight additionally needs `timm` or a custom loader is unverified** — confirm from the model card on
-# MAGIC the run; those extras are placeholders, not guesses.
+# MAGIC **Why.** DNABERT-2 is a Hugging Face transformer; `transformers` is the core dependency. **The exact extra
+# MAGIC dependencies are unverified** — the model card must be checked on the run (DNABERT-2 is commonly reported to ship
+# MAGIC custom modeling code, which typically implies `trust_remote_code=True` and may pull tokenizer/attention build
+# MAGIC deps). Those are marked placeholder rather than guessed. No TransformerEngine is required.
 # MAGIC
-# MAGIC **GPU note.** A vision encoder of this class runs on a modest-to-mid GPU tier; the **exact tier is a placeholder**
-# MAGIC until the run measures memory/latency (see Step 6). No TransformerEngine requirement.
+# MAGIC **GPU note.** A **modest GPU** is expected to be enough for DNABERT-2 inference (roadmap §3 lists it as a
+# MAGIC Serving-shaped model). The exact GPU tier is a placeholder until the run measures memory/latency (see Step 6).
 
 # COMMAND ----------
 
-# MAGIC %pip install transformers pillow torchvision
-# MAGIC # CONFIRM ON RUN — the model card may require extra deps (e.g. timm, or a custom loader). Add them here ONLY
-# MAGIC # after reading the kaiko-ai/midnight model card; do not guess. Pin exact versions once proven, so the same
-# MAGIC # versions feed log_model(pip_requirements=[...]) in Step 4/5.
+# MAGIC %pip install transformers
+# MAGIC # CONFIRM ON RUN — the model card may require extra deps (e.g. a specific tokenizer package or attention/build
+# MAGIC # dep). Add them here ONLY after reading the DNABERT-2 model card; do not guess. Pin exact versions once proven,
+# MAGIC # so the same versions feed log_model(pip_requirements=[...]) in Step 4/5.
 
 # COMMAND ----------
 
@@ -64,10 +58,10 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 # Run parameters as widgets — NOTHING workspace/profile/account-specific is hardcoded.
-dbutils.widgets.text("catalog",       "<catalog>",                     "Unity Catalog catalog")
-dbutils.widgets.text("schema",        "<schema>",                      "Unity Catalog schema")
-dbutils.widgets.text("model",         "midnight_pathology",            "UC model name")
-dbutils.widgets.text("endpoint_name", "midnight-pathology-spike",      "Serving endpoint name")
+dbutils.widgets.text("catalog",       "<catalog>",                 "Unity Catalog catalog")
+dbutils.widgets.text("schema",        "<schema>",                  "Unity Catalog schema")
+dbutils.widgets.text("model",         "dnabert2",                  "UC model name")
+dbutils.widgets.text("endpoint_name", "dnabert2-serving-test",            "Serving endpoint name")
 # RUN-GATE: the side-effecting cells (Steps 5-7) execute ONLY when run_go == "true". Defaults to "false" so the
 # notebook is inert on import / Run-All — a human must flip it to run the costed steps.
 dbutils.widgets.dropdown("run_go", "false", ["false", "true"], "Run gate (side effects)")
@@ -79,8 +73,9 @@ ENDPOINT_NAME = dbutils.widgets.get("endpoint_name")
 FULL_NAME     = f"{CATALOG}.{SCHEMA}.{MODEL}"   # <catalog>.<schema>.<model>
 RUN_GO        = dbutils.widgets.get("run_go") == "true"   # False → side-effecting Steps 5-7 skip with a message
 
-# Hugging Face source, grounded in roadmap §5. MIT, ungated — no HF gate to accept.
-HF_REPO_ID = "kaiko-ai/midnight"
+# Hugging Face source. The roadmap names "DNABERT-2 (Apache-2.0, ungated)" but does NOT state the exact HF repo id,
+# so it is a placeholder — confirm the exact id from the model card on the run; do not invent it.
+HF_REPO_ID = "<dnabert2-hf-repo-id>"   # CONFIRM ON RUN — exact HF repo id from the DNABERT-2 model card
 
 print(f"Target UC model: {FULL_NAME}")
 print(f"Target endpoint: {ENDPOINT_NAME}")
@@ -91,80 +86,51 @@ print(f"RUN_GO:          {RUN_GO}  (side-effecting Steps 5-7 {'WILL' if RUN_GO e
 # MAGIC %md
 # MAGIC ## Step 2 — Load the model from Hugging Face
 # MAGIC
-# MAGIC **What.** Pull the Midnight encoder weights with `transformers`.
+# MAGIC **What.** Pull the DNABERT-2 weights and tokenizer with `transformers`.
 # MAGIC
-# MAGIC **Why.** Midnight is an ungated MIT model, so acquisition is a plain `from_pretrained` with no HF token / gate
-# MAGIC acceptance. Whether the correct loader is `AutoModel` vs a `timm`/custom loader, and whether
-# MAGIC `trust_remote_code=True` is required, is unverified — confirm from the model card, do not assume.
+# MAGIC **Why.** DNABERT-2 is a standard HF-hosted transformer, so `AutoModel` / `AutoTokenizer` is the acquisition
+# MAGIC path. Whether `trust_remote_code=True` is required depends on the model shipping custom modeling code — set below
+# MAGIC as a placeholder to confirm from the model card, not asserted.
 
 # COMMAND ----------
 
 import torch
-from transformers import AutoModel   # CONFIRM ON RUN — confirm the correct loader (AutoModel vs timm/custom) from the model card
+from transformers import AutoModel, AutoTokenizer
 
-# CONFIRM ON RUN — trust_remote_code flag depends on whether the repo ships custom modeling code. Confirm from the card.
-model = AutoModel.from_pretrained(HF_REPO_ID, trust_remote_code=True)   # CONFIRM ON RUN
-model = model.eval().to("cuda")
+# CONFIRM ON RUN — trust_remote_code flag depends on whether the repo ships custom modeling code (auto_map). Confirm
+# from the model card; do not assume. Shown True as the likely case for DNABERT-2's custom architecture.
+tokenizer = AutoTokenizer.from_pretrained(HF_REPO_ID, trust_remote_code=True)   # CONFIRM ON RUN
+model     = AutoModel.from_pretrained(HF_REPO_ID, trust_remote_code=True)       # CONFIRM ON RUN
+model     = model.eval().to("cuda")
 
 print(type(model))
-# print(model.config)   # CONFIRM ON RUN — record embedding dim + expected input resolution for Steps 3a/3/4.
-
-# COMMAND ----------
-# MAGIC %md
-# MAGIC ## Step 3a — Image preprocessing sub-step (imaging-only — not in the sequence/structure spikes)
-# MAGIC
-# MAGIC **What.** Take a histopathology image tile and resize + normalize it to the exact patch size / normalization
-# MAGIC statistics the encoder expects, producing the input tensor for the forward pass.
-# MAGIC
-# MAGIC **Why.** Unlike a DNA string or a tokenized cell, an image tile must be shaped to the encoder's fixed input
-# MAGIC resolution and normalized with the model's expected mean/std before it will produce a meaningful embedding.
-# MAGIC **The exact patch size and normalization constants are unverified** — they come from the Midnight model card
-# MAGIC (often ImageNet-style mean/std for ViT encoders, but do NOT assume) and are placeholders here.
-
-# COMMAND ----------
-
-# from PIL import Image                # uncomment together with the preprocess block below (used by Image.open)
-# from torchvision import transforms   # CONFIRM ON RUN — confirm the preprocessing pipeline from the model card
-
-PATCH_SIZE = "<patch-size-hw>"      # CONFIRM ON RUN — e.g. (224, 224); read from the Midnight model card
-NORM_MEAN  = "<normalization-mean>" # CONFIRM ON RUN — per-channel mean; read from the model card
-NORM_STD   = "<normalization-std>"  # CONFIRM ON RUN — per-channel std;  read from the model card
-
-# preprocess = transforms.Compose([
-#     transforms.Resize(PATCH_SIZE),          # CONFIRM ON RUN
-#     transforms.ToTensor(),
-#     transforms.Normalize(NORM_MEAN, NORM_STD),  # CONFIRM ON RUN
-# ])
-#
-# tile = Image.open("<path-or-uri-to-a-histopathology-tile>").convert("RGB")  # CONFIRM ON RUN — a real tile
-# pixel_values = preprocess(tile).unsqueeze(0).to("cuda")   # shape (1, 3, H, W)
-
-print("Preprocessing constants (patch size / mean / std) are placeholders — CONFIRM ON RUN from the model card.")
+# print(model.config)   # CONFIRM ON RUN — record hidden size / max sequence length for the Step 4 signature.
 
 # COMMAND ----------
 # MAGIC %md
 # MAGIC ## Step 3 — Smoke inference with a real, model-appropriate input example
 # MAGIC
-# MAGIC **What.** Run the preprocessed tile through the encoder and capture the real output embedding shape.
+# MAGIC **What.** Tokenize ONE DNA nucleotide sequence string (A/C/G/T) and run a forward pass to capture the real
+# MAGIC output shape.
 # MAGIC
-# MAGIC **Why.** Midnight's output is a **single embedding vector per tile** (tile → vector), a different contract than
-# MAGIC the sequence/structure models. The embedding **dimension is unknown until the run** and is a placeholder here.
-# MAGIC The `input_example` for MLflow is a small image tile / tensor representation, not text.
+# MAGIC **Why.** DNABERT-2's input is a raw nucleotide sequence; the model produces a hidden-state / embedding tensor.
+# MAGIC The DNA string below is a real, model-appropriate input, but the **tokenizer behavior and output embedding shape
+# MAGIC can only be confirmed by the run** — both are placeholders here, never guessed.
 
 # COMMAND ----------
 
 import pandas as pd
 
-# input_example for MLflow: a small image tile represented so the signature is explicit. The exact transport encoding
-# (base64 tile bytes vs a governed image URI vs a raw pixel tensor) is a boundary decision to confirm on the run.
-input_example = pd.DataFrame([{"tile": "<base64-encoded-histopathology-tile-or-uri>"}])  # CONFIRM ON RUN
+# A real DNA nucleotide sequence string (A/C/G/T) — the actual input DNABERT-2 expects.
+input_example = pd.DataFrame([{"sequence": "ACGTACGTACGTACGTACGTACGTACGTACGT"}])
 
-# --- Forward pass -------------------------------------------------------------------------------------------
+# --- Tokenize → forward pass ---------------------------------------------------------------------------------
+# tokens = tokenizer(input_example["sequence"].tolist(), return_tensors="pt")   # CONFIRM ON RUN — tokenizer args
 # with torch.no_grad():
-#     output = model(pixel_values)          # from Step 3a; CONFIRM ON RUN — exact forward call
-# embedding = <extract_embedding(output)>   # CONFIRM ON RUN — pooled CLS / feature vector per the model card
+#     output = model(**{k: v.to("cuda") for k, v in tokens.items()})
+# embedding = <pool(output)>   # CONFIRM ON RUN — pooling (e.g. mean over last_hidden_state) per the model card
 
-OUTPUT_SHAPE = "<placeholder: (n_tiles, embedding_dim)>"   # CONFIRM ON RUN — capture real embedding dim here
+OUTPUT_SHAPE = "<placeholder: (n_sequences, hidden_dim)>"   # CONFIRM ON RUN — capture real tensor shape here
 print("Captured output shape:", OUTPUT_SHAPE)
 
 # Real output example used for the signature in Step 4 — placeholder embedding vector until the run fills it in.
@@ -174,40 +140,38 @@ output_example = pd.DataFrame([{"embedding": ["<float>", "..."]}])   # CONFIRM O
 # MAGIC %md
 # MAGIC ## Step 4 — Wrap in an MLflow PyFunc with an inferred signature
 # MAGIC
-# MAGIC **What.** Author a file-based PyFunc (`model.py`) that loads the encoder once and runs
-# MAGIC decode-tile → preprocess → forward → extract-embedding, then infer an MLflow signature from the Step 3
-# MAGIC input/output example.
+# MAGIC **What.** Author a file-based PyFunc (`model.py`) that loads the tokenizer + model once and runs
+# MAGIC tokenize → forward → pool, then infer an MLflow signature from the Step 3 input/output example.
 # MAGIC
 # MAGIC **Why.** The file-based "Models from Code" pattern (`python_model="model.py"` + `mlflow.models.set_model(...)`)
 # MAGIC avoids pickling the class and the Python-version unpickle crashes that come with it
-# MAGIC (databricks-ml-training `references/custom-pyfunc.md`). The signature pins the image-in / embedding-out contract,
-# MAGIC and the preprocessing from Step 3a must live INSIDE the PyFunc so the endpoint applies it identically.
+# MAGIC (databricks-ml-training `references/custom-pyfunc.md`). The signature pins the request/response contract.
 
 # COMMAND ----------
 
 # Write the PyFunc model file (logged verbatim — no class pickling).
-# HF_REPO_ID is INJECTED from the notebook variable above so there is a SINGLE source of truth for the repo id.
-# NOTE: this is an f-string — keep the body brace-free.
+# HF_REPO_ID is INJECTED from the notebook variable above so there is a SINGLE source of truth for the repo id
+# (the placeholder propagates until CONFIRMED). NOTE: this is an f-string — keep the body brace-free.
 model_py = f'''
 import pandas as pd
 import torch
 import mlflow
 from mlflow.pyfunc import PythonModel
-from transformers import AutoModel
+from transformers import AutoModel, AutoTokenizer
 
-HF_REPO_ID = "{HF_REPO_ID}"   # injected from the notebook (single source of truth); grounded in roadmap §5 (MIT, ungated)
+HF_REPO_ID = "{HF_REPO_ID}"   # injected from the notebook (single source of truth); CONFIRM ON RUN — exact id
 
-class MidnightTileEncoder(PythonModel):
+class DNABert2Embedder(PythonModel):
     def load_context(self, context):
-        # Load weights ONCE at container start.
+        # Load tokenizer + weights ONCE at container start.
+        self.tokenizer = AutoTokenizer.from_pretrained(HF_REPO_ID, trust_remote_code=True)  # CONFIRM ON RUN
         self.model = AutoModel.from_pretrained(HF_REPO_ID, trust_remote_code=True).eval().to("cuda")  # CONFIRM ON RUN
-        # self.preprocess = <torchvision transform from Step 3a>   # CONFIRM ON RUN — patch size + normalization
 
     def predict(self, context, model_input: pd.DataFrame, params=None) -> pd.DataFrame:
-        # CONFIRM ON RUN — mirror decode-tile → preprocess (Step 3a) → forward → extract-embedding (Step 3).
-        raise NotImplementedError("CONFIRM ON RUN — wire decode/preprocess/forward/extract from the Midnight model card")
+        # CONFIRM ON RUN — mirror the exact tokenize → forward → pool path proven in Step 3.
+        raise NotImplementedError("CONFIRM ON RUN — wire tokenize/forward/pool from the DNABERT-2 model card")
 
-mlflow.models.set_model(MidnightTileEncoder())
+mlflow.models.set_model(DNABert2Embedder())
 '''
 with open("model.py", "w") as f:
     f.write(model_py)
@@ -243,7 +207,7 @@ else:
     mlflow.set_registry_uri("databricks-uc")   # MUST precede log_model — else lands in workspace registry.
     mlflow.set_experiment(f"/Users/<you>/{MODEL}")   # CONFIRM ON RUN — parent folder must already exist.
 
-    with mlflow.start_run(run_name="midnight-pathology-spike"):
+    with mlflow.start_run(run_name="dnabert2-serving-test"):
         info = mlflow.pyfunc.log_model(
             name="model",
             python_model="model.py",              # file path, not an instance (Models from Code)
@@ -253,9 +217,7 @@ else:
                 "mlflow",
                 "transformers",                    # CONFIRM ON RUN — exact version
                 "torch",                           # CONFIRM ON RUN — exact torch/CUDA build
-                "pillow",                          # CONFIRM ON RUN — exact version
-                "torchvision",                     # CONFIRM ON RUN — exact version
-                # "<extra-midnight-dep>",          # CONFIRM ON RUN — e.g. timm, if the model card requires it
+                # "<extra-dnabert2-dep>",          # CONFIRM ON RUN — any tokenizer/build dep the model card requires
             ],
             registered_model_name=FULL_NAME,
         )
@@ -273,9 +235,9 @@ else:
 # MAGIC
 # MAGIC **What.** Create a GPU serving endpoint for the registered model version.
 # MAGIC
-# MAGIC **Why / GPU tier suitability.** Midnight is a vision encoder with no TransformerEngine requirement, so a
-# MAGIC **modest-to-mid GPU tier** is expected to be sufficient — but the **exact tier is a placeholder** until the run
-# MAGIC measures memory/latency, and the GPU `workload_type` enum is **not invented here**: discover valid values with
+# MAGIC **Why / GPU tier suitability.** DNABERT-2 has no TransformerEngine requirement, so a **modest GPU tier** is
+# MAGIC expected to be sufficient — but the **exact tier is a placeholder** until the run measures memory/latency, and
+# MAGIC the GPU `workload_type` enum is **not invented here**: discover valid values with
 # MAGIC `databricks serving-endpoints create -h` (databricks-model-serving). **This cell is documented, not executed.**
 
 # COMMAND ----------
@@ -315,7 +277,7 @@ else:
                 "entity_name":          FULL_NAME,
                 "entity_version":       version,
                 "workload_size":        "Small",
-                "workload_type":        "<GPU_WORKLOAD_TYPE>",  # CONFIRM ON RUN — a modest/mid GPU tier; discover via `serving-endpoints create -h`
+                "workload_type":        "<GPU_WORKLOAD_TYPE>",  # CONFIRM ON RUN — a modest GPU tier; discover via `serving-endpoints create -h`
                 # CONFIRM ON RUN — databricks-model-serving is silent on GPU scale-to-zero support; verify before
                 # relying on this to avoid idle GPU billing.
                 "scale_to_zero_enabled": True,
@@ -333,10 +295,10 @@ else:
 # MAGIC %md
 # MAGIC ## Step 7 — Score one request, then TEAR DOWN the endpoint
 # MAGIC
-# MAGIC **What.** Send exactly ONE tile request to validate the deployed encoder, then **delete the endpoint immediately.**
+# MAGIC **What.** Send exactly ONE request to validate the deployed model, then **delete the endpoint immediately.**
 # MAGIC
-# MAGIC **Why.** The point of the spike is one live tile→embedding inference end-to-end through Serving. A GPU endpoint
-# MAGIC keeps billing while it exists, so teardown is not optional. **Both cells are documented, not executed.**
+# MAGIC **Why.** The point of the validation is one live inference end-to-end through Serving. A GPU endpoint keeps billing
+# MAGIC while it exists, so teardown is not optional. **Both cells are documented, not executed.**
 
 # COMMAND ----------
 
@@ -346,7 +308,7 @@ else:
     # Score one request. Custom PyFunc endpoints take dataframe_records (databricks-model-serving Query section).
     result = deploy.predict(
         endpoint=ENDPOINT_NAME,
-        inputs={"dataframe_records": [{"tile": "<base64-encoded-histopathology-tile-or-uri>"}]},  # CONFIRM ON RUN
+        inputs={"dataframe_records": [{"sequence": "ACGTACGTACGTACGTACGTACGTACGTACGT"}]},
     )
     print(result)   # CONFIRM ON RUN — capture the real embedding shape returned by the endpoint
 
