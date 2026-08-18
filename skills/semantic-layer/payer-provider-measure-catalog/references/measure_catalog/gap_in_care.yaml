@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DOMAIN: gap_in_care   (lens: both — quality / HEDIS / Stars)
+# care_gap-grain (member x quality measure x period): eligible population, open vs
+# closed gaps, and compliance. Rate denominator is the ELIGIBLE population.
+# ─────────────────────────────────────────────────────────────────────────────
+
+domain: gap_in_care
+lens: both
+
+metric_views:
+  - name: mv_gap_in_care__care_gap
+    entity: care_gap
+    grain: care_gap
+
+measures:
+
+  # ── ATOMIC ─────────────────────────────────────────────────────────────────
+  - name: eligible_count
+    type: atomic
+    metric_view: mv_gap_in_care__care_gap
+    entity: care_gap
+    expr: "COUNT(DISTINCT CASE WHEN is_eligible THEN care_gap_id END)"
+    definition: "Members in the eligible (denominator) population for the quality measure."
+
+  - name: open_gap_count
+    type: atomic
+    metric_view: mv_gap_in_care__care_gap
+    entity: care_gap
+    expr: "COUNT(DISTINCT CASE WHEN gap_status = 'open' THEN care_gap_id END)"
+    definition: "Open care gaps (measure criteria not yet met)."
+
+  - name: closed_gap_count
+    type: atomic
+    metric_view: mv_gap_in_care__care_gap
+    entity: care_gap
+    expr: "COUNT(DISTINCT CASE WHEN gap_status = 'closed' THEN care_gap_id END)"
+    definition: "Closed care gaps (measure criteria satisfied)."
+
+  - name: compliant_count
+    type: atomic
+    metric_view: mv_gap_in_care__care_gap
+    entity: care_gap
+    expr: "COUNT(DISTINCT CASE WHEN is_compliant THEN care_gap_id END)"
+    definition: "Members meeting the measure's numerator criteria (screening/control satisfied)."
+
+  # ── COMPOSITE ────────────────────────────────────────────────────────────────
+  - name: gap_closure_rate
+    type: composite
+    metric_view: mv_gap_in_care__care_gap
+    expr: "MEASURE(closed_gap_count) / MEASURE(eligible_count)"
+    depends_on: [closed_gap_count, eligible_count]
+    definition: "Closed gaps as a share of the eligible population."
+    anti_pattern: "closed / (open + closed) drifts as records are excluded; anchor the denominator on the ELIGIBLE population."
+
+  - name: screening_compliance_rate
+    type: composite
+    metric_view: mv_gap_in_care__care_gap
+    expr: "MEASURE(compliant_count) / MEASURE(eligible_count)"
+    depends_on: [compliant_count, eligible_count]
+    definition: "Compliant members as a share of the eligible population (HEDIS-style compliance)."
+
+  - name: open_gap_rate
+    type: composite
+    metric_view: mv_gap_in_care__care_gap
+    expr: "MEASURE(open_gap_count) / MEASURE(eligible_count)"
+    depends_on: [open_gap_count, eligible_count]
+    definition: "Open gaps as a share of the eligible population."
