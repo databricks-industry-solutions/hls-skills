@@ -1,0 +1,194 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CANONICAL ENTITY MODEL — the HLS semantic contract.
+#
+# This is the machine-readable source of truth for the entity/field vocabulary the
+# measure catalog binds to. Measures reference ONLY entities + fields declared here.
+# A customer source satisfies these via a per-customer source-mapping file; this
+# contract never changes per customer.
+#
+# `field.type`      — logical type the measure expression can rely on.
+# `field.required`  — true = an entity cannot be considered "mapped" without it.
+# `field.role`      — measure_source | dimension | key | date.  (grain-defining keys
+#                     are also listed in grain_keys.)
+# `entity.grain`    — one row means exactly this.  Measures on this entity aggregate
+#                     from this grain; a metric view over this entity inherits it.
+#
+# rendered human view: ../catalog.md  (via scripts/render_catalog.py)
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: 0.1.0
+
+entities:
+
+  # ── PROVIDER ───────────────────────────────────────────────────────────────
+  encounter:
+    grain: One clinical encounter (inpatient stay, outpatient visit, ED visit, or observation).
+    grain_keys: [encounter_id]
+    lens: provider
+    fields:
+      encounter_id:        { type: string,  required: true,  role: key }
+      patient_id:          { type: string,  required: true,  role: dimension }
+      encounter_date:      { type: date,    required: true,  role: date }
+      encounter_class:     { type: string,  required: true,  role: dimension,
+                             enum: [inpatient, outpatient, emergency, observation, other],
+                             note: "canonical class; customer maps physical codes -> these values" }
+      los_days:            { type: double,  required: false, role: measure_source,
+                             note: "length of stay in days; null/0 for non-admitted classes" }
+      procedure_count:     { type: int,     required: false, role: measure_source,
+                             note: "count of procedures on the encounter; 0 = none" }
+      is_surgical:         { type: boolean, required: false, role: measure_source }
+      is_index_admission:  { type: boolean, required: false, role: measure_source,
+                             note: "eligible index inpatient admission — DENOMINATOR for readmission rate" }
+      is_readmission_30day: { type: boolean, required: false, role: measure_source,
+                             note: "this admission is a 30-day readmission of a prior index admission" }
+      department:          { type: string,  required: false, role: dimension }
+      facility_id:         { type: string,  required: false, role: dimension }
+      provider_id:         { type: string,  required: false, role: dimension }
+
+  appointment:
+    grain: One scheduled appointment (a booking of a slot by a patient).
+    grain_keys: [appointment_id]
+    lens: provider
+    fields:
+      appointment_id:      { type: string, required: true,  role: key }
+      patient_id:          { type: string, required: true,  role: dimension }
+      appointment_date:    { type: date,   required: true,  role: date }
+      appointment_status:  { type: string, required: true,  role: dimension,
+                             enum: [scheduled, completed, arrived, no_show, late_cancel,
+                                    same_day_cancel, rescheduled, left_without_seen, other],
+                             note: "canonical disposition; customer maps physical statuses -> these" }
+      provider_id:         { type: string, required: false, role: dimension }
+      department:          { type: string, required: false, role: dimension }
+
+  slot:
+    grain: One schedulable slot / schedule block (a unit of provider capacity).
+    grain_keys: [slot_id]
+    lens: provider
+    fields:
+      slot_id:             { type: string, required: true,  role: key }
+      slot_date:           { type: date,   required: true,  role: date }
+      slot_status:         { type: string, required: true,  role: dimension,
+                             enum: [booked, open, unavailable, other],
+                             note: "booked=used; open=available but never booked (i.e. unused); unavailable=made unavailable/blocked" }
+      provider_id:         { type: string, required: false, role: dimension }
+      department:          { type: string, required: false, role: dimension }
+
+  # ── CLAIMS (shared: provider revenue-cycle + payer adjudication) ─────────────
+  claim:
+    grain: One claim header (one submitted/adjudicated claim).
+    grain_keys: [claim_id]
+    lens: both
+    fields:
+      claim_id:                    { type: string,  required: true,  role: key }
+      member_id:                   { type: string,  required: true,  role: dimension }
+      claim_status:                { type: string,  required: true,  role: dimension,
+                                     enum: [paid, denied, pending, appealed, other],
+                                     note: "canonical adjudication status" }
+      service_month:               { type: date,    required: true,  role: date,
+                                     note: "month of service (date_trunc to month)" }
+      billed_amount:               { type: double,  required: false, role: measure_source }
+      allowed_amount:              { type: double,  required: false, role: measure_source }
+      paid_amount:                 { type: double,  required: false, role: measure_source }
+      patient_responsibility:      { type: double,  required: false, role: measure_source }
+      incurred_amount:             { type: double,  required: false, role: measure_source,
+                                     note: "incurred = paid + reserve/IBNR; feeds MLR numerator. If no reserve, incurred = paid." }
+      payer_id:                    { type: string,  required: false, role: dimension }
+      provider_id:                 { type: string,  required: false, role: dimension }
+
+  claim_line:
+    grain: One claim service line (line-level financial detail).
+    grain_keys: [claim_line_id]
+    lens: both
+    fields:
+      claim_line_id:       { type: string, required: true,  role: key }
+      claim_id:            { type: string, required: true,  role: dimension }
+      line_billed_amount:  { type: double, required: false, role: measure_source }
+      line_allowed_amount: { type: double, required: false, role: measure_source }
+      line_paid_amount:    { type: double, required: false, role: measure_source }
+      procedure_code:      { type: string, required: false, role: dimension }
+      revenue_code:        { type: string, required: false, role: dimension }
+      service_units:       { type: double, required: false, role: measure_source }
+
+  # ── PAYER ────────────────────────────────────────────────────────────────────
+  enrollment:
+    grain: One member-month of coverage (member x coverage_month).
+    grain_keys: [member_id, coverage_month]
+    lens: payer
+    fields:
+      member_id:           { type: string, required: true,  role: dimension }
+      coverage_month:      { type: date,   required: true,  role: date }
+      member_months:       { type: int,    required: true,  role: measure_source,
+                             note: "1 per covered member-month; the denominator for PMPM and utilization/1000. Span tables expand via the span_to_monthly adapter macro." }
+      earned_premium:      { type: double, required: false, role: measure_source,
+                             note: "premium earned for this member-month; MLR denominator" }
+      plan_id:             { type: string, required: false, role: dimension }
+      payer_id:            { type: string, required: false, role: dimension }
+
+  member_month:
+    grain: One member-month with attributed economics (payer medical-economics grain).
+    grain_keys: [member_id, coverage_month]
+    lens: payer
+    note: >
+      CONFORMED / GOLD grain, not a raw source. The generator assembles it by rolling `claim`
+      up to member x month and joining `enrollment` (member_months + earned_premium). This is
+      "Option A" for the multi-grain payer economics: MLR and PMPM sit on ONE conformed grain
+      so the metric view never fans across two facts. (Option B — separate atomic MVs composed
+      at query time — is offered by the workflow at deploy time but is not the catalog default.)
+    fields:
+      member_id:           { type: string, required: true,  role: dimension }
+      coverage_month:      { type: date,   required: true,  role: date }
+      member_months:       { type: int,    required: true,  role: measure_source,
+                             note: "1 per covered member-month; denominator for PMPM and util/1000" }
+      earned_premium:      { type: double, required: false, role: measure_source, note: "MLR denominator" }
+      incurred_claims:     { type: double, required: false, role: measure_source,
+                             note: "claims incurred (paid + reserve/IBNR) attributed to this member-month; MLR numerator" }
+      paid_claims:         { type: double, required: false, role: measure_source, note: "claims paid in this member-month; PMPM numerator" }
+      allowed_claims:      { type: double, required: false, role: measure_source }
+      plan_id:             { type: string, required: false, role: dimension }
+      payer_id:            { type: string, required: false, role: dimension }
+
+  care_gap:
+    grain: One care gap (member x quality measure x period).
+    grain_keys: [care_gap_id]
+    lens: both
+    fields:
+      care_gap_id:         { type: string,  required: true,  role: key }
+      member_id:           { type: string,  required: true,  role: dimension }
+      measure_id:          { type: string,  required: true,  role: dimension,
+                             note: "quality/HEDIS measure identifier (e.g. BCS, CBP, HbA1c)" }
+      period_month:        { type: date,    required: true,  role: date }
+      gap_status:          { type: string,  required: true,  role: dimension,
+                             enum: [open, closed, excluded, other] }
+      is_eligible:         { type: boolean, required: false, role: measure_source,
+                             note: "member is in the eligible/denominator population for the measure" }
+      is_compliant:        { type: boolean, required: false, role: measure_source,
+                             note: "numerator satisfied (screening/control met)" }
+
+  # ── SHARED DIMENSIONS ─────────────────────────────────────────────────────────
+  patient:
+    grain: One patient (may equal a member seen from the provider side).
+    grain_keys: [patient_id]
+    lens: both
+    fields:
+      patient_id:          { type: string, required: true,  role: key }
+      birth_date:          { type: date,   required: false, role: dimension }
+      sex:                 { type: string, required: false, role: dimension }
+
+  provider:
+    grain: One rendering/servicing provider.
+    grain_keys: [provider_id]
+    lens: both
+    fields:
+      provider_id:         { type: string, required: true,  role: key }
+      provider_name:       { type: string, required: false, role: dimension }
+      specialty:           { type: string, required: false, role: dimension }
+      npi:                 { type: string, required: false, role: dimension }
+
+  facility:
+    grain: One facility / site of care.
+    grain_keys: [facility_id]
+    lens: provider
+    fields:
+      facility_id:         { type: string, required: true,  role: key }
+      facility_name:       { type: string, required: false, role: dimension }
+      region:              { type: string, required: false, role: dimension }

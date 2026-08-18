@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DOMAIN: access_throughput   (lens: provider)
+# Appointment-grain access & throughput: booking volume, dispositions, and the
+# rates that describe how well scheduled demand converts to completed visits.
+# Rate denominator throughout is `scheduled_appointments` (total booked, all dispositions).
+# ─────────────────────────────────────────────────────────────────────────────
+
+domain: access_throughput
+lens: provider
+
+metric_views:
+  - name: mv_access_throughput__appointment
+    entity: appointment
+    grain: appointment
+
+measures:
+
+  # ── ATOMIC ─────────────────────────────────────────────────────────────────
+  - name: scheduled_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT appointment_id)"
+    definition: "Total scheduled appointments across all dispositions — the access-rate denominator."
+
+  - name: completed_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT CASE WHEN appointment_status = 'completed' THEN appointment_id END)"
+    definition: "Appointments that completed."
+
+  - name: no_show_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT CASE WHEN appointment_status = 'no_show' THEN appointment_id END)"
+    definition: "Appointments where the patient did not show."
+
+  - name: late_cancel_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT CASE WHEN appointment_status = 'late_cancel' THEN appointment_id END)"
+    definition: "Appointments cancelled inside the late-cancellation window."
+
+  - name: same_day_cancel_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT CASE WHEN appointment_status = 'same_day_cancel' THEN appointment_id END)"
+    definition: "Appointments cancelled the same day."
+
+  - name: rescheduled_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT CASE WHEN appointment_status = 'rescheduled' THEN appointment_id END)"
+    definition: "Appointments that were rescheduled."
+
+  - name: completed_or_arrived_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT CASE WHEN appointment_status IN ('completed', 'arrived') THEN appointment_id END)"
+    definition: "Appointments where the patient completed or arrived — the completion numerator."
+
+  - name: left_without_seen_appointments
+    type: atomic
+    metric_view: mv_access_throughput__appointment
+    entity: appointment
+    expr: "COUNT(DISTINCT CASE WHEN appointment_status = 'left_without_seen' THEN appointment_id END)"
+    definition: "Patients who arrived but left without being seen (LWBS)."
+
+  # ── COMPOSITE ────────────────────────────────────────────────────────────────
+  - name: completion_rate
+    type: composite
+    metric_view: mv_access_throughput__appointment
+    expr: "MEASURE(completed_or_arrived_appointments) / MEASURE(scheduled_appointments)"
+    depends_on: [completed_or_arrived_appointments, scheduled_appointments]
+    definition: "Share of scheduled appointments the patient completed or arrived for."
+    anti_pattern: "Averaging a per-day completion percentage. Use ratio-of-measures."
+
+  - name: no_show_rate
+    type: composite
+    metric_view: mv_access_throughput__appointment
+    expr: "MEASURE(no_show_appointments) / MEASURE(scheduled_appointments)"
+    depends_on: [no_show_appointments, scheduled_appointments]
+    definition: "Share of scheduled appointments that were no-shows."
+
+  - name: late_cancellation_rate
+    type: composite
+    metric_view: mv_access_throughput__appointment
+    expr: "MEASURE(late_cancel_appointments) / MEASURE(scheduled_appointments)"
+    depends_on: [late_cancel_appointments, scheduled_appointments]
+    definition: "Share of scheduled appointments cancelled late."
+
+  - name: reschedule_rate
+    type: composite
+    metric_view: mv_access_throughput__appointment
+    expr: "MEASURE(rescheduled_appointments) / MEASURE(scheduled_appointments)"
+    depends_on: [rescheduled_appointments, scheduled_appointments]
+    definition: "Share of scheduled appointments that were rescheduled."
