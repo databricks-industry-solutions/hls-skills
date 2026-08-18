@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DOMAIN: payer_economics   (lens: payer)
+# The payer medical-economics domain — the piece that requires a MEMBERSHIP
+# denominator (member_months) and a PREMIUM denominator (earned_premium), which is
+# why MLR and PMPM cannot be computed from a provider-only model.
+#
+# Both metric views sit on the CONFORMED `member_month` grain (canonical model,
+# Option A): the generator rolls claims up to member x month and joins enrollment,
+# so neither view fans across two facts.
+#   mv_payer_economics__mlr   — medical loss ratio (incurred claims / earned premium)
+#   mv_payer_economics__pmpm  — per-member-per-month cost (paid claims / member months)
+# ─────────────────────────────────────────────────────────────────────────────
+
+domain: payer_economics
+lens: payer
+
+metric_views:
+  - name: mv_payer_economics__mlr
+    entity: member_month
+    grain: member_month
+  - name: mv_payer_economics__pmpm
+    entity: member_month
+    grain: member_month
+
+measures:
+
+  # ═══ MEDICAL LOSS RATIO ══════════════════════════════════════════════════════
+  - name: total_incurred_claims
+    type: atomic
+    metric_view: mv_payer_economics__mlr
+    entity: member_month
+    expr: "SUM(incurred_claims)"
+    definition: "Total incurred claims (paid + reserve/IBNR) — the MLR numerator."
+
+  - name: total_earned_premium
+    type: atomic
+    metric_view: mv_payer_economics__mlr
+    entity: member_month
+    expr: "SUM(earned_premium)"
+    definition: "Total earned premium — the MLR denominator."
+
+  - name: medical_loss_ratio
+    type: composite
+    metric_view: mv_payer_economics__mlr
+    expr: "MEASURE(total_incurred_claims) / MEASURE(total_earned_premium)"
+    depends_on: [total_incurred_claims, total_earned_premium]
+    definition: "Medical Loss Ratio — incurred claims as a share of earned premium (ACA MLR concept)."
+    anti_pattern: "Paid claims / billed charges, or paid / premium without reserves. MLR uses INCURRED claims (paid + reserve) over EARNED premium; it is non-additive — ratio-of-measures only."
+
+  # ═══ PER-MEMBER-PER-MONTH ════════════════════════════════════════════════════
+  - name: total_paid_claims
+    type: atomic
+    metric_view: mv_payer_economics__pmpm
+    entity: member_month
+    expr: "SUM(paid_claims)"
+    definition: "Total paid claims attributed to member-months — the PMPM numerator."
+
+  - name: total_member_months
+    type: atomic
+    metric_view: mv_payer_economics__pmpm
+    entity: member_month
+    expr: "SUM(member_months)"
+    definition: "Total member-months of exposure — the PMPM / utilization denominator."
+
+  - name: pmpm
+    type: composite
+    metric_view: mv_payer_economics__pmpm
+    expr: "MEASURE(total_paid_claims) / MEASURE(total_member_months)"
+    depends_on: [total_paid_claims, total_member_months]
+    definition: "Per-Member-Per-Month cost — paid claims divided by member-months of exposure."
+    anti_pattern: "Dividing by distinct member COUNT instead of member-MONTHS. Exposure is member-months; a member enrolled 6 months contributes 6, not 1."
+
+  - name: allowed_pmpm
+    type: composite
+    metric_view: mv_payer_economics__pmpm
+    expr: "MEASURE(total_allowed_claims) / MEASURE(total_member_months)"
+    depends_on: [total_allowed_claims, total_member_months]
+    definition: "Allowed-basis PMPM — allowed claims per member-month."
+
+  - name: total_allowed_claims
+    type: atomic
+    metric_view: mv_payer_economics__pmpm
+    entity: member_month
+    expr: "SUM(allowed_claims)"
+    definition: "Total allowed claims attributed to member-months (allowed-basis PMPM numerator)."

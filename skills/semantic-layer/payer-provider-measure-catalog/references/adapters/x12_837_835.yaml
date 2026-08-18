@@ -1,0 +1,93 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ADAPTER: X12 837 (claim submission) + 835 (remittance) + 834 (enrollment)
+#          (starter template — payer / claims entities)
+#
+# Covers claim, claim_line, enrollment, and the conformed member_month economic
+# grain. Compose with epic_clarity_caboodle.yaml (or omop_cdm.yaml) for provider
+# entities. Column names assume a typical landed-EDI warehouse and WILL differ per
+# customer — override in the per-customer mapping.
+# ─────────────────────────────────────────────────────────────────────────────
+
+adapter: x12_837_835
+provides: [claim, claim_line, enrollment, member_month, member]
+
+entities:
+
+  claim:
+    source: "{claims}.CLM_HEADER"        # 837 submission joined to 835 remittance
+    grain_keys: [CLM_ID]
+    fields:
+      claim_id:               CLM_ID
+      member_id:              SUBSCR_ID
+      service_month:          "date_trunc('month', SVC_FROM_DT)"
+      billed_amount:          CLM_TOTAL_CHRG_AMT       # 837 CLM02
+      allowed_amount:         CLM_ALLOWED_AMT          # 835
+      paid_amount:            CLM_PAID_AMT             # 835 CLP04
+      patient_responsibility: CLM_PAT_RESP_AMT
+      incurred_amount:        "CLM_PAID_AMT"           # REVIEW: add reserve/IBNR if the customer books it
+      payer_id:               PAYER_ID
+      provider_id:            BILL_PROV_NPI
+    enums:
+      claim_status:
+        source_column: CLP02_STATUS_CD           # 835 claim status code
+        map: { "1": paid, "2": paid, "4": denied, "22": appealed, "0": pending }
+        default: other
+
+  claim_line:
+    source: "{claims}.CLM_LINE"                  # 837 SV / 835 SVC
+    grain_keys: [CLM_LINE_ID]
+    fields:
+      claim_line_id:       CLM_LINE_ID
+      claim_id:            CLM_ID
+      line_billed_amount:  LINE_CHRG_AMT
+      line_allowed_amount: LINE_ALLOWED_AMT
+      line_paid_amount:    LINE_PAID_AMT
+      procedure_code:      HCPCS_CD
+      revenue_code:        REV_CD
+      service_units:       SVC_UNIT_CNT
+
+  enrollment:
+    source: "{membership}.MEMBER_COVERAGE"       # 834 enrollment / premium billing
+    grain_keys: [MEMBER_ID, COVERAGE_MONTH]
+    transform:
+      macro: span_to_monthly                     # expand coverage spans into member-months
+      args: { start: COV_START_DT, end: COV_TERM_DT, month_col: COVERAGE_MONTH }
+    fields:
+      member_id:      MEMBER_ID
+      member_months:  "1"
+      earned_premium: PREM_PMPM                   # premium attributed per member-month
+      plan_id:        PLAN_ID
+      payer_id:       PAYER_ID
+
+  # Conformed payer-economics grain: claims rolled to member x month, joined to
+  # enrollment. The generator builds this gold view; the adapter declares its inputs.
+  member_month:
+    derived_from:
+      claims_rollup:
+        from: claim
+        to_grain: [member_id, service_month]
+        as_month: service_month
+        aggregate:
+          incurred_claims: "SUM(incurred_amount)"
+          paid_claims:     "SUM(paid_amount)"
+          allowed_claims:  "SUM(allowed_amount)"
+      enrollment_join:
+        from: enrollment
+        on: [member_id, coverage_month]          # coverage_month <=> service_month
+    grain_keys: [member_id, coverage_month]
+    fields:
+      member_id:       member_id
+      coverage_month:  coverage_month
+      member_months:   member_months
+      earned_premium:  earned_premium
+      incurred_claims: incurred_claims
+      paid_claims:     paid_claims
+      allowed_claims:  allowed_claims
+
+  member:
+    source: "{membership}.MEMBER"
+    grain_keys: [MEMBER_ID]
+    fields:
+      member_id: MEMBER_ID
+      payer_id:  PAYER_ID
+      plan_id:   PLAN_ID

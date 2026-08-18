@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ADAPTER: Epic Clarity / Caboodle  (starter template — provider-side entities)
+#
+# A per-customer mapping `extends:` this file and overrides deltas (schema names,
+# code sets). Table/column names below are representative Epic Clarity names — a
+# real customer's Clarity build differs, so treat these as a strong starting point,
+# not gospel. Payer entities (claim/enrollment/member_month) are NOT here — compose
+# with x12_837_835.yaml for those.
+# ─────────────────────────────────────────────────────────────────────────────
+
+adapter: epic_clarity_caboodle
+provides: [encounter, appointment, slot, patient, provider, facility]
+
+entities:
+
+  encounter:
+    source: "{clarity}.PAT_ENC_HSP"
+    grain_keys: [PAT_ENC_CSN_ID]
+    joins:
+      - table: "{clarity}.CLARITY_DEP"
+        on: "PAT_ENC_HSP.DEPARTMENT_ID = CLARITY_DEP.DEPARTMENT_ID"
+        type: left
+    fields:
+      encounter_id:   PAT_ENC_CSN_ID
+      patient_id:     PAT_ID
+      encounter_date: "CAST(HOSP_ADMSN_TIME AS DATE)"
+      los_days:       "datediff(HOSP_DISCH_TIME, HOSP_ADMSN_TIME)"
+      department:     CLARITY_DEP.DEPARTMENT_NAME
+      provider_id:    ATTND_PROV_ID
+    enums:
+      encounter_class:
+        source_column: ENC_TYPE_C
+        # REVIEW: confirm the customer's inpatient/observation/ED code set
+        map: { "101": inpatient, "102": inpatient, "3": outpatient, "5": emergency, "6": observation }
+        default: other
+    # is_surgical / is_index_admission / is_readmission_30day / procedure_count are
+    # derived attributes — provided by a gold enrichment step, not raw Clarity columns.
+
+  appointment:
+    source: "{clarity}.PAT_ENC"
+    grain_keys: [PAT_ENC_CSN_ID]
+    fields:
+      appointment_id:   PAT_ENC_CSN_ID
+      patient_id:       PAT_ID
+      appointment_date: "CAST(APPT_TIME AS DATE)"
+      provider_id:      VISIT_PROV_ID
+      department:       DEPARTMENT_ID
+    enums:
+      appointment_status:
+        source_column: APPT_STATUS_C
+        map: { "2": completed, "3": no_show, "4": late_cancel, "5": rescheduled, "6": left_without_seen, "1": scheduled }
+        default: other
+
+  slot:
+    source: "{clarity}.SCHED_APPT_SLOT"
+    grain_keys: [SLOT_ID]
+    fields:
+      slot_id:     SLOT_ID
+      slot_date:   "CAST(SLOT_TIME AS DATE)"
+      provider_id: PROV_ID
+      department:  DEPARTMENT_ID
+    enums:
+      slot_status:
+        source_column: SLOT_STATUS_C
+        map: { "2": booked, "1": open, "3": unavailable }
+        default: other
+
+  patient:
+    source: "{clarity}.PATIENT"
+    grain_keys: [PAT_ID]
+    fields:
+      patient_id: PAT_ID
+      birth_date: BIRTH_DATE
+      sex:        SEX_C
+
+  provider:
+    source: "{clarity}.CLARITY_SER"
+    grain_keys: [PROV_ID]
+    fields:
+      provider_id:   PROV_ID
+      provider_name: PROV_NAME
+      specialty:     SPECIALTY
+      npi:           NPI
+
+  facility:
+    source: "{clarity}.CLARITY_LOC"
+    grain_keys: [LOC_ID]
+    fields:
+      facility_id:   LOC_ID
+      facility_name: LOC_NAME
