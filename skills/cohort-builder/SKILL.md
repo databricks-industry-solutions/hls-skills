@@ -47,16 +47,20 @@ print(preview_cohort_options("<catalog.schema.table>",
                              condition_codes=[("ICD10CM","E11.9"), ("ICD10CM","E11.65")]))
 
 # STEP 2 — ONLY after the user picks a threshold. Materializes + verifies the cohort.
+# Pass BOTH the value AND the operator from the option the user chose. If you omit
+# threshold_op for an ambiguous term, the tool recovers it from the matching option;
+# it will NOT silently assume ">". (HEDIS "poor control" is >=9.0, NOT >9.0.)
 print(build_confirmed_cohort("<catalog.schema.table>",
                             intent_text="<same phrasing>",
                             condition_codes=[("ICD10CM","E11.9"), ("ICD10CM","E11.65")],
-                            threshold_value=8.0, threshold_op=">"))
+                            threshold_value=9.0, threshold_op=">="))   # e.g. user chose HEDIS
 ```
 
 `preview_cohort_options` is read-only and safe to call immediately — it takes no
 threshold and creates no tables, so it IS the "surface the options first" step. Call it,
-present its real numbers to the user, then call `build_confirmed_cohort` with their choice.
-Report the tool's actual numbers — never substitute your own threshold table.
+present its real numbers to the user, then call `build_confirmed_cohort` with their choice —
+**the value AND the operator together** (they are both part of the choice). Report the
+tool's actual numbers — never substitute your own threshold table.
 
 ### Getting the condition codes — use a terminology MCP if one is connected
 
@@ -191,7 +195,7 @@ these steps. This section documents them for review; do not reimplement them by 
 ## Key parameters (`preview_cohort_options` / `build_confirmed_cohort`)
 
 `preview_cohort_options(table, intent_text, condition_codes, code_source="model-proposed", ...)`
-`build_confirmed_cohort(table, intent_text, condition_codes, threshold_value, threshold_op=">", cohort_table=None, mcp_citations=None, ...)`
+`build_confirmed_cohort(table, intent_text, condition_codes, threshold_value, threshold_op=None, cohort_table=None, mcp_citations=None, ...)`
 
 | Parameter | Default | Range / values | What it controls |
 |---|---|---|---|
@@ -200,7 +204,7 @@ these steps. This section documents them for review; do not reimplement them by 
 | `condition_codes` | — (required) | `[(vocab, code)]` | Proposed concept set from any source; **grounded against the data** (codes not present are excluded), so a bad source can't inject a bad code. |
 | `code_source` | `"model-proposed"` | e.g. `"BioPortal MCP"`, `"clinical-notes MCP"` | Provenance recorded in the readout. Preview-only. |
 | `threshold_value` | — (required for build) | numeric | The clinical threshold the **user chose** after preview. Never pick this yourself. |
-| `threshold_op` | `">"` | `>`, `>=`, `<`, `<=`, `=` | Comparator for the threshold. |
+| `threshold_op` | `None` | `>`, `>=`, `<`, `<=`, `=` | Comparator — **part of the user's choice**, not a default. For an ambiguous term the tool recovers it from the chosen option if omitted; it never silently assumes `>`. |
 | `cohort_table` | auto | `catalog.schema.table` | Where the materialized cohort lands. |
 | `mcp_citations` | `None` | `[PMID, ...]` | Candidate PMIDs Genie retrieved from a connected literature MCP; verified (kept only if they resolve) — never asserted unverified. |
 

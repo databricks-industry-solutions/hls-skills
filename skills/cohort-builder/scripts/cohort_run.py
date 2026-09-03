@@ -179,18 +179,31 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
     if definition.obs_op and definition.obs_value is not None:
         measure_clause = f"AND {definition.obs_measure_col} {definition.obs_op} {definition.obs_value}"
 
-    select = f"""SELECT DISTINCT patient_id
+    qualifying = f"""SELECT DISTINCT patient_id
         FROM {tbl}
         WHERE {definition.condition_col} IN ({code_list}) {measure_clause}"""
-    q(f"CREATE OR REPLACE TABLE {cohort_table} AS {select}")
+    q(f"CREATE OR REPLACE TABLE {cohort_table} AS {qualifying}")
 
     n = int(q(f"SELECT COUNT(*) FROM {cohort_table}")[0][0])
 
-    # Verification: recompute membership independently and compare counts.
-    recomputed = int(q(f"SELECT COUNT(DISTINCT patient_id) FROM ({select})")[0][0])
-    verified = (n == recomputed)
-    note = (f"Verified: {n} members match the definition exactly."
-            if verified else f"MISMATCH: table has {n}, definition yields {recomputed}.")
+    # Verification: check the MATERIALIZED TABLE against the definition with a structurally
+    # DIFFERENT query than the one that created it (anti-joins between the table and the
+    # source's qualifying set), so it can actually fail. Comparing counts from a re-run of
+    # the identical create-SELECT is a tautology — and count equality also hides compensating
+    # errors (one false positive + one false negative net to the same count). We instead
+    # require BOTH set differences to be empty:
+    #   false_positives = members in the table that do NOT qualify in the source
+    #   false_negatives = source patients that qualify but are NOT in the table
+    false_positives = int(q(f"""SELECT COUNT(*) FROM {cohort_table} c
+        WHERE c.patient_id NOT IN ({qualifying})""")[0][0])
+    false_negatives = int(q(f"""SELECT COUNT(*) FROM ({qualifying}) g
+        WHERE g.patient_id NOT IN (SELECT patient_id FROM {cohort_table})""")[0][0])
+    verified = (false_positives == 0 and false_negatives == 0)
+    note = (f"Verified: all {n} members satisfy the definition and no qualifying patient is "
+            f"missing (0 false positives, 0 false negatives)."
+            if verified else
+            f"MISMATCH: {false_positives} member(s) do not satisfy the definition, "
+            f"{false_negatives} qualifying patient(s) missing from the table.")
 
     return CohortResult(cohort_table=f"{catalog}.{schema}.{cohort_table}", n_patients=n,
                         definition_json=definition.to_json(), verified=verified,
@@ -242,10 +255,23 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
                 "\n\n**STOP: do not pick a threshold yourself. Present the options above to "
                 "the user, then call run_cohort again with the chosen threshold_value/op.**")
 
-    # Resolve the measure criterion.
+    # Resolve the measure criterion. CRITICAL: never silently default the operator when the
+    # term is ambiguous — the operator is PART of the user's choice (HEDIS ">=9.0" vs clinical
+    # ">8.0" differ by BOTH value and operator; defaulting ">=9.0" to ">9.0" silently drops
+    # every patient at exactly 9.0 — the exact silent-threshold failure this skill prevents).
     op, val = threshold_op, threshold_value
-    if preview.ambiguity and threshold_value is not None:
-        op = op or ">"                       # caller supplied the value from the user's choice
+    if preview.ambiguity and threshold_value is not None and op is None:
+        # Caller passed a value from the user's chosen option but omitted the operator.
+        # Recover it from the matching option rather than guessing ">".
+        matching = [o for o in preview.ambiguity["options"] if o["value"] == threshold_value]
+        if len(matching) == 1:
+            op = matching[0]["op"]
+        else:
+            # Value doesn't map to exactly one known option -> refuse rather than guess.
+            return (format_preview(preview) +
+                    f"\n\n**STOP: threshold_value={threshold_value} does not uniquely match one "
+                    "of the options above, and no threshold_op was supplied. Re-call with BOTH "
+                    "threshold_value AND threshold_op (e.g. '>=') so the operator is not guessed.**")
     definition = CohortDefinition(condition_codes=preview.grounded_codes,
                                   obs_op=op, obs_value=val,
                                   label=intent_text[:80])
@@ -302,12 +328,14 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
 
 
 def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
-                           threshold_value: float, threshold_op: str = ">",
+                           threshold_value: float, threshold_op: str | None = None,
                            cohort_table: str | None = None, mcp_citations: list | None = None,
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Materialize + verify a cohort with a threshold the USER has ALREADY chosen.
     threshold_value is REQUIRED — this function is only called after preview_cohort_options
-    surfaced the choice and the user picked. Delegates to the vetted run_cohort logic."""
+    surfaced the choice and the user picked. threshold_op defaults to None (NOT ">") so that,
+    for an ambiguous term, run_cohort recovers the correct operator from the chosen option
+    instead of silently forcing ">"; pass it explicitly to override. Delegates to run_cohort."""
     return run_cohort(table, intent_text, condition_codes,
                       threshold_value=threshold_value, threshold_op=threshold_op,
                       cohort_table=cohort_table, mcp_citations=mcp_citations,
