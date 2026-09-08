@@ -80,6 +80,11 @@ For endpoint observability, usage tracking, or request logging, use supported AI
 5. **Register with a promotion strategy.** Register to Unity Catalog with an explicit versioning/promotion strategy, and store the source/weight manifest alongside the model version or in a linked governed location.
 6. **Minimize sensitive data in observability.** Before enabling inference tables, classify sequence, structure, patient, donor, and compound data; minimize or redact payloads; define retention, access, and masking rules; prefer a hash, metadata record, or governed URI over raw inputs; confirm failures/retries do not create misleading duplicate records. Inference tables are governance mechanisms, not a substitute for model validation or authorization design.
 7. **Separate technical from scientific validation.** For regulated, clinical, or decision-support use cases, keep technical validation distinct from scientific, clinical, regulatory, and human-review requirements.
+8. **Split the download notebook from the register-and-deploy notebook.** The model download requires only CPU and a stable write path; the dry-load test, MLflow logging, and registration require GPU. Separating them keeps each notebook independently re-entrant and avoids wasting GPU time on downloads. The download notebook writes to a UC Volume; the register/deploy notebook reads from it.
+9. **Read `pip_requirements` from the model's own dependency spec, not from PyFunc class imports.** PyFunc imports show only the wrapper's direct dependencies; they miss the full import chain of any bundled package. Read `pyproject.toml`, `requirements.txt`, or `setup.cfg` from the source repository, then pin exact or bounded versions for packages known to have breaking APIs across releases (especially `transformers`, `numpy`, `pandas`, `anndata`). An unbounded `>=X.Y` resolved to a newer incompatible major version is a common cause of "A library raised an error during model load" failures in the serving container.
+10. **On Serverless compute, write temporary files to `/tmp`, not `/local_disk0`.** `/local_disk0` is not available on Serverless CPU or GPU compute. `/tmp` is always writable on both Serverless and classic compute.
+11. **Import every stdlib and third-party symbol used inside a PyFunc class explicitly in that class cell.** The serving container deserialises the class in a fresh Python process that has no knowledge of what the notebook imported. Even `sys`, `os`, `io`, and other stdlib modules must be imported inside the class cell — not only at the top of the notebook — or they will raise `NameError` in the serving container while the same code passes a local dry-load test (because notebook-session globals are shared within the kernel).
+12. **Construct test payloads from the declared signature, not from "typical" template code.** Before running a smoke test against a deployed endpoint, read the model's MLflow signature and ensure every required field is present with the correct type. A missing required column (e.g. `adata_obs`) produces a schema-enforcement `BadRequest` that is distinct from the model logic itself. Use real input values from the model's vocabulary or reference data — synthetic values that map to the OOV token produce degenerate outputs that cannot validate the tokenisation path.
 
 ## Example
 
@@ -189,6 +194,18 @@ artifacts:
    - *How to avoid*: Report technical validation separately and defer scientific/clinical/regulatory sign-off to the appropriate review.
 7. **Inventing model APIs.** Guessing tensor shapes, tokenizer names, database paths, or license terms produces broken wrappers.
    - *How to avoid*: Load the matching `references/models/<model>.md`; if none exists, use `references/model-template.md` and propose an adapter plan before writing code.
+8. **Hugging Face Xet storage backend causes IO errors during download.** Some HF repos use HF's Xet/CAS storage backend, which performs parallel seeks and fails with `RuntimeError: CAS service error: IO Error: Illegal seek (os error 29)` in environments that do not support it (including Serverless).
+   - *How to avoid*: Set `os.environ["HF_HUB_DISABLE_XET"] = "1"` **before** the first `import huggingface_hub` in the process. If `huggingface_hub` was already imported in the session, restart the Python kernel first so the env var takes effect before the library initialises. Check the repo's `.gitattributes` for `filter=xet` to detect Xet-backed files before downloading.
+9. **Unpinned `transformers>=X.Y` resolves to 5.x and breaks 4.x models.** Transformers 5.x restructured `PreTrainedModel._move_missing_keys_from_meta_to_device` to call `self.all_tied_weights_keys.keys()` where 4.x used `_tied_weights_keys` (a list). An unbounded `pip_requirements` entry resolves to the latest release in the serving container, silently introducing the incompatibility. This surfaces as `AttributeError: 'Model' object has no attribute 'all_tied_weights_keys'` in the service logs — not the build logs.
+   - *How to avoid*: Always pin `transformers` to the version from the model's own `pyproject.toml`. Validate by reading that file from the source repo, not by inspecting PyFunc class imports.
+10. **Deployment failure diagnosis requires service logs, not build logs.** Build logs only show Docker/pip installation steps. The Python traceback from a model-load failure appears in the *service logs*.
+    - *How to find service logs*: `GET /api/2.0/serving-endpoints/{name}/served-entities/{entity-name}/logs?config_version={n}` where `n` is `endpoint.pending_config.config_version` for a failed update (the default `config_version=0` targets the currently active config, not the failed pending one). Databricks CLI: `databricks api get "/api/2.0/serving-endpoints/{name}/served-entities/{entity-name}/logs?config_version={n}"`.
+11. **Stale `sys.modules` cache causes `ModuleNotFoundError` after out-of-order cell execution.** When cells run out of order across multiple kernel executions, a partial import of a bundled package can persist in `sys.modules`. Subsequent runs resolve submodule lookups against the stale cached object rather than the freshly staged code bundle.
+    - *How to avoid*: Before calling `load_context` in the dry-load test cell, purge all `package.*` entries from `sys.modules` and re-insert the bundle path at position 0 in `sys.path`. This is also good practice before any `importlib.reload` call on a bundled package.
+12. **`pd.read_json` treats a literal JSON string as a file path in newer pandas.** Pandas 2.1+ deprecated passing a raw JSON string directly and may raise `FileNotFoundError` treating the content as a path.
+    - *How to avoid*: Always wrap with `io.StringIO`: `pd.read_json(io.StringIO(json_string), orient="split")`. Import `io` explicitly inside the PyFunc class cell.
+13. **`serving_endpoints.query()` uses `extra_params`, not `params`.** The Databricks Python SDK's `serving_endpoints.query()` signature uses `extra_params: Optional[Dict[str, str]]`, not `params`. Values must be strings.
+    - *How to avoid*: Pass `extra_params={"max_seq_len": "2048", "pooling": "mean"}` (string values). The PyFunc `predict` method should cast on receipt: `int(params.get("max_seq_len", 2048))`, `str(params.get("pooling", "mean"))`.
 
 ## Workflow
 
@@ -196,7 +213,7 @@ artifacts:
 2. **Inspect the model reference.** Load the matching file under `references/models/`. If there is none, use `references/model-template.md` and create a proposed adapter plan before writing code. Do not invent model APIs, tensor shapes, tokenizer names, database paths, or license terms.
 3. **Choose Jobs versus Model Serving.** Apply the Decision Framework above; a hybrid is often best.
 4. **Define the serving contract before the wrapper.** Build the `input_example`, signature, and documented SDK + HTTP examples (see Best Practices §1).
-5. **Package for reproducibility.** Pin and manifest all provenance-controlled inputs; test an offline startup path (see Best Practices §2–3).
+5. **Package for reproducibility.** Pin and manifest all provenance-controlled inputs. Read `pip_requirements` from the model's own dependency specification (`pyproject.toml`, `requirements.txt`, or `setup.cfg`) rather than inferring them from PyFunc class imports — the PyFunc imports miss the bundled package's full import chain (see Best Practices §9). Test an offline startup path (see Best Practices §2–3).
 6. **Implement and register.** Use the standard custom PyFunc pattern, add only the HLS adapter behavior, and register to Unity Catalog with a versioning/promotion strategy (see Best Practices §4–5).
 7. **Validate scientifically and operationally.** Run at minimum: import/dependency smoke test; offline artifact and checksum test; wrapper initialization test; signature and `input_example` test; Python SDK and HTTP payload tests; a small known-input regression test; malformed-input and resource-limit tests; a serving or Job deployment test in the target runtime; and output sanity checks for the model family.
 
@@ -209,6 +226,7 @@ Load only the relevant reference:
 - `references/models/scimilarity.md`
 - `references/models/alphafold-openfold.md`
 - `references/models/boltz.md`
+- `references/models/teddy.md`
 
 Add new families by copying `references/model-template.md`, adding one row to `references/models/index.md`, and documenting tests before changing this core file.
 
