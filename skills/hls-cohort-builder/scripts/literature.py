@@ -43,7 +43,10 @@ def search_pubmed(query: str, retmax: int = 3, timeout: int = 15) -> LiteratureR
     """
     try:
         term = urllib.parse.quote(query)
-        s = _get(f"{EUTILS}/esearch.fcgi?db=pubmed&term={term}&retmax={retmax}&retmode=json", timeout)
+        # sort=relevance (not the default most-recent) so the top hits are the papers most
+        # ABOUT the phenotype, not just the newest paper that mentions it in passing.
+        s = _get(f"{EUTILS}/esearch.fcgi?db=pubmed&term={term}&retmax={retmax}"
+                 f"&sort=relevance&retmode=json", timeout)
         ids = s.get("esearchresult", {}).get("idlist", [])
         if not ids:
             return LiteratureResult(query=query, resolved=[], reachable=True,
@@ -66,6 +69,80 @@ def search_pubmed(query: str, retmax: int = 3, timeout: int = 15) -> LiteratureR
         return LiteratureResult(query=query, resolved=[], reachable=False,
                                 note=f"Literature source unreachable ({type(e).__name__}); "
                                      f"NO citation attached. Do not fabricate one.")
+
+
+# --- Query construction: turn a cohort INTENT into PubMed queries ---------------
+# The intent ("type 2 diabetes with uncontrolled HbA1c") is phrased for cohort building,
+# not for PubMed. Appending a fixed literal suffix ("... phenotype algorithm electronic
+# health record") over-constrains esearch and returns nothing. Instead: distill the
+# clinical concept (drop operational qualifiers + numeric thresholds), then try
+# progressively broader queries and take the FIRST that resolves to real citations.
+
+_OPERATIONAL_STOPWORDS = {
+    "build", "builds", "building", "cohort", "cohorts", "of", "a", "an", "the",
+    "patients", "patient", "with", "without", "and", "or", "for", "study", "define",
+    "defining", "on", "in", "who", "that", "having", "has", "have", "identify",
+    "find", "finds", "how", "many", "would", "qualify", "group", "using", "use",
+    # operational qualifiers that hurt PubMed term-mapping (not clinical concepts)
+    "uncontrolled", "controlled", "poorly", "poor", "well", "high", "low", "elevated",
+    "reduced", "screening", "status", "level", "levels", "value", "values", "recent", "most",
+}
+
+
+def _concept_from_intent(intent_text: str) -> str:
+    """Distill a PubMed-searchable clinical concept from a cohort intent.
+
+    Drops operational words ("build", "patients", "uncontrolled") and numeric thresholds
+    ("9.0", "8.0%"), keeping disease/measure terms (e.g. "type 2 diabetes hba1c"). Keeps
+    digits that are part of a name (the "2" in "type 2 diabetes"). Falls back to the raw
+    intent if distillation empties it.
+    """
+    import re
+    t = intent_text.lower()
+    t = re.sub(r"\b\d+\.\d+%?\b", " ", t)      # decimal thresholds: 9.0, 8.0%
+    t = re.sub(r"\b\d+\s*%\b", " ", t)          # integer percentages: 70%
+    t = re.sub(r"[^a-z0-9\s]", " ", t)          # punctuation -> space (keeps digits like "2")
+    toks = [w for w in t.split()
+            if w.isdigit() or (w not in _OPERATIONAL_STOPWORDS and len(w) > 1)]
+    core = " ".join(toks).strip()
+    return core or intent_text.strip().lower()
+
+
+def _pubmed_query_tiers(concept: str) -> list:
+    """Ordered PubMed queries: most phenotype-relevant first, broadening to a plain floor.
+
+    The first tier biases toward EHR phenotype/cohort-definition papers (what a cohort
+    builder wants to cite); the last is the bare concept so a real disease almost always hits.
+    """
+    # Concept is REQUIRED (AND) in every tier so results are actually ABOUT it; the
+    # phenotype/cohort flavor only re-orders within that, and the last tier is the bare
+    # concept as a floor. Combined with sort=relevance this keeps precision high.
+    return [
+        f'{concept} AND (phenotype OR "cohort identification" OR "computable phenotype")',
+        f"{concept} AND cohort",
+        concept,
+    ]
+
+
+def search_pubmed_best(intent_text: str, retmax: int = 3, timeout: int = 15) -> LiteratureResult:
+    """Distill the cohort intent to a concept and try progressively broader PubMed queries,
+    returning the FIRST that resolves to real citations. Fails closed on unreachable.
+
+    This is what makes citations actually show up: the query is derived from the phenotype
+    (e.g. "type 2 diabetes hba1c") rather than the literal cohort phrasing.
+    """
+    concept = _concept_from_intent(intent_text)
+    last = None
+    for q in _pubmed_query_tiers(concept):
+        res = search_pubmed(q, retmax=retmax, timeout=timeout)
+        if not res.reachable:
+            return res                     # network down -> fail closed immediately
+        last = res
+        if res.resolved:
+            res.note = f"Matched PubMed on: {q!r}"
+            return res
+    return last or LiteratureResult(query=concept, resolved=[], reachable=True,
+                                    note="Source reachable; no matching publications found.")
 
 
 def format_literature(res: LiteratureResult) -> str:
@@ -135,8 +212,7 @@ def literature_for_cohort(intent_text: str, mcp_candidates: list | None = None,
             res.note = "Source: connected MCP literature server (verified). " + res.note
             return res
         # MCP produced nothing usable -> fall through to the direct floor.
-    res = search_pubmed(f"{intent_text} phenotype algorithm electronic health record",
-                        timeout=timeout)
+    res = search_pubmed_best(intent_text, timeout=timeout)
     if res.is_verified():
         res.note = "Source: direct PubMed (no MCP citations verified). " + res.note
     return res
@@ -161,8 +237,13 @@ def resolve_citation(pmid: str, timeout: int = 15) -> dict | None:
 
 
 if __name__ == "__main__":
-    r = search_pubmed("type 2 diabetes uncontrolled HbA1c electronic phenotype algorithm")
+    import sys
+    intent = sys.argv[1] if len(sys.argv) > 1 else "type 2 diabetes with uncontrolled HbA1c"
+    print(f"intent: {intent!r}  ->  concept: {_concept_from_intent(intent)!r}\n")
+    r = literature_for_cohort(intent)
     print(format_literature(r))
+    if r.note:
+        print(f"[{r.note}]")
     print()
     # Prove the wrong-PMID guard: 22319177 was the baseline's fabricated Kho cite.
     got = resolve_citation("22319177")
