@@ -55,16 +55,31 @@ re-identifiable). The entrypoint treats every quasi-identifier as in-scope and v
 
 ## Quick Start
 
+Two ways to run it. Prefer the **surface-and-choose** flow when the analyst cares about the
+data-retention/utility vs anonymization tradeoff (it lets them pick `k`); use the one-call
+`run_deid` when the default (k=5) is fine.
+
 ```python
 import sys
 sys.path.append('<this-skill-dir>/scripts')   # the scripts/ folder next to this SKILL.md
+
+# --- Surface-and-choose (recommended): show the privacy/utility tradeoff, user picks k ---
+from run_deid import preview_deid_options, apply_deid
+print(preview_deid_options("<catalog.schema.table>"))   # READ-ONLY: per-column plan + k frontier
+# ...user picks k after seeing utility cost...
+print(apply_deid("<catalog.schema.table>", k_target=5)) # apply at the chosen k
+
+# --- One-call default (k=5) ---
 from run_deid import run_deid
-print(run_deid("<catalog.schema.table>"))       # e.g. the table the user named
+print(run_deid("<catalog.schema.table>"))
 ```
 
-That single call runs the whole pipeline (profile → PHI detection → k-anonymity generalization →
-view-over-raw → verification → readout) and returns the report to show the user. Report its
-output; do not paraphrase or recompute it.
+`preview_deid_options` is READ-ONLY (the generalization search is count-only) — it shows the
+per-column plan (what is **redacted** vs **tokenized** vs **date→year** vs **generalized** vs
+kept vs suppressed) and a **k frontier**: for each candidate k, the k achieved, rows suppressed,
+and how many quasi-identifiers stay full vs coarsened vs value-suppressed. `apply_deid` (or
+`run_deid`) then runs the whole pipeline (profile → detect → k-anonymity generalization →
+view-over-raw → verify → readout). Report the tool's output; do not paraphrase or recompute it.
 
 ## Workflow
 
@@ -120,13 +135,16 @@ Safe Harbor disclaimer naming the Privacy Officer as the certifying authority.
 
 ## Key Parameters
 
-`run_deid(raw_fqn, view_name=None, k_target=5, profile=None, warehouse_id=None)`
+`preview_deid_options(raw_fqn, k_candidates=(2,5,10,20), profile=None, warehouse_id=None)` — read-only
+`apply_deid(raw_fqn, k_target, view_name=None, profile=None, warehouse_id=None)` — applies the chosen k
+`run_deid(raw_fqn, view_name=None, k_target=5, profile=None, warehouse_id=None)` — one-call default
 
 | Parameter | Default | Range / Options | Effect |
 |-----------|---------|-----------------|--------|
 | `raw_fqn` | — (required) | `catalog.schema.table` | The raw table to de-identify. Read-only source; never overwritten. |
+| `k_candidates` | `(2,5,10,20)` | tuple of ints | (preview) The k values whose privacy/utility cost is surfaced for the user to choose from. |
+| `k_target` | `5` (`run_deid`); required for `apply_deid` | integer ≥ 2 | k-anonymity target — **the privacy/utility dial**. Higher k = stronger re-id resistance, more generalization/suppression = less utility. `apply_deid` requires it (the user's choice); never pick it for a utility-sensitive table without surfacing the tradeoff. |
 | `view_name` | `<table>_deid` | any valid view name | Name of the governed view created over the raw table. |
-| `k_target` | `5` | integer ≥ 2 (2–10 typical) | k-anonymity target. Higher k = stronger re-id resistance, more generalization / utility loss. Raise for small populations at higher risk. |
 | `profile` | `None` (ambient auth) | a Databricks CLI profile | Local runs only; in-workspace uses ambient auth. |
 | `warehouse_id` | `None` (first available) | a SQL warehouse id | Pin the warehouse if the default pick is wrong. |
 
@@ -156,8 +174,11 @@ row suppression is capped (`max_suppression_frac`, default 0.10); passthrough is
 
 ## Guardrails
 
-1. **Execute, do not reimplement** — call `run_deid`; never hand-write de-id SQL (the LOS k-check
-   failure cannot happen via the entrypoint).
+1. **Execute, do not reimplement** — call the entrypoints (`preview_deid_options` / `apply_deid` /
+   `run_deid`); never hand-write de-id SQL (the LOS k-check failure cannot happen via the entrypoint).
+2. **Surface the privacy/utility tradeoff; let the user choose k** — for a utility-sensitive table,
+   run `preview_deid_options` and let the analyst pick the k, rather than silently defaulting. (The
+   one-call `run_deid` k=5 default is fine when the tradeoff isn't in question.)
 2. **Never certify** — the output is "processed against Safe Harbor, pending Privacy Officer
    review," never "de-identified / HIPAA compliant."
 3. **Never transform an unconfirmed column** — surface the classification table (step 2) first.
@@ -167,8 +188,9 @@ row suppression is capped (`max_suppression_frac`, default 0.10); passthrough is
 
 ## Bundled Resources
 
-- `scripts/run_deid.py` — the entrypoint: profile → detect → k-anon generalization → view-over-raw
-  → residual leak scan → readout + UC audit log.
+- `scripts/run_deid.py` — the entrypoints: `preview_deid_options` (read-only privacy/utility
+  frontier), `apply_deid` (apply at the chosen k), and `run_deid` (one-call default). Pipeline:
+  profile → detect → k-anon generalization → view-over-raw → residual leak scan → readout + UC audit log.
 - `scripts/kanon.py` — utility-weighted k-anonymity generalization engine (generic, any-table).
 - `scripts/apply_uc_governance.py` — builds the schema-driven dynamic view over the raw table.
 - `scripts/detect_phi.py` — PHI classifier (UC tags → validators → name heuristics → ai_classify).

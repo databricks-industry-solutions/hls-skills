@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import sys
+from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,7 +25,18 @@ from apply_uc_governance import Q, build_deid_view          # noqa: E402
 from profile_table import profile_table                     # noqa: E402
 from detect_phi import detect_phi                            # noqa: E402
 from deid_report import build_readout                        # noqa: E402
-from kanon import DEFAULT_QIS, build_qis                     # noqa: E402
+from kanon import (DEFAULT_QIS, build_qis, find_minimal_generalization,  # noqa: E402
+                   generalization_summary)
+
+
+# Column-role vocabulary (shared by the planner). Direct identifiers with no analytic value
+# are DROPPED (redaction); id-like columns are TOKENIZED (pseudonym, linkage kept); dates are
+# reduced to YEAR; quasi-identifiers are GENERALIZED (reduction) by the k-anon engine; numeric
+# measures pass through; unknown non-numeric columns are SUPPRESSED (deny-by-default).
+DIRECT_DROP = {"name", "ssn", "email", "phone", "fax", "url", "ip_address",
+               "certificate_license", "vehicle_id", "biometric", "photo"}
+ID_CLASSES = {"other_unique_id", "mrn", "health_plan_number", "account_number", "device_id"}
+NUMERIC_HINTS = ("int", "double", "float", "decimal", "long", "short", "byte")
 
 
 def _split_fqn(fqn: str):
@@ -32,6 +44,60 @@ def _split_fqn(fqn: str):
     if len(parts) != 3:
         raise ValueError(f"Expected catalog.schema.table, got: {fqn}")
     return parts[0], parts[1], parts[2]
+
+
+@dataclass
+class DeidPlan:
+    """The per-column de-identification plan for a table (independent of k_target).
+
+    Separates redaction (dropped/tokenized direct identifiers) from reduction (generalized
+    quasi-identifiers) so both the preview and the apply step share ONE routing decision.
+    """
+    qis: list = field(default_factory=list)                 # QuasiIdentifier objects (generalized)
+    id_columns: list = field(default_factory=list)          # tokenized
+    date_year_columns: list = field(default_factory=list)   # reduced to YEAR
+    passthrough: list = field(default_factory=list)         # numeric measures kept as-is
+    suppressed_unsafe: list = field(default_factory=list)   # unknown non-numeric -> denied
+    dropped_direct: list = field(default_factory=list)      # direct identifiers -> redacted
+    phi_cols: list = field(default_factory=list)            # [(column, detected_class)]
+    profiles: list = field(default_factory=list)
+    classifications: list = field(default_factory=list)
+
+
+def _plan_columns(q: Q, table: str) -> DeidPlan:
+    """Profile + detect PHI, then route every column to its Safe Harbor strategy.
+
+    Schema-driven so it works on ANY table, not just the demo schema. This is the single
+    source of truth for column roles; run_deid and preview_deid_options both call it.
+    """
+    profiles = profile_table(q, table)
+    classifications = detect_phi(profiles)
+    phi_cols = [(c.column, c.detected_class) for c in classifications if c.detected_class != "not_phi"]
+    cls_by_col = {c.column: c.detected_class for c in classifications}
+
+    qis = build_qis(profiles, classifications, q=q, table=table)
+    qi_cols = {qi.column for qi in qis} | {"admit_date", "discharge_date"}   # __los__ consumes dates
+
+    id_columns = [c for c, k in cls_by_col.items() if k in ID_CLASSES]
+    date_year_columns = [c for c, k in cls_by_col.items()
+                         if k == "date_element" and c not in qi_cols]
+    handled = set(id_columns) | set(date_year_columns) | qi_cols
+    dropped_direct = {c for c, k in cls_by_col.items() if k in DIRECT_DROP}
+
+    passthrough, suppressed_unsafe = [], []
+    for p in profiles:
+        if p.column in handled or p.column in dropped_direct:
+            continue
+        dtype = (p.data_type or "").lower()
+        if any(t in dtype for t in NUMERIC_HINTS):
+            passthrough.append(p.column)          # affirmatively safe -> expose
+        else:
+            suppressed_unsafe.append(p.column)    # unknown non-numeric -> DENY (do not leak)
+
+    return DeidPlan(qis=qis, id_columns=id_columns, date_year_columns=date_year_columns,
+                    passthrough=passthrough, suppressed_unsafe=suppressed_unsafe,
+                    dropped_direct=sorted(dropped_direct), phi_cols=phi_cols,
+                    profiles=profiles, classifications=classifications)
 
 
 def _persist_audit(q: Q, table_fqn: str, view_fqn: str, k_actual: int | None,
@@ -125,44 +191,13 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
     view_name = view_name or f"{table}_deid"
     q = Q(catalog, schema, profile=profile, warehouse_id=warehouse_id)
 
-    # 1-2: profile + detect (surfaced so the user sees what was classified)
-    profiles = profile_table(q, table)
-    classifications = detect_phi(profiles)
-    phi_cols = [(c.column, c.detected_class) for c in classifications if c.detected_class != "not_phi"]
-
-    # Derive the schema-specific column roles from detection (so this works on ANY table,
-    # not just the demo schema). Direct identifiers -> dropped; ids -> tokenized; dates ->
-    # year; quasi-identifiers -> generalized via build_qis; everything else -> passthrough.
-    DIRECT_DROP = {"name", "ssn", "email", "phone", "fax", "url", "ip_address",
-                   "certificate_license", "vehicle_id", "biometric", "photo"}
-    ID_CLASSES = {"other_unique_id", "mrn", "health_plan_number", "account_number", "device_id"}
-    cls_by_col = {c.column: c.detected_class for c in classifications}
-
-    qis = build_qis(profiles, classifications, q=q, table=table)
-    qi_cols = {qi.column for qi in qis} | {"admit_date", "discharge_date"}  # __los__ consumes dates
-
-    id_columns = [c for c, k in cls_by_col.items() if k in ID_CLASSES]
-    date_year_columns = [c for c, k in cls_by_col.items()
-                         if k == "date_element" and c not in qi_cols]
-
-    # DENY-BY-DEFAULT passthrough: a column is exposed as-is ONLY if it is affirmatively
-    # safe -- numeric measures (labs, scores). Anything else that detection did not route
-    # to id/date/QI is SUPPRESSED, not passed through. This prevents leaks like a free-text
-    # 'full_name' the name-heuristic missed: unknown string columns are never exposed raw.
-    prof_by_col = {p.column: p for p in profiles}
-    NUMERIC_HINTS = ("int", "double", "float", "decimal", "long", "short", "byte")
-    handled = set(id_columns) | set(date_year_columns) | qi_cols
-    dropped_direct = {c for c, k in cls_by_col.items() if k in DIRECT_DROP}
-    passthrough, suppressed_unsafe = [], []
-    for p in profiles:
-        if p.column in handled or p.column in dropped_direct:
-            continue
-        dtype = (p.data_type or "").lower()
-        is_numeric = any(t in dtype for t in NUMERIC_HINTS)
-        if is_numeric:
-            passthrough.append(p.column)          # affirmatively safe -> expose
-        else:
-            suppressed_unsafe.append(p.column)    # unknown non-numeric -> DENY (do not leak)
+    # 1-2: profile + detect + route columns (shared planner; surfaced for transparency)
+    plan = _plan_columns(q, table)
+    phi_cols = plan.phi_cols
+    cls_by_col = {c.column: c.detected_class for c in plan.classifications}
+    qis, id_columns = plan.qis, plan.id_columns
+    date_year_columns, passthrough = plan.date_year_columns, plan.passthrough
+    suppressed_unsafe = plan.suppressed_unsafe
 
     # 3: build the governed view (schema-driven)
     gov = build_deid_view(q, table, view_name, k_target=k_target, qis=qis,
@@ -213,7 +248,74 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
     return full + f"\n\n*Authoritative record: {audit_ref} — cite THIS, not chat text.*"
 
 
+# --- SURFACE-AND-CHOOSE (privacy/utility tradeoff is the USER'S call) -----------
+# Mirrors the cohort builder's preview_cohort_options -> build_confirmed_cohort. The de-id
+# tradeoff dial is k_target: higher k = stronger re-identification resistance, but more
+# generalization/suppression = less analytic utility. preview_deid_options SURFACES the
+# frontier (read-only); apply_deid commits the k the user picked. run_deid stays as the
+# one-call path for callers that just want the k=5 default.
+
+def preview_deid_options(raw_fqn: str, k_candidates=(2, 5, 10, 20),
+                         profile: str | None = None, warehouse_id: str | None = None) -> str:
+    """READ-ONLY. Surface the privacy/utility tradeoff so the USER picks the point.
+
+    Shows (a) the per-column plan — what is redacted vs tokenized vs date→year vs generalized
+    vs kept vs suppressed — and (b) a k frontier: for each candidate k, what the k-anonymity
+    engine would generalize/suppress and the utility cost. BUILDS NOTHING (the generalization
+    search is count-only). Call this FIRST; show it to the user; get their k; call apply_deid.
+    """
+    catalog, schema, table = _split_fqn(raw_fqn)
+    q = Q(catalog, schema, profile=profile, warehouse_id=warehouse_id)
+    plan = _plan_columns(q, table)
+    total = int(q(f"SELECT COUNT(*) FROM {table}")[0][0]) or 1
+
+    lines = ["## De-identification preview — choose the privacy/utility point", ""]
+    detected = "\n".join(f"  - {c} → {klass}" for c, klass in plan.phi_cols) or "  (none)"
+    lines += ["**PHI detected (auto):**", detected, ""]
+    lines += ["**Per-column plan (Safe Harbor strategy — redaction vs reduction):**",
+              f"  - **Redacted / removed** (direct identifiers): {', '.join(plan.dropped_direct) or '—'}",
+              f"  - **Tokenized** (pseudonym, linkage kept): {', '.join(plan.id_columns) or '—'}",
+              f"  - **Date → year**: {', '.join(plan.date_year_columns) or '—'}",
+              f"  - **Generalized / reduced** (quasi-identifiers, k-anon): "
+              f"{', '.join(qi.label for qi in plan.qis) or '—'}",
+              f"  - **Kept as-is** (numeric measures): {', '.join(plan.passthrough) or '—'}",
+              f"  - **Suppressed** (unknown non-numeric, deny-by-default): "
+              f"{', '.join(plan.suppressed_unsafe) or '—'}",
+              ""]
+
+    lines += ["**Privacy ↔ utility frontier — CHOOSE a k (higher k = stronger anonymization, but "
+              "more generalization/suppression = less utility). Do not pick for the user:**", "",
+              "| k_target | k achieved | rows suppressed | QIs kept full | QIs coarsened | QIs value-suppressed | detail |",
+              "|---|---|---|---|---|---|---|"]
+    for k in k_candidates:
+        gen = find_minimal_generalization(q, table, qis=plan.qis, k_target=int(k))
+        summ = generalization_summary(plan.qis, gen)
+        full = [s["quasi_identifier"] for s in summ if s["level"] == 0]
+        coarsened = [f"{s['quasi_identifier']}(L{s['level']}/{s['of']})"
+                     for s in summ if 0 < s["level"] < s["of"]]
+        dropped = [s["quasi_identifier"] for s in summ if s["of"] and s["level"] == s["of"]]
+        supp = gen.suppressed_rows
+        detail = "; ".join(coarsened + [f"{d} (value-suppressed)" for d in dropped]) or "none"
+        lines.append(f"| {k} | {gen.k_achieved} | {supp} ({100 * supp / total:.1f}%) | "
+                     f"{len(full)} | {len(coarsened)} | {len(dropped)} | {detail} |")
+    lines += ["", "Reply with the k you want, then call `apply_deid(<table>, k_target=<k>)`. "
+              "The per-column redaction/tokenize/generalize plan above is applied at that k."]
+    return "\n".join(lines)
+
+
+def apply_deid(raw_fqn: str, k_target: int, view_name: str | None = None,
+               profile: str | None = None, warehouse_id: str | None = None) -> str:
+    """Apply de-identification at the k the USER chose after preview_deid_options.
+
+    k_target is REQUIRED — it is the user's privacy/utility choice, surfaced by the preview and
+    never picked for them. Delegates to the vetted run_deid pipeline (which builds the governed
+    view, verifies actual k over ALL surviving quasi-identifiers, and scans for residual leaks)."""
+    return run_deid(raw_fqn, view_name=view_name, k_target=k_target,
+                    profile=profile, warehouse_id=warehouse_id)
+
+
 if __name__ == "__main__":
     fqn = sys.argv[1] if len(sys.argv) > 1 else "main.clinical.patients_raw"
     prof = os.environ.get("DATABRICKS_CONFIG_PROFILE")
-    print(run_deid(fqn, profile=prof))
+    print("=== preview_deid_options (read-only frontier) ===")
+    print(preview_deid_options(fqn, profile=prof))

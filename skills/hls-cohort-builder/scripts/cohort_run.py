@@ -87,6 +87,21 @@ _NOTE_EXTRACT_PROMPT = (
 )
 
 
+def _prefilter_clause(prefilter, note_col: str) -> str:
+    """Build a recall-safe WHERE clause restricting which notes get ai_query'd (a cost lever
+    at scale). None -> no filter (scan all). A list of keywords -> case-insensitive LIKE-ANY
+    (a note that mentions none of the concept's terms cannot assert it, so excluding it is
+    recall-safe — include synonyms/abbreviations). A string -> used as a raw SQL predicate.
+    """
+    if not prefilter:
+        return ""
+    if isinstance(prefilter, str):
+        return f"WHERE ({prefilter})"
+    likes = " OR ".join(f"lower({note_col}) LIKE '%{str(kw).lower().replace(chr(39), chr(39)*2)}%'"
+                        for kw in prefilter)
+    return f"WHERE ({likes})" if likes else ""
+
+
 @dataclass
 class NoteEvidence:
     evidence_table: str          # fully-qualified materialized evidence table
@@ -94,13 +109,17 @@ class NoteEvidence:
     endpoint: str
     prompt: str
     condition: str
+    n_scanned: int = 0           # notes actually sent to ai_query (after any prefilter)
+    n_total: int = 0             # total notes in the source table
+    prefiltered: bool = False    # whether a prefilter restricted the scan
 
 
 def extract_note_evidence(q: "Q", notes_table: str, condition: str,
                           note_col: str = "note_text", id_col: str = "patient_id",
                           endpoint: str = DEFAULT_NOTE_ENDPOINT,
                           evidence_table: str | None = None,
-                          prompt_template: str | None = None) -> NoteEvidence:
+                          prompt_template: str | None = None,
+                          prefilter=None) -> NoteEvidence:
     """Run ai_query over the notes and materialize a per-patient diagnosis-assertion table.
 
     Live-only: needs a SQL warehouse and a model-serving endpoint (a Foundation Model API
@@ -118,11 +137,14 @@ def extract_note_evidence(q: "Q", notes_table: str, condition: str,
     evi = evidence_table or f"{ntbl}_note_evidence"
     template = prompt_template or _NOTE_EXTRACT_PROMPT
     prompt = template.format(condition=condition) if "{condition}" in template else template
+    where = _prefilter_clause(prefilter, note_col)   # "" or a recall-safe WHERE (scale lever)
+    n_total = int(q(f"SELECT COUNT(*) FROM {ntbl}")[0][0])
     q(f"""CREATE OR REPLACE TABLE {evi} AS
         WITH raw AS (
           SELECT {id_col} AS patient_id, {note_col} AS note_text,
                  ai_query({_sql_lit(endpoint)}, CONCAT({_sql_lit(prompt)}, {note_col})) AS verdict
           FROM {ntbl}
+          {where}
         ),
         parsed AS (
           SELECT patient_id, note_text, verdict,
@@ -137,8 +159,10 @@ def extract_note_evidence(q: "Q", notes_table: str, condition: str,
                 AND contains(lower(note_text), lower(evidence_span))) AS asserts_current_dx
         FROM parsed""")
     n = int(q(f"SELECT COUNT(*) FROM {evi} WHERE asserts_current_dx")[0][0])
+    n_scanned = int(q(f"SELECT COUNT(*) FROM {evi}")[0][0])
     return NoteEvidence(evidence_table=f"{ncat}.{nsch}.{evi}", n_asserted=n,
-                        endpoint=endpoint, prompt=prompt, condition=condition)
+                        endpoint=endpoint, prompt=prompt, condition=condition,
+                        n_scanned=n_scanned, n_total=n_total, prefiltered=bool(where))
 
 
 def _dx_predicate(combine_mode: str, code_col: str, code_list: str, evi_alias: str = "e") -> str:
@@ -214,7 +238,8 @@ class CohortPreview:
 def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "",
                    notes_table: str | None = None, note_col: str = "note_text",
                    note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
-                   note_condition: str | None = None, note_prompt: str | None = None) -> CohortPreview:
+                   note_condition: str | None = None, note_prompt: str | None = None,
+                   note_prefilter=None) -> CohortPreview:
     """Ground the codes in the data and surface any threshold ambiguity with N impact.
 
     condition_codes: [(vocab, code)] the caller proposes (from NL intent).
@@ -246,7 +271,7 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
         note_evidence = extract_note_evidence(
             q, notes_table, condition=note_condition or (intent_text[:120] or "the condition"),
             note_col=note_col, id_col=note_id_col, endpoint=note_endpoint,
-            prompt_template=note_prompt)
+            prompt_template=note_prompt, prefilter=note_prefilter)
         evi = note_evidence.evidence_table
         # Set arithmetic done in SQL against the materialized evidence table (scales past IN-lists).
         def _c(pred: str) -> int:
@@ -304,7 +329,9 @@ def format_preview(preview: CohortPreview) -> str:
     if preview.combine:
         c = preview.combine
         ne = preview.note_evidence
-        lines.append(f"**🗒️ Free-text notes analyzed** (endpoint `{ne.endpoint}`, "
+        scan = (f", prefiltered to {ne.n_scanned} of {ne.n_total} notes" if ne.prefiltered
+                else f", {ne.n_total} notes")
+        lines.append(f"**🗒️ Free-text notes analyzed** (endpoint `{ne.endpoint}`{scan}, "
                      f"negation-/subject-aware, span-grounded) — the diagnosis can be ascertained "
                      f"from codes, from note text, or both. **CHOOSE how to combine them "
                      f"(do not let the tool guess):**")
@@ -498,7 +525,8 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
                notes_table: str | None = None, note_col: str = "note_text",
                note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
                note_condition: str | None = None, note_prompt: str | None = None,
-               combine_mode: str | None = None, include_literature: bool = True,
+               note_prefilter=None, combine_mode: str | None = None,
+               include_literature: bool = True,
                profile: str | None = None, warehouse_id: str | None = None) -> str:
     """ONE call. Genie should call this and report its output — nothing else.
 
@@ -525,7 +553,8 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
     preview = preview_cohort(q, table, condition_codes, intent_text=intent_text,
                              notes_table=notes_table, note_col=note_col,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
-                             note_condition=note_condition, note_prompt=note_prompt)
+                             note_condition=note_condition, note_prompt=note_prompt,
+                             note_prefilter=note_prefilter)
 
     # Confirm-gate 1: notes present but no combine mode chosen -> refuse to build, ask.
     if preview.combine and combine_mode is None:
@@ -607,6 +636,7 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
                            notes_table: str | None = None, note_col: str = "note_text",
                            note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
                            note_condition: str | None = None, note_prompt: str | None = None,
+                           note_prefilter=None,
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """READ-ONLY grounding + surfacing. Grounds codes in the data and returns real cohort-size
     options for any ambiguous threshold. Takes NO threshold and NO combine-mode argument — it
@@ -629,7 +659,8 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
     preview = preview_cohort(q, table, condition_codes, intent_text=intent_text,
                              notes_table=notes_table, note_col=note_col,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
-                             note_condition=note_condition, note_prompt=note_prompt)
+                             note_condition=note_condition, note_prompt=note_prompt,
+                             note_prefilter=note_prefilter)
     src = code_source if not notes_table else f"{code_source}; notes via {note_endpoint}"
     out = f"*Code source: {src} (all codes grounded against the data below).*\n\n" + format_preview(preview)
     if not preview.ambiguity and not preview.combine:
@@ -644,7 +675,8 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                            notes_table: str | None = None, note_col: str = "note_text",
                            note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
                            note_condition: str | None = None, note_prompt: str | None = None,
-                           combine_mode: str | None = None, include_literature: bool = True,
+                           note_prefilter=None, combine_mode: str | None = None,
+                           include_literature: bool = True,
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Materialize + verify a cohort with the choices the USER has ALREADY made.
     threshold_value is REQUIRED — this function is only called after preview_cohort_options
@@ -660,14 +692,14 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                       cohort_table=cohort_table, mcp_citations=mcp_citations,
                       notes_table=notes_table, note_col=note_col, note_id_col=note_id_col,
                       note_endpoint=note_endpoint, note_condition=note_condition,
-                      note_prompt=note_prompt, combine_mode=combine_mode,
-                      include_literature=include_literature,
+                      note_prompt=note_prompt, note_prefilter=note_prefilter,
+                      combine_mode=combine_mode, include_literature=include_literature,
                       profile=profile, warehouse_id=warehouse_id)
 
 
 if __name__ == "__main__":
     prof = os.environ.get("DATABRICKS_CONFIG_PROFILE")
-    tbl = sys.argv[1] if len(sys.argv) > 1 else "testing_playground_catalog.deid_live_test.clinical_records"
+    tbl = sys.argv[1] if len(sys.argv) > 1 else "main.clinical.clinical_records"
     print("=== preview_cohort_options (read-only) ===")
     print(preview_cohort_options(tbl, "type 2 diabetes with uncontrolled HbA1c",
                                  [("ICD10CM", "E11.9"), ("ICD10CM", "E11.65")], profile=prof))
