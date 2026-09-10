@@ -16,6 +16,10 @@ __pycache__/
 dist/
 build/
 
+# pytests results
+.pytest_cache/
+**/tests/results/
+
 # Local agent skill installs (project consumers)
 .claude/skills/
 .cursor/skills/
