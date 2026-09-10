@@ -3,7 +3,7 @@
 Canonical guide for authoring Health & Life Sciences agent skills in this repository.
 `CLAUDE.md` is only a compatibility import shim; update this file when authoring rules change.
 
-Layout inspired by [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills) templates and categories — without a central registry.
+Layout inspired by [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills) templates.
 
 ## Directory Layout
 
@@ -22,7 +22,7 @@ Layout inspired by [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-S
 Each skill lives at:
 
 ```
-skills/{category}/{skill-name}/SKILL.md
+skills/{skill-name}/SKILL.md
 ```
 
 Optional siblings next to `SKILL.md`: `references/`, `assets/`, `scripts/`.
@@ -68,7 +68,7 @@ The `description` field is the discovery hook agents use before loading the full
 | `assets/` | Static templates / fixtures used as-is |
 | `scripts/` | Runnable helpers (>~80 lines or repeated boilerplate) |
 
-### Step 5. Testing and evaluation (TBD)
+### Step 5. Testing and evaluation
 1. Run `python tests/test_skill_quality.py skills/my-skill/SKILL.md` to validate skill format
 2. Add unit tests for code snippets in a `tests` subfolder within your skill
 3. Ensure your skill reliably loads in Genie Code
@@ -80,7 +80,7 @@ The `description` field is the discovery hook agents use before loading the full
 
 ## Quality Checklist
 
-- [ ] Frontmatter has `name`, `description` (and `license` when known)
+- [ ] Frontmatter has `name`, `description`, `author`, `version` (and `license` when known)
 - [ ] `name` matches parent folder
 - [ ] Correct template / sub-type
 - [ ] "When to Use" written from the user's task perspective

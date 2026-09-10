@@ -1,7 +1,8 @@
 ---
 name: pathway-enrichment-analysis
-description: Pathway enrichment method selection for RNA-seq and proteomics. Choose among ORA (Enrichr), GSEA Prerank, and standard GSEA; covers inputs, significance thresholds, required plots, and GSEApy implementation. Consult after differential expression when interpreting gene lists at pathway/GO level. For DESeq2 DE workflows use bulk-rnaseq.
+description: Pathway enrichment method selection for RNA-seq. Choose among ORA (Enrichr), GSEA Prerank, and standard GSEA; covers inputs, significance thresholds, required plots, and GSEApy implementation. Consult after differential expression when interpreting gene lists at pathway/GO level. For DESeq2 DE workflows use bulk-rnaseq.
 author: Yen Low
+version: 0.1
 license: MIT
 ---
 
