@@ -9,6 +9,7 @@ Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` f
 |-------|-------------|
 | **bulk-rnaseq** | Analyze for top differentially expressed genes (DEG) from bulk RNA-seq count data |
 | **pathway-enrichment-analysis** | Pathway enrichment for RNA-seq. Choose from ORA or GSEA |
+| **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
 
 ## Repository Layout
 
