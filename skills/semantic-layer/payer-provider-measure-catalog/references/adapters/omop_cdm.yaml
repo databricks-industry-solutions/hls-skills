@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ADAPTER: OMOP Common Data Model (starter template — provider / clinical entities)
+#
+# Maps OMOP CDM v5.x standard tables to the canonical model. OMOP is source-agnostic
+# by design, so this adapter is unusually portable across OMOP-conformed customers.
+# Payer economics: OMOP has limited native premium/enrollment — compose with
+# x12_837_835.yaml (or a customer enrollment source) for claim/enrollment/member_month.
+# ─────────────────────────────────────────────────────────────────────────────
+
+adapter: omop_cdm
+provides: [encounter, patient, provider]
+
+entities:
+
+  encounter:
+    source: "{omop}.visit_occurrence"
+    grain_keys: [visit_occurrence_id]
+    fields:
+      encounter_id:   visit_occurrence_id
+      patient_id:     person_id
+      encounter_date: visit_start_date
+      los_days:       "datediff(visit_end_date, visit_start_date)"
+      provider_id:    provider_id
+    enums:
+      encounter_class:
+        source_column: visit_concept_id          # OMOP standard visit concepts
+        # 9201 Inpatient · 9202 Outpatient · 9203 ED · 262 ED->Inpatient · 581385 Observation
+        map: { "9201": inpatient, "9202": outpatient, "9203": emergency, "262": emergency, "581385": observation }
+        default: other
+    # is_surgical (from procedure_occurrence), procedure_count, readmission flags are
+    # gold enrichments derived from procedure_occurrence / visit sequencing.
+
+  patient:
+    source: "{omop}.person"
+    grain_keys: [person_id]
+    fields:
+      patient_id: person_id
+      birth_date: "make_date(year_of_birth, coalesce(month_of_birth,1), coalesce(day_of_birth,1))"
+      sex:        gender_concept_id
+
+  provider:
+    source: "{omop}.provider"
+    grain_keys: [provider_id]
+    fields:
+      provider_id:   provider_id
+      provider_name: provider_name
+      specialty:     specialty_concept_id
+      npi:           npi

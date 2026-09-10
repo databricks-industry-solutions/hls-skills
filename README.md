@@ -9,6 +9,7 @@ Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` f
 |-------|-------------|
 | **skill-1** | Prioritize druggable targets for a disease (Open Targets + PubMed) |
 | **skill-2** | Find small-molecule hits for a gene/protein (Open Targets + PubChem) |
+| **[payer-provider-measure-catalog](skills/semantic-layer/payer-provider-measure-catalog/)** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
 
 ## Repository Layout
 

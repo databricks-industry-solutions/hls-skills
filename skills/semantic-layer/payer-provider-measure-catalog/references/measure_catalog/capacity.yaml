@@ -1,0 +1,69 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DOMAIN: capacity   (lens: provider)
+# Slot-grain schedule capacity: total supply, blocked supply, and utilization.
+# The derived counts (available/used) are composites — differences of measures —
+# so they stay correct at any rollup grain.
+#
+#   total_slots        = all slots
+#   made_unavailable   = blocked / made unavailable
+#   available_slots    = total - unavailable            (bookable supply)
+#   unused_slots       = available but never booked (slot_status='open')
+#   used_slots         = available - unused             (booked)
+#   utilization_rate   = used / available
+# ─────────────────────────────────────────────────────────────────────────────
+
+domain: capacity
+lens: provider
+
+metric_views:
+  - name: mv_capacity__slot
+    entity: slot
+    grain: slot
+
+measures:
+
+  # ── ATOMIC ─────────────────────────────────────────────────────────────────
+  - name: total_slots
+    type: atomic
+    metric_view: mv_capacity__slot
+    entity: slot
+    expr: "COUNT(DISTINCT slot_id)"
+    definition: "All schedulable slots (total capacity supply)."
+
+  - name: made_unavailable_slots
+    type: atomic
+    metric_view: mv_capacity__slot
+    entity: slot
+    expr: "COUNT(DISTINCT CASE WHEN slot_status = 'unavailable' THEN slot_id END)"
+    definition: "Slots blocked / made unavailable (removed from bookable supply)."
+
+  - name: unused_slots
+    type: atomic
+    metric_view: mv_capacity__slot
+    entity: slot
+    expr: "COUNT(DISTINCT CASE WHEN slot_status = 'open' THEN slot_id END)"
+    definition: "Bookable slots that were never booked (open, unused)."
+
+  # ── COMPOSITE (derived counts + utilization) ────────────────────────────────
+  - name: available_slots
+    type: composite
+    metric_view: mv_capacity__slot
+    expr: "MEASURE(total_slots) - MEASURE(made_unavailable_slots)"
+    depends_on: [total_slots, made_unavailable_slots]
+    definition: "Bookable supply = total slots minus slots made unavailable."
+    anti_pattern: "Storing available_slots as a physical column and SUM-ing it after a prior filter. Derive it from measures so it recomputes on any slice."
+
+  - name: used_slots
+    type: composite
+    metric_view: mv_capacity__slot
+    expr: "MEASURE(available_slots) - MEASURE(unused_slots)"
+    depends_on: [available_slots, unused_slots]
+    definition: "Booked slots = available supply minus unused (open) slots."
+
+  - name: slot_utilization_rate
+    type: composite
+    metric_view: mv_capacity__slot
+    expr: "MEASURE(used_slots) / MEASURE(available_slots)"
+    depends_on: [used_slots, available_slots]
+    definition: "Utilization = booked slots / bookable supply."
+    anti_pattern: "Dividing used by TOTAL slots (includes blocked capacity) — overstates unused. Denominator is available (bookable) supply."

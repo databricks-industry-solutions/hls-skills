@@ -1,0 +1,124 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DOMAIN: care_delivery   (lens: provider)
+# Encounter-grain clinical throughput & quality: volume, length of stay, excess
+# days, procedural mix, readmissions.
+#
+# Measure record schema:
+#   name         unique measure name
+#   type         atomic  = single aggregate over source rows (SUM/COUNT/AVG...) — additive-safe in a metric view
+#                composite = defined via MEASURE() of other measures — NON-ADDITIVE, stays correct across grains
+#   metric_view  which metric view this measure lands in (mv_<domain>__<name>)
+#   entity       (atomic only) the canonical entity it aggregates
+#   expr         the metric-view measure expression (references canonical fields, or MEASURE(...) for composites)
+#   depends_on   (composite only) the measures referenced inside expr
+#   definition   business meaning
+#   anti_pattern the wrong way people define it (esp. non-additive traps)
+# ─────────────────────────────────────────────────────────────────────────────
+
+domain: care_delivery
+lens: provider
+
+metric_views:
+  - name: mv_care_delivery__encounter
+    entity: encounter
+    grain: encounter
+
+measures:
+
+  # ── ATOMIC (additive) ──────────────────────────────────────────────────────
+  - name: encounter_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT encounter_id)"
+    definition: "Distinct encounters. The default care-delivery volume denominator."
+
+  - name: inpatient_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT CASE WHEN encounter_class = 'inpatient' THEN encounter_id END)"
+    definition: "Distinct inpatient encounters."
+
+  - name: observation_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT CASE WHEN encounter_class = 'observation' THEN encounter_id END)"
+    definition: "Distinct observation-status encounters."
+
+  - name: emergency_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT CASE WHEN encounter_class = 'emergency' THEN encounter_id END)"
+    definition: "Distinct emergency department encounters."
+
+  - name: surgical_encounter_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT CASE WHEN is_surgical THEN encounter_id END)"
+    definition: "Distinct encounters involving a surgical procedure."
+
+  - name: total_los_days
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "SUM(los_days)"
+    definition: "Total inpatient length of stay in days (additive)."
+
+  - name: avg_los_days
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "AVG(los_days)"
+    definition: "Average length of stay (ALOS). Safe as AVG here because a metric view recomputes it from base encounter rows at each query grain."
+    anti_pattern: "Precomputing ALOS per group then AVG-ing those averages (average-of-averages). Never store a rate and re-aggregate it — aggregate the base rows."
+
+  - name: zero_procedures_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT CASE WHEN procedure_count = 0 THEN encounter_id END)"
+    definition: "Encounters with no recorded procedure (a care-appropriateness / documentation signal)."
+
+  - name: readmission_30day_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT CASE WHEN is_readmission_30day THEN encounter_id END)"
+    definition: "Admissions that are a 30-day readmission of a prior index admission (numerator)."
+
+  - name: index_admission_count
+    type: atomic
+    metric_view: mv_care_delivery__encounter
+    entity: encounter
+    expr: "COUNT(DISTINCT CASE WHEN is_index_admission THEN encounter_id END)"
+    definition: "Eligible index inpatient admissions — the correct DENOMINATOR for the 30-day readmission rate."
+    note: "Added beyond the source measure list: readmission_30day_rate is meaningless without an index-admission denominator. Do NOT divide readmissions by all encounters."
+
+  # ── COMPOSITE (non-additive ratios; MEASURE()/MEASURE()) ────────────────────
+  - name: surgical_rate
+    type: composite
+    metric_view: mv_care_delivery__encounter
+    expr: "MEASURE(surgical_encounter_count) / MEASURE(encounter_count)"
+    depends_on: [surgical_encounter_count, encounter_count]
+    definition: "Share of encounters that are surgical."
+    anti_pattern: "AVG of a per-row surgical flag summed then divided outside the metric view — breaks on rollup. Use ratio-of-measures."
+
+  - name: zero_procedures_rate
+    type: composite
+    metric_view: mv_care_delivery__encounter
+    expr: "MEASURE(zero_procedures_count) / MEASURE(encounter_count)"
+    depends_on: [zero_procedures_count, encounter_count]
+    definition: "Share of encounters with no recorded procedure."
+    anti_pattern: "Storing the rate per group and averaging. Use ratio-of-measures so it recomputes at any grain."
+
+  - name: readmission_30day_rate
+    type: composite
+    metric_view: mv_care_delivery__encounter
+    expr: "MEASURE(readmission_30day_count) / MEASURE(index_admission_count)"
+    depends_on: [readmission_30day_count, index_admission_count]
+    definition: "30-day readmissions divided by eligible index admissions — the standard readmission rate."
+    anti_pattern: "Dividing readmissions by encounter_count (all encounters), or by inpatient_count. The denominator is INDEX admissions, not total volume."
