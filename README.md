@@ -11,8 +11,7 @@ Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` f
 | **pathway-enrichment-analysis** | Pathway enrichment for RNA-seq. Choose from ORA or GSEA |
 | **cohort-builder** | Build a defensible, reproducible, feasibility-checked patient cohort from structured coded data and free-text clinical notes — grounds codes, surfaces threshold + code/note combine choices, never fabricates citations |
 | **phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
-| **ontology-builder** | Build the semantic layer for RWD |
-| **[payer-provider-measure-catalog](skills/semantic-layer/payer-provider-measure-catalog/)** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
+| **payer-provider-measure-catalog** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
 | **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
 
 ## Repository Layout
@@ -23,14 +22,15 @@ hls-skills/
 ├── CLAUDE.md                 # Compatibility shim → AGENTS.md
 ├── templates/                # Pipeline / toolkit / guide templates
 └── skills/
-    ├── skill-1/
-    ├── skill-2/
+    ├── bulk-rnaseq/
+    ├── cohort-builder/
+    └── …
 ```
 
 Each skill:
 
 ```
-skills/<category>/<skill-name>/
+skills/<skill-name>/
 ├── SKILL.md          # Required
 ├── references/       # Optional — loaded on demand
 ├── assets/           # Optional
@@ -41,7 +41,7 @@ skills/<category>/<skill-name>/
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 1. Follow [AGENTS.md](AGENTS.md).
 2. Start from the matching file in `templates/`.
-3. Put the skill at `skills/<category>/<skill-name>/SKILL.md`.
+3. Put the skill at `skills/<skill-name>/SKILL.md`.
 4. Folder name must match frontmatter `name`. 
 5. Update the skill table in `README.md` (Table to be created).
 6. Open a PR and request a second-party review.

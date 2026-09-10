@@ -4,7 +4,7 @@
 Unlike the repo-wide SKILL.md linter (tests/test_skill_quality.py), these exercise
 the skill's actual code: the catalog validator and the metric-view generator.
 
-  python3 -m pytest skills/semantic-layer/payer-provider-measure-catalog/tests/
+  python3 -m pytest skills/payer-provider-measure-catalog/tests/
 """
 from __future__ import annotations
 
