@@ -37,10 +37,17 @@ class Q:
         self.catalog, self.schema = catalog, schema
 
     def __call__(self, stmt: str):
+        import time
+        from databricks.sdk.service.sql import StatementState
         r = self.w.statement_execution.execute_statement(
             warehouse_id=self.wid, catalog=self.catalog, schema=self.schema,
             statement=stmt, wait_timeout="50s")
-        if r.status and str(r.status.state) != "StatementState.SUCCEEDED":
+        # ai_query over many note rows routinely exceeds the 50s synchronous cap, so POLL to
+        # completion instead of failing the moment the statement is still RUNNING.
+        while r.status and r.status.state in (StatementState.PENDING, StatementState.RUNNING):
+            time.sleep(2)
+            r = self.w.statement_execution.get_statement(r.statement_id)
+        if r.status and r.status.state != StatementState.SUCCEEDED:
             raise RuntimeError(f"{r.status.error} :: {stmt[:200]}")
         return r.result.data_array if r.result else []
 
@@ -92,17 +99,25 @@ class NoteEvidence:
 def extract_note_evidence(q: "Q", notes_table: str, condition: str,
                           note_col: str = "note_text", id_col: str = "patient_id",
                           endpoint: str = DEFAULT_NOTE_ENDPOINT,
-                          evidence_table: str | None = None) -> NoteEvidence:
+                          evidence_table: str | None = None,
+                          prompt_template: str | None = None) -> NoteEvidence:
     """Run ai_query over the notes and materialize a per-patient diagnosis-assertion table.
 
     Live-only: needs a SQL warehouse and a model-serving endpoint (a Foundation Model API
-    pay-per-token endpoint by default). Returns a NoteEvidence handle the preview/build SQL
-    joins against. `asserts_current_dx` is TRUE only when the model says YES *and* the quoted
-    span is present in the note (span-grounding = the notes analogue of code-grounding).
+    pay-per-token endpoint by default; override with `endpoint`). Returns a NoteEvidence handle
+    the preview/build SQL joins against. `asserts_current_dx` is TRUE only when the model says
+    YES *and* the quoted span is present in the note (span-grounding = the notes analogue of
+    code-grounding).
+
+    prompt_template: override the extraction prompt. If it contains `{condition}` it is
+    formatted with the condition; otherwise it is used verbatim. The RESOLVED prompt is pinned
+    in the phenotype definition, so a custom prompt stays reproducible. The extractor must still
+    reply 'YES:<verbatim span>' or 'NO' for span-grounding to work.
     """
     ncat, nsch, ntbl = _split_fqn(notes_table)
     evi = evidence_table or f"{ntbl}_note_evidence"
-    prompt = _NOTE_EXTRACT_PROMPT.format(condition=condition)
+    template = prompt_template or _NOTE_EXTRACT_PROMPT
+    prompt = template.format(condition=condition) if "{condition}" in template else template
     q(f"""CREATE OR REPLACE TABLE {evi} AS
         WITH raw AS (
           SELECT {id_col} AS patient_id, {note_col} AS note_text,
@@ -199,7 +214,7 @@ class CohortPreview:
 def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "",
                    notes_table: str | None = None, note_col: str = "note_text",
                    note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
-                   note_condition: str | None = None) -> CohortPreview:
+                   note_condition: str | None = None, note_prompt: str | None = None) -> CohortPreview:
     """Ground the codes in the data and surface any threshold ambiguity with N impact.
 
     condition_codes: [(vocab, code)] the caller proposes (from NL intent).
@@ -230,7 +245,8 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
     if notes_table:
         note_evidence = extract_note_evidence(
             q, notes_table, condition=note_condition or (intent_text[:120] or "the condition"),
-            note_col=note_col, id_col=note_id_col, endpoint=note_endpoint)
+            note_col=note_col, id_col=note_id_col, endpoint=note_endpoint,
+            prompt_template=note_prompt)
         evi = note_evidence.evidence_table
         # Set arithmetic done in SQL against the materialized evidence table (scales past IN-lists).
         def _c(pred: str) -> int:
@@ -328,6 +344,23 @@ class CohortResult:
     definition_json: str
     verified: bool
     verification_note: str
+    ascertainment_summary: dict = field(default_factory=dict)  # {code|note|both: count}
+    provenance_table: str | None = None                        # governed per-member source + span
+    provenance_preview: str = ""                               # first-20-rows readout
+
+
+def _format_provenance_preview(rows: list, provenance_table: str, summary: dict) -> str:
+    """First-20-rows readout of the provenance/'delta' table so the user can audit WHY each
+    member qualified (code vs note) and see the verbatim note span — without querying."""
+    by_src = ", ".join(f"{k}={v}" for k, v in sorted(summary.items()))
+    lines = [f"**Provenance / delta — `{provenance_table}`** (per-member source; by ascertainment: "
+             f"{by_src}). First {len(rows)} rows:", "",
+             "| patient_id | ascertainment | in_codes | note_asserts_dx | measure | note span |",
+             "|---|---|---|---|---|---|"]
+    for r in rows:
+        span = (r[5] or "").replace("|", "\\|").replace("\n", " ")
+        lines.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | {span} |")
+    return "\n".join(lines)
 
 
 def build_cohort(q: Q, table: str, definition: CohortDefinition,
@@ -344,15 +377,29 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
     # Diagnosis ascertainment: code-only (default) or, if a notes evidence table is bound,
     # the chosen combine mode over coded + note-asserted dx. LEFT JOIN so note-only members
     # (rows present in the spine table but with no coded dx) still qualify.
-    join = ""
-    if definition.note_evidence_table:
-        join = f"LEFT JOIN {definition.note_evidence_table} e ON t.patient_id = e.patient_id"
+    evi = definition.note_evidence_table
+    join = f"LEFT JOIN {evi} e ON t.patient_id = e.patient_id" if evi else ""
     dx_clause = _dx_predicate(definition.combine_mode, definition.condition_col, code_list)
 
+    coded_expr = f"t.{definition.condition_col} IN ({code_list})"
+    noted_expr = "e.asserts_current_dx" if evi else "false"
+    # Per-patient ascertainment: did the CODE, the NOTE, or BOTH place them in the cohort?
+    # A light, NON-PHI column carried on the shareable cohort table (raw note text stays out).
+    _any_code = f"MAX(CASE WHEN {coded_expr} THEN 1 ELSE 0 END)"
+    _any_note = f"MAX(CASE WHEN {noted_expr} THEN 1 ELSE 0 END)"
+    ascertainment_expr = (
+        f"CASE WHEN {_any_code} = 1 AND {_any_note} = 1 THEN 'both' "
+        f"WHEN {_any_note} = 1 THEN 'note' ELSE 'code' END")
+
+    # ids-only qualifying set for verification (structurally different from the create query)
     qualifying = f"""SELECT DISTINCT t.patient_id
         FROM {tbl} t {join}
         WHERE {dx_clause} {measure_clause}"""
-    q(f"CREATE OR REPLACE TABLE {cohort_table} AS {qualifying}")
+    q(f"""CREATE OR REPLACE TABLE {cohort_table} AS
+        SELECT t.patient_id, {ascertainment_expr} AS ascertainment
+        FROM {tbl} t {join}
+        WHERE {dx_clause} {measure_clause}
+        GROUP BY t.patient_id""")
 
     n = int(q(f"SELECT COUNT(*) FROM {cohort_table}")[0][0])
 
@@ -375,9 +422,39 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
             f"MISMATCH: {false_positives} member(s) do not satisfy the definition, "
             f"{false_negatives} qualifying patient(s) missing from the table.")
 
+    ascertainment_summary = {r[0]: int(r[1]) for r in
+                             q(f"SELECT ascertainment, COUNT(*) FROM {cohort_table} GROUP BY ascertainment")}
+
+    # Provenance / "delta" table — ONLY when notes contributed. Carries the per-member source
+    # AND the verbatim note span (PHI): materialized as a SEPARATE, same-governance table, never
+    # folded into the shareable cohort table. This is the audit artifact for "why did this
+    # patient qualify?" and the disagreement (note-recovered vs coded-but-note-silent).
+    provenance_table = None
+    provenance_preview = ""
+    if evi:
+        prov = f"{cohort_table}_provenance"
+        q(f"""CREATE OR REPLACE TABLE {prov} AS
+            SELECT c.patient_id, c.ascertainment,
+                   {_any_code} = 1 AS in_codes,
+                   COALESCE({_any_note} = 1, false) AS note_asserts_dx,
+                   MAX(e.evidence_span) AS evidence_span,
+                   MAX(t.{definition.obs_measure_col}) AS {definition.obs_measure_col}
+            FROM {cohort_table} c
+              JOIN {tbl} t ON c.patient_id = t.patient_id
+              LEFT JOIN {evi} e ON c.patient_id = e.patient_id
+            GROUP BY c.patient_id, c.ascertainment""")
+        provenance_table = f"{catalog}.{schema}.{prov}"
+        # Lead with the most audit-worthy rows: note-recovered (note) and note-silent-coded
+        # (code) before the concordant (both), so the preview shows the disagreement, not 20 easy cases.
+        rows = q(f"""SELECT patient_id, ascertainment, in_codes, note_asserts_dx,
+                       {definition.obs_measure_col}, substr(evidence_span, 1, 80)
+                     FROM {prov} ORDER BY ascertainment DESC, patient_id LIMIT 20""")
+        provenance_preview = _format_provenance_preview(rows, provenance_table, ascertainment_summary)
+
     return CohortResult(cohort_table=f"{catalog}.{schema}.{cohort_table}", n_patients=n,
                         definition_json=definition.to_json(), verified=verified,
-                        verification_note=note)
+                        verification_note=note, ascertainment_summary=ascertainment_summary,
+                        provenance_table=provenance_table, provenance_preview=provenance_preview)
 
 
 def format_result(res: CohortResult) -> str:
@@ -389,12 +466,19 @@ def format_result(res: CohortResult) -> str:
     ]
     d = json.loads(res.definition_json)
     if d.get("note_evidence_table"):
-        lines.append(f"**Diagnosis ascertainment:** `{d['combine_mode']}` (codes + free-text notes). "
-                     f"Note evidence: `{d['note_evidence_table']}` via `{d.get('note_endpoint')}` — "
-                     f"negation-/subject-aware, span-grounded; the extraction prompt is pinned in "
-                     f"the definition for reproducibility.")
+        by_src = ", ".join(f"{k}={v}" for k, v in sorted(res.ascertainment_summary.items()))
+        lines.append(f"**Diagnosis ascertainment:** `{d['combine_mode']}` (codes + free-text notes) — "
+                     f"by source: {by_src}. Note evidence via `{d.get('note_endpoint')}` "
+                     f"(negation-/subject-aware, span-grounded; prompt pinned in the definition).")
+        if res.provenance_table:
+            lines.append(f"**Provenance table:** `{res.provenance_table}` — per-member source + the "
+                         f"verbatim note span. Governed like the notes source; raw note text is NOT "
+                         f"copied into the shareable cohort table (which carries only a light "
+                         f"`ascertainment` column).")
+    lines.append(f"**Reproducible definition:** `{res.definition_json}`")
+    if res.provenance_preview:
+        lines += ["", res.provenance_preview]
     lines += [
-        f"**Reproducible definition:** `{res.definition_json}`",
         "",
         "*Literature validation of this phenotype is a SEPARATE step — do not attach a "
         "citation unless it was resolved against a real literature source (see SKILL.md). "
@@ -413,7 +497,8 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
                cohort_table: str | None = None, mcp_citations: list | None = None,
                notes_table: str | None = None, note_col: str = "note_text",
                note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
-               note_condition: str | None = None, combine_mode: str | None = None,
+               note_condition: str | None = None, note_prompt: str | None = None,
+               combine_mode: str | None = None, include_literature: bool = True,
                profile: str | None = None, warehouse_id: str | None = None) -> str:
     """ONE call. Genie should call this and report its output — nothing else.
 
@@ -440,7 +525,7 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
     preview = preview_cohort(q, table, condition_codes, intent_text=intent_text,
                              notes_table=notes_table, note_col=note_col,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
-                             note_condition=note_condition)
+                             note_condition=note_condition, note_prompt=note_prompt)
 
     # Confirm-gate 1: notes present but no combine mode chosen -> refuse to build, ask.
     if preview.combine and combine_mode is None:
@@ -492,15 +577,20 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
     # Literature: prefer MCP-retrieved citations (verified), else direct PubMed floor.
     # Fails closed -> never fabricates. mcp_citations is whatever Genie pulled from a
     # connected literature MCP server (list of PMIDs/dicts); None if no server connected.
+    # include_literature=False skips it entirely (air-gapped workspaces with no PubMed/MCP
+    # egress: avoids the network round-trip/timeout — the step already fails closed either way).
     lit_block = ""
-    try:
-        from literature import literature_for_cohort, format_literature
-        lit = literature_for_cohort(intent_text, mcp_candidates=mcp_citations)
-        lit_block = "\n\n" + format_literature(lit)
-        if lit.note:
-            lit_block += f"\n*{lit.note}*"
-    except Exception:
-        lit_block = "\n\n**Literature:** resolver unavailable; no citation attached (none fabricated)."
+    if include_literature:
+        try:
+            from literature import literature_for_cohort, format_literature
+            lit = literature_for_cohort(intent_text, mcp_candidates=mcp_citations)
+            lit_block = "\n\n" + format_literature(lit)
+            if lit.note:
+                lit_block += f"\n*{lit.note}*"
+        except Exception:
+            lit_block = "\n\n**Literature:** resolver unavailable; no citation attached (none fabricated)."
+    else:
+        lit_block = "\n\n*Literature step skipped (include_literature=False).*"
 
     return format_result(res) + warn + lit_block
 
@@ -516,7 +606,7 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
                            code_source: str = "model-proposed",
                            notes_table: str | None = None, note_col: str = "note_text",
                            note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
-                           note_condition: str | None = None,
+                           note_condition: str | None = None, note_prompt: str | None = None,
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """READ-ONLY grounding + surfacing. Grounds codes in the data and returns real cohort-size
     options for any ambiguous threshold. Takes NO threshold and NO combine-mode argument — it
@@ -539,7 +629,7 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
     preview = preview_cohort(q, table, condition_codes, intent_text=intent_text,
                              notes_table=notes_table, note_col=note_col,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
-                             note_condition=note_condition)
+                             note_condition=note_condition, note_prompt=note_prompt)
     src = code_source if not notes_table else f"{code_source}; notes via {note_endpoint}"
     out = f"*Code source: {src} (all codes grounded against the data below).*\n\n" + format_preview(preview)
     if not preview.ambiguity and not preview.combine:
@@ -553,7 +643,8 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                            cohort_table: str | None = None, mcp_citations: list | None = None,
                            notes_table: str | None = None, note_col: str = "note_text",
                            note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
-                           note_condition: str | None = None, combine_mode: str | None = None,
+                           note_condition: str | None = None, note_prompt: str | None = None,
+                           combine_mode: str | None = None, include_literature: bool = True,
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Materialize + verify a cohort with the choices the USER has ALREADY made.
     threshold_value is REQUIRED — this function is only called after preview_cohort_options
@@ -569,13 +660,14 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                       cohort_table=cohort_table, mcp_citations=mcp_citations,
                       notes_table=notes_table, note_col=note_col, note_id_col=note_id_col,
                       note_endpoint=note_endpoint, note_condition=note_condition,
-                      combine_mode=combine_mode,
+                      note_prompt=note_prompt, combine_mode=combine_mode,
+                      include_literature=include_literature,
                       profile=profile, warehouse_id=warehouse_id)
 
 
 if __name__ == "__main__":
     prof = os.environ.get("DATABRICKS_CONFIG_PROFILE")
-    tbl = sys.argv[1] if len(sys.argv) > 1 else "main.clinical.clinical_records"
+    tbl = sys.argv[1] if len(sys.argv) > 1 else "testing_playground_catalog.deid_live_test.clinical_records"
     print("=== preview_cohort_options (read-only) ===")
     print(preview_cohort_options(tbl, "type 2 diabetes with uncontrolled HbA1c",
                                  [("ICD10CM", "E11.9"), ("ICD10CM", "E11.65")], profile=prof))

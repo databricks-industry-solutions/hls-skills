@@ -139,12 +139,24 @@ build_confirmed_cohort(table, intent_text, condition_codes=[("ICD10CM","E11.9")]
                        combine_mode="union", threshold_value=8.0, threshold_op=">")
 ```
 
-### Step 5: Literature (separate, verified — never fabricated)
+The cohort table carries a light, **non-PHI `ascertainment` column** (`code` | `note` | `both`)
+so you can see which source placed each patient. When notes contribute, the build also
+materializes a separate **provenance / "delta" table** `<cohort>_provenance`
+(`patient_id, ascertainment, in_codes, note_asserts_dx, evidence_span, <measure>`) and prints
+its **first 20 rows** — leading with the note-recovered and note-silent-coded cases so you can
+audit *why* each patient qualified. Raw note text is **never** copied into the shareable cohort
+table; the verbatim span lives only in the provenance table, governed like the notes source
+(PHI). See Guardrails.
+
+### Step 5: Literature (separate, verified — never fabricated; optional)
 
 Citations are resolved through `scripts/literature.py`: PMIDs an agent retrieves from a
 connected literature MCP are verified against PubMed (kept only if they resolve), with a
-direct-PubMed floor. It fails closed — no verified source, no citation. Pass candidates via
-`mcp_citations=[...]`; never state a PMID/NCT id the tool did not return verified.
+direct-PubMed floor that distills the phenotype from the intent and relevance-ranks results.
+It fails closed — no verified source, no citation. Pass candidates via `mcp_citations=[...]`;
+never state a PMID/NCT id the tool did not return verified. **Set `include_literature=False`
+to skip this step entirely** for air-gapped workspaces with no PubMed/MCP egress (avoids the
+network round-trip; the step already fails closed either way).
 
 ```markdown
 | Table | N | Verified | Definition |
@@ -167,21 +179,55 @@ direct-PubMed floor. It fails closed — no verified source, no citation. Pass c
 | `threshold_op` | `None` | `>`, `>=`, `<`, `<=`, `=` | Comparator — part of the user's choice. For an ambiguous term the tool recovers it from the chosen option; it never silently assumes `>`. |
 | `notes_table` | `None` | `catalog.schema.table` | Free-text notes source; when set, the diagnosis is also ascertained from note text and the combine choice is surfaced. |
 | `note_condition` | `None` (→ `intent_text`) | e.g. `"type 2 diabetes"` | What the note extractor looks for — the diagnosis, not the whole phenotype. |
-| `note_endpoint` | `databricks-meta-llama-3-3-70b-instruct` | any serving endpoint | The model `ai_query` calls to read the notes. |
+| `note_endpoint` | `databricks-meta-llama-3-3-70b-instruct` | any serving endpoint | The model `ai_query` calls to read the notes. Override to point at a provisioned-throughput or fine-tuned clinical model. |
+| `note_prompt` | `None` (built-in template) | a prompt string | Override the extraction prompt. If it contains `{condition}` it's formatted with the condition, else used verbatim. Must still reply `YES:<verbatim span>` / `NO` for span-grounding. The resolved prompt is pinned in the definition. |
 | `combine_mode` | `None` | `code_only`/`note_only`/`union`/`intersection` | The user's choice for combining coded + note-derived diagnoses. REQUIRED for build once `notes_table` is given; never guessed. |
+| `include_literature` | `True` | `True`/`False` | Set `False` to skip the PubMed/MCP citation step (air-gapped workspaces). |
 | `mcp_citations` | `None` | `[PMID, ...]` | Candidate PMIDs retrieved from a literature MCP; verified (kept only if they resolve). |
 
 Feasibility thresholds (engine defaults, not arguments): warn when eligible **N < 100**,
 hard-warn when **N < 20**. The preview reports N before anything is built.
 
+### Configuring the notes extractor
+
+The LLM **endpoint** and **prompt** are plain function parameters (`note_endpoint`,
+`note_prompt`), with the defaults as clearly-named module constants at the top of
+`scripts/cohort_run.py` (`DEFAULT_NOTE_ENDPOINT`, `_NOTE_EXTRACT_PROMPT`). Change them per call
+without touching code, or edit the constants to change the default. This is deliberately *not*
+a YAML/config-file layer — a Genie Code skill is invoked by function call, so overridable params
+plus a documented default are the discoverable, single-source-of-truth pattern.
+
 ## Expected Outputs
 
-- A **cohort table** (`<table>_cohort`) of qualifying `patient_id`s.
+- A **cohort table** (`<table>_cohort`) of qualifying `patient_id`s + a non-PHI `ascertainment`
+  column (`code` | `note` | `both`).
+- When notes contribute, a **provenance / "delta" table** (`<cohort>_provenance`) with per-member
+  source + the verbatim note span, and a 20-row preview in the readout. (Governed like the notes
+  source — the shareable cohort table stays free of raw note text.)
 - A **machine-readable phenotype definition** (codes + comparators + combine mode + pinned
   note-extraction prompt/endpoint) stored with it — reproducible and auditable, not just a list.
 - A **verification line** confirming membership matches the definition exactly (0 FP / 0 FN).
 - **Verified citations**, or an honest "no citation — none fabricated" when none resolve.
 - A clean hand-off: Genie Code *builds* the cohort; a Genie *Space* explores it in NL.
+
+## Evaluation
+
+Measured **skill vs no-skill** (Genie Code baseline) against seeded synthetic gold, so scores
+are exact. Objective = `0.45·membership_F1 + 0.20·conceptset_F1 + 0.20·feasibility + 0.15·citation − 0.50·hallucination`.
+
+| Task | Metric | No skill (baseline) | Skill |
+|------|--------|---------------------|-------|
+| Coded cohort | Membership F1 | 0.911 (silent stricter threshold; fabricated citations) | **1.000** |
+| Free-text cohort (union) | Membership F1 (live) | 0.620 (silently chose ≥9.0 + intersection; recall 0.449) | **1.000** |
+| Free-text cohort | Note-trap specificity | 0.44 (negation/family-history mentions leak in) | **1.00** (0 leaked) |
+| Free-text cohort | Composite objective | 0.573 | **1.000** |
+
+Root cause the skill removes: the un-guided baseline **silently makes definitional choices**
+(threshold, code/note combine) the analyst never sees. Reproduce with `eval/mlflow_eval.py`
+(scenarios `cohort-baseline/skill`, `cohort-freetext-baseline/skill`), which logs each arm to an
+MLflow experiment. Unit tests: `tests/` (component scorers incl. `note_trap_specificity`); the
+repo's `tests/test_skill_quality.py` validates this SKILL.md. See the eval harness in the source
+repo for the full A/B protocol and the live Genie-Code capture.
 
 ## Troubleshooting
 
@@ -210,6 +256,9 @@ hard-warn when **N < 20**. The preview reports N before anything is built.
 6. **Respect PHI governance** — the cohort inherits UC access controls; if the source is raw
    PHI and the consumer is an analyst, run `hls-phi-deidentifier` on the output or build on a
    de-identified source.
+7. **Keep raw notes out of the shareable cohort table** — verbatim note spans (PHI) live only in
+   the separate `<cohort>_provenance` table, governed like the notes source; the cohort table
+   carries just `patient_id` + the non-PHI `ascertainment` column.
 
 ## Bundled Resources
 
