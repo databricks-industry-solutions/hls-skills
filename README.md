@@ -9,6 +9,8 @@ Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` f
 |-------|-------------|
 | **skill-1** | Prioritize druggable targets for a disease (Open Targets + PubMed) |
 | **skill-2** | Find small-molecule hits for a gene/protein (Open Targets + PubChem) |
+| **hls-cohort-builder** | Build a defensible, reproducible, feasibility-checked patient cohort from structured coded data and free-text clinical notes — grounds codes, surfaces threshold + code/note combine choices, never fabricates citations |
+| **hls-phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
 
 ## Repository Layout
 
