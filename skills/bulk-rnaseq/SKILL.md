@@ -310,6 +310,28 @@ down = significant[significant.log2FoldChange < 0]
 - Plots: `pca_plot.png`, `volcano_plot.png`; optional `heatmap_top_degs.png`, `ma_plot.png`
 - CLI (`scripts/run_deseq2_analysis.py --output results/`): same artifacts under the output directory
 
+## Evaluation
+All 39 unit [tests](./tests) passed.
+
+#### Comparison of code generated without and with skill
+| Dimension | Without Skills | With skills | [Paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC9711880/) |
+|-----------|----------------|-------------|-------|
+| Packages  | GEOparse gseapy scipy statsmodels | pydeseq2 gseapy GEOparse adjustText networkx | R: DESeq |
+| DEG method | Welch t-test | PyDESeq2 | R's DESeq2 |
+| Genes tested | 13732 (counts>10, samples>3) | 17,085 (counts>10) | 17,101 (counts>5) |
+| Significant DEGs | 38 (FDR<0.05, |log2FC|>1) | 1,210 (padj<0.05, |log2FC|>1) | 1208 (FDR<0.05) |
+| QC | None | PCA | PCA |
+| Top DEGs | 0 paper-reported DEGs among sig. DEGs | 4/6 paper-reported DEGs among top 10 DEGs | IFITM3, IFITM2, IFITM1, HPSE, LGALS3BP, SELENBP1 |
+| Pathway analysis | ORA (KEGG, GO, Reactome) | GSEA Prerank (MSigDB Hallmark, KEGG) — statistically stronger; no arbitrary cutoff | Lab validation, not enrichment analysis |
+| Visualizations | Volcano plot only | PCA, volcano (with adjustText), NES barplot, network enrichment map, GSEA enrichment curves (top 3) | PCA, volcano, heatmap, IGV |
+
+Takeaways: 
+* With skills, the significant DEGs (1210) largely agree with those in the paper (1208). Slight differences may arise from the DESeq2 implementation in Python in the former and in R in the latter. Also they were tested on slightly different genes due to the former using default count thresholds (<10) while the latter used count<5.
+* With skills, GSEA prerank captures the complement/coagulation and ribosome/translational angles more precisely, but misses the platelet-specific terms that the no-skills ORA finds.
+* The irony: the no-skills notebook's underpowered DEG method (only 38 genes) actually produces a more focused gene list for ORA, which happens to enrich for platelet-specific biology — exactly what the paper is about. Trial 1's DESeq2 finds 1,210 DEGs (matching the paper's count), but the broader gene list dilutes the platelet signal in GSEA.
+* Because the paper's suggested pathways are expert-inferred and then validated in the lab, the discovery process differs considerably from typical computational pathway enrichment methods (ORA or GSEA) and thus, it can be difficult to definitely compare either enrichment method to the paper's results.
+
+
 ## Troubleshooting
 
 | Problem | Cause | Solution |
