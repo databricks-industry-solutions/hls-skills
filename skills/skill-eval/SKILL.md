@@ -24,7 +24,7 @@ Standardized method to prove a Genie Code skill works: run the same benchmark ta
 ## Prerequisites
 
 - **MCP / tools**: Databricks workspace with Genie Code; `databricks` CLI profile for the target workspace
-- **Python**: `pip install "mlflow[databricks]>=3.1.0"` (evaluation only; no Spark needed when using list-of-dicts datasets). API usage here follows the MLflow 3.1+ GenAI interfaces (`mlflow.genai.evaluate`, `@scorer`, `make_judge`) — pin and re-verify if running on a different major version
+- **Python**: `pip install "mlflow[databricks]>=3.5.0"` (evaluation only; no Spark needed when using list-of-dicts datasets). 3.5.0 is a conservative floor: `make_judge(feedback_value_type=...)` and `mlflow.search_traces(locations=...)` are both later than 3.1, and I did not pin down the exact release that introduced each. Re-verify against the version you run
 - **Inputs**: the skill under test installed in Genie Code (`Workspace/.assistant/skills/<name>/SKILL.md` or user-level `~/.assistant/skills/`)
 - **Environment**: an MLflow experiment path you can write to, e.g. `/Users/<you>/skill-eval-<skill-name>`
 
@@ -118,6 +118,7 @@ Run both datasets through `mlflow.genai.evaluate()` into the **same experiment**
 ```bash
 # from the repository root; --difficulty enables the ship gate, --strict exits 1 on gate fail (CI)
 # --strict also exits 1 if --difficulty is missing, since the gate cannot be evaluated without it
+# --gate no-regressions drops the win requirement (see the regression re-run recipe)
 python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skill_scores.json \
     --difficulty difficulties.json [--strict]
 # -> per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, SHIP GATE PASS/FAIL verdict
@@ -140,7 +141,7 @@ Read every task that ended `tie-fail` or `regression` in either arm. Open-code t
 | `judge_model` | `databricks:/databricks-gpt-5-mini` | any served judge endpoint | Judge cost/quality; must differ from generator model |
 | `score_mode` | `precomputed` | `precomputed`, `predict_fn` | `precomputed` for Genie Code sessions; `predict_fn` only if a code agent can be replayed programmatically |
 | `pass_rule` | `all_metrics` | `all_metrics`, `any_metric` | Task-level pass definition used by compare_runs.py |
-| `ship_threshold` | `win_rate > 0` and `no regressions on easy or unlabeled tasks` | team policy | Ship/no-ship gate. The script checks it when given `--difficulty`. A regression on a task missing from the difficulty map also blocks the gate, so a partial map cannot hide one |
+| `ship_threshold` | `win_rate > 0` and `zero regressions` | team policy | Ship/no-ship gate, checked when given `--difficulty`. Any regression blocks it, at any difficulty, including a task the difficulty map does not label. Use `--gate no-regressions` for a regression re-run where a clean tie is the healthy result |
 
 ## Common Recipes
 
@@ -181,6 +182,13 @@ trajectory_judge = make_judge(
 ### Recipe: Regression Re-Run
 
 After editing a skill, re-run only the tasks that previously failed plus one easy control. Compare against the previous candidate run (not baseline) to confirm the fix without re-paying full eval cost.
+
+The healthy result here is 0 wins and 0 regressions, which the default gate fails because it requires a win. Pass `--gate no-regressions` so a clean re-run passes and only a new regression fails:
+
+```bash
+python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candidate.json \
+    --difficulty difficulties.json --gate no-regressions --strict
+```
 
 ## Expected Outputs
 

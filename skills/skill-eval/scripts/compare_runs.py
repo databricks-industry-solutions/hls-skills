@@ -21,6 +21,10 @@ from pathlib import Path
 
 PASS_RULES = ("all_metrics", "any_metric")
 
+GATE_DEFAULT = "default"
+GATE_NO_REGRESSIONS = "no-regressions"
+GATE_MODES = (GATE_DEFAULT, GATE_NO_REGRESSIONS)
+
 OUTCOME_WIN = "win"
 OUTCOME_REGRESSION = "regression"
 OUTCOME_TIE_PASS = "tie-pass"
@@ -145,27 +149,34 @@ class Comparison:
         ]
 
     @property
-    def unlabeled_regressions(self) -> list[str]:
-        """task_ids of regressions with no difficulty label, so easiness is unknown."""
-        return [t.task_id for t in self.tasks if t.outcome == OUTCOME_REGRESSION and not t.difficulty]
+    def regressions(self) -> list[TaskComparison]:
+        return [t for t in self.tasks if t.outcome == OUTCOME_REGRESSION]
 
     @property
     def unlabeled_tasks(self) -> list[str]:
         """Paired task_ids missing from the difficulty map."""
         return [t.task_id for t in self.tasks if not t.difficulty]
 
+    def gate_passed(self, mode: str = GATE_DEFAULT) -> bool:
+        """Any regression fails the gate, at any difficulty.
+
+        A regression on a hard or edge task is the signal the eval exists to
+        catch, so it blocks the gate exactly like an easy one. Under the default
+        mode the candidate must also win at least one task. Under
+        'no-regressions' a clean tie passes, which is what a regression re-run
+        against a previous candidate needs.
+        """
+        if mode not in GATE_MODES:
+            raise ValueError(f"mode must be one of {GATE_MODES}, got {mode!r}")
+        if self.regressions:
+            return False
+        if mode == GATE_DEFAULT:
+            return self.counts()[OUTCOME_WIN] > 0
+        return True
+
     @property
     def ship_gate_passed(self) -> bool:
-        """Ship rule: at least one win, and no regression that is easy or unlabeled.
-
-        An unlabeled regression blocks the gate because a partial difficulty map
-        must not let an easy-task regression through unnoticed.
-        """
-        return (
-            self.counts()[OUTCOME_WIN] > 0
-            and not self.easy_regressions
-            and not self.unlabeled_regressions
-        )
+        return self.gate_passed(GATE_DEFAULT)
 
 
 def compare(
@@ -230,7 +241,11 @@ def gate_evaluable(comp: Comparison) -> bool:
     return bool(comp.tasks) and any(t.difficulty for t in comp.tasks)
 
 
-def format_text(comp: Comparison) -> str:
+def _regression_labels(comp: Comparison) -> str:
+    return ", ".join(f"{t.task_id} ({t.difficulty or 'no label'})" for t in comp.regressions)
+
+
+def format_text(comp: Comparison, gate_mode: str = GATE_DEFAULT) -> str:
     lines = []
     counts = comp.counts()
     lines.append(
@@ -240,16 +255,13 @@ def format_text(comp: Comparison) -> str:
     )
     lines.append(f"win_rate: {comp.win_rate:.2f} | regression_rate: {comp.regression_rate:.2f}")
     if gate_evaluable(comp):
-        verdict = "SHIP GATE PASS" if comp.ship_gate_passed else "SHIP GATE FAIL"
+        passed = comp.gate_passed(gate_mode)
+        verdict = "SHIP GATE PASS" if passed else "SHIP GATE FAIL"
         reasons = []
-        if comp.counts()[OUTCOME_WIN] == 0:
+        if gate_mode == GATE_DEFAULT and comp.counts()[OUTCOME_WIN] == 0:
             reasons.append("no wins")
-        if comp.easy_regressions:
-            reasons.append(f"easy regressions: {', '.join(comp.easy_regressions)}")
-        if comp.unlabeled_regressions:
-            reasons.append(
-                f"regressions with no difficulty label: {', '.join(comp.unlabeled_regressions)}"
-            )
+        if comp.regressions:
+            reasons.append(f"regressions: {_regression_labels(comp)}")
         suffix = f" ({'; '.join(reasons)})" if reasons else ""
         lines.append(f"{verdict}{suffix}")
         if comp.unlabeled_tasks:
@@ -280,7 +292,7 @@ def format_text(comp: Comparison) -> str:
     return "\n".join(lines)
 
 
-def format_markdown(comp: Comparison) -> str:
+def format_markdown(comp: Comparison, gate_mode: str = GATE_DEFAULT) -> str:
     has_diff = any(t.difficulty for t in comp.tasks)
     header = "| task_id |" + (" difficulty |" if has_diff else "") + " baseline | with skill | outcome |"
     sep = "|---------|" + ("------------|" if has_diff else "") + "----------|------------|---------|"
@@ -301,16 +313,13 @@ def format_markdown(comp: Comparison) -> str:
         f"Regressions: {counts[OUTCOME_REGRESSION]}/{len(comp.tasks)}."
     )
     if gate_evaluable(comp):
-        verdict = "**Ship gate PASS**" if comp.ship_gate_passed else "**Ship gate FAIL**"
+        passed = comp.gate_passed(gate_mode)
+        verdict = "**Ship gate PASS**" if passed else "**Ship gate FAIL**"
         reasons = []
-        if comp.counts()[OUTCOME_WIN] == 0:
+        if gate_mode == GATE_DEFAULT and comp.counts()[OUTCOME_WIN] == 0:
             reasons.append("no wins")
-        if comp.easy_regressions:
-            reasons.append(f"easy regressions: {', '.join(comp.easy_regressions)}")
-        if comp.unlabeled_regressions:
-            reasons.append(
-                f"regressions with no difficulty label: {', '.join(comp.unlabeled_regressions)}"
-            )
+        if comp.regressions:
+            reasons.append(f"regressions: {_regression_labels(comp)}")
         suffix = f" — {'; '.join(reasons)}" if reasons else ""
         lines.append(f"{verdict}{suffix}")
         if comp.unlabeled_tasks:
@@ -356,6 +365,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional JSON {task_id: easy|hard|edge} from the evalset; enables the ship gate",
     )
     parser.add_argument(
+        "--gate",
+        choices=GATE_MODES,
+        default=GATE_DEFAULT,
+        help=(
+            "Gate rule. 'default' needs at least one win and no regressions. "
+            "'no-regressions' only needs no regressions, for a regression re-run "
+            "against a previous candidate where a clean tie is the healthy result"
+        ),
+    )
+    parser.add_argument(
         "--strict",
         action="store_true",
         help="Exit 1 when the ship gate fails (for CI)",
@@ -368,10 +387,24 @@ def main(argv: list[str] | None = None) -> int:
     comp = compare(baseline, candidate, pass_rule=args.pass_rule, difficulty=difficulty)
 
     if not comp.tasks:
-        print("No paired tasks found — check task_id values match in both files.", file=sys.stderr)
+        if comp.no_common_metrics:
+            print(
+                "No comparable tasks: "
+                f"{', '.join(sorted(comp.no_common_metrics))} appear in both files but share "
+                "no metric name. Check that both runs used the same scorer names.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "No paired tasks found — check task_id values match in both files.",
+                file=sys.stderr,
+            )
         return 1
 
-    print(format_markdown(comp) if args.format == "markdown" else format_text(comp))
+    if args.format == "markdown":
+        print(format_markdown(comp, gate_mode=args.gate))
+    else:
+        print(format_text(comp, gate_mode=args.gate))
     if args.strict:
         if not gate_evaluable(comp):
             print(
@@ -380,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        if not comp.ship_gate_passed:
+        if not comp.gate_passed(args.gate):
             return 1
     return 0
 

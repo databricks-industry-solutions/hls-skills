@@ -284,20 +284,79 @@ def test_main_strict_exit_codes(tmp_path, capsys):
     assert main([str(b), str(c), "--difficulty", str(d), "--strict"]) == 0
 
 
-def test_unlabeled_regression_blocks_gate():
+def test_any_regression_blocks_gate_whatever_its_difficulty():
+    """A hard or edge regression is the signal the eval exists to catch."""
+    for label in ("easy", "hard", "edge"):
+        comp = compare(
+            {"t1": {"m": False}, "t2": {"m": True}},
+            {"t1": {"m": True}, "t2": {"m": False}},
+            difficulty={"t1": "easy", "t2": label},
+        )
+        assert comp.counts()[OUTCOME_WIN] == 1
+        assert comp.counts()[OUTCOME_REGRESSION] == 1
+        assert comp.ship_gate_passed is False, label
+        assert f"regressions: t2 ({label})" in format_text(comp)
+
+
+def test_unlabeled_regression_blocks_gate_and_map_gap_is_reported():
     """A partial difficulty map must not let a regression through unchecked."""
     comp = compare(
         {"t1": {"m": False}, "t2": {"m": True}},
         {"t1": {"m": True}, "t2": {"m": False}},
         difficulty={"t1": "easy"},
     )
-    assert comp.counts()[OUTCOME_WIN] == 1
-    assert comp.counts()[OUTCOME_REGRESSION] == 1
-    assert comp.unlabeled_regressions == ["t2"]
     assert comp.ship_gate_passed is False
     text = format_text(comp)
-    assert "regressions with no difficulty label: t2" in text
+    assert "regressions: t2 (no label)" in text
     assert "difficulty map is incomplete" in text
+
+
+def test_no_regressions_gate_passes_a_clean_tie():
+    """The regression re-run recipe needs a clean tie to pass under --gate."""
+    comp = compare(
+        {"t1": {"m": True}},
+        {"t1": {"m": True}},
+        difficulty={"t1": "easy"},
+    )
+    assert comp.gate_passed("default") is False  # no wins
+    assert comp.gate_passed("no-regressions") is True
+    assert "SHIP GATE PASS" in format_text(comp, gate_mode="no-regressions")
+    assert "SHIP GATE FAIL (no wins)" in format_text(comp)
+
+
+def test_no_regressions_gate_still_blocks_a_regression():
+    comp = compare(
+        {"t1": {"m": True}},
+        {"t1": {"m": False}},
+        difficulty={"t1": "hard"},
+    )
+    assert comp.gate_passed("no-regressions") is False
+
+
+def test_main_gate_flag_flows_into_exit_code(tmp_path):
+    b = tmp_path / "b.json"
+    c = tmp_path / "c.json"
+    d = tmp_path / "d.json"
+    d.write_text(json.dumps({"t1": "easy"}))
+    b.write_text(json.dumps({"t1": {"m": True}}))
+    c.write_text(json.dumps({"t1": {"m": True}}))
+    assert main([str(b), str(c), "--difficulty", str(d), "--strict"]) == 1
+    assert (
+        main([str(b), str(c), "--difficulty", str(d), "--strict", "--gate", "no-regressions"]) == 0
+    )
+
+
+def test_main_reports_metric_name_mismatch_not_task_id_mismatch(tmp_path, capsys):
+    """Matching task_ids with different metric names must not blame task_ids."""
+    b = tmp_path / "b.json"
+    c = tmp_path / "c.json"
+    b.write_text(json.dumps({"t1": {"planted_check": True}}))
+    c.write_text(json.dumps({"t1": {"planted_genes_check": True}}))
+    rc = main([str(b), str(c)])
+    err = capsys.readouterr().err
+    assert rc == 1
+    assert "share no metric name" in err
+    assert "task_id values match" not in err
 
 
 def test_main_strict_fails_when_gate_not_evaluable(tmp_path, capsys):

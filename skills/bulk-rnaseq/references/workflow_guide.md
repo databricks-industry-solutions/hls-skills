@@ -560,7 +560,13 @@ plt.ylabel("Frequency")
 plt.show()
 
 # Check size factors (should be close to 1)
-print("Size factors:", dds.obs["size_factors"].to_numpy())
+# On pydeseq2 0.5.x these are in dds.obs; older builds keep them in dds.obsm.
+size_factors = (
+    dds.obs["size_factors"].to_numpy()
+    if "size_factors" in dds.obs
+    else dds.obsm["size_factors"]
+)
+print("Size factors:", size_factors)
 
 # Look at top genes even if not significant
 top_genes = ds.results_df.nsmallest(20, "pvalue")

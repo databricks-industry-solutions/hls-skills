@@ -54,7 +54,7 @@ with open("result_adata.pkl", "wb") as f:
 **Attributes (after running deseq2()):**
 - `layers`: dict containing various matrices — `normed_counts` holds size-factor-normalized counts
 - `varm`: dict containing gene-level results (log fold changes, dispersions, etc.)
-- `obs`: sample-level DataFrame — `size_factors` lives here (not in `obsm`)
+- `obs`: sample-level DataFrame — `size_factors` is here on pydeseq2 0.5.x. Older builds put it in `obsm`, so read normalized counts from `layers["normed_counts"]` instead of reaching for size factors directly
 - `obsm`: dict containing sample-level matrices (e.g. design matrix)
 - `uns`: dict containing global parameters
 

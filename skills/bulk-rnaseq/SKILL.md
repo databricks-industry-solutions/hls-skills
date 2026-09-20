@@ -31,9 +31,11 @@ PyDESeq2 is a Python implementation of DESeq2 for differential expression on bul
 - **Environment**:
 
 ```bash
-pip install pydeseq2
+pip install "pydeseq2>=0.5"
 # or: conda install -c bioconda pydeseq2
 ```
+
+Snippets here are verified against pydeseq2 0.5.4. Where size factors and normalized counts are stored moved between releases, so the workflow reads `dds.layers["normed_counts"]`, which is stable across 0.4 and 0.5.
 
 Python 3.10–3.11 recommended.
 
@@ -354,7 +356,7 @@ python3 skills/skill-eval/scripts/compare_runs.py \
   --difficulty skills/skill-eval/assets/dogfood-bulk-rnaseq/difficulties.json
 ```
 
-The persisted score files still include the unvalidated judge metric (`task_completion`), so that command prints `1 win | 1 regression | 2 tie-fail` and `SHIP GATE PASS`. Both numbers come from the judge, and the gate passes only because the one regression falls on an `edge` task rather than an `easy` one.
+The persisted score files still include the unvalidated judge metric (`task_completion`), so that command prints `1 win | 1 regression | 2 tie-fail` and `SHIP GATE FAIL (regressions: se-004 (edge))`. Both the win and the regression come from the judge alone.
 
 Drop `task_completion` from both files and the same command prints `0 wins | 0 regressions | 4 tie-pass` and `SHIP GATE FAIL (no wins)`. That is the honest reading of this eval. On the deterministic scorers the skill neither helped nor hurt the final output, and a tie does not clear a gate that requires a win.
 

@@ -32,16 +32,41 @@ Both calls land as runs in the same experiment. The UI's Compare view gives side
 1. **Immediately, in the same process** — the `EvaluationResult` returned by `evaluate()` carries the per-row table. Extract before the process exits:
 
 ```python
+import math
+
+TRUTHY = ("true", "yes", "1")
+FALSY = ("false", "no", "0")
+
+
+def to_bool(task_id, metric, value):
+    """Never coerce an unknown value to False — a failed scorer is not a task failure."""
+    if isinstance(value, bool):
+        return value
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        raise ValueError(f"{task_id}/{metric}: scorer produced no value")
+    text = str(value).strip().lower()
+    if text in TRUTHY:
+        return True
+    if text in FALSY:
+        return False
+    raise ValueError(f"{task_id}/{metric}: non-boolean score {value!r}; make the scorer binary")
+
+
 result = mlflow.genai.evaluate(data=rows, scorers=scorers)
 df = result.tables["eval_results"]          # per-row: inputs, outputs, <scorer>/value, <scorer>/rationale
 scores = {}
-for row, (_, r) in zip(rows, df.iterrows()):
-    tid = row["inputs"]["task_id"]
+for _, r in df.iterrows():
+    # Join on the task_id carried in the row itself. evaluate() scores rows
+    # concurrently and does not promise to return them in input order, so
+    # zipping this table against `rows` can attach one task's scores to another.
+    tid = r["inputs"]["task_id"]
     scores[tid] = {
-        col[: -len("/value")]: (str(r[col]).lower() in ("true", "yes", "1"))
+        col[: -len("/value")]: to_bool(tid, col, r[col])
         for col in df.columns
-        if col.endswith("/value") and r[col] is not None
+        if col.endswith("/value")
     }
+missing = {row["inputs"]["task_id"] for row in rows} - set(scores)
+assert not missing, f"no scores returned for {sorted(missing)}"
 ```
 
 2. **Later, from any process** — scorer outputs are logged as **assessments on the run's traces**, not as run artifacts (there is no `eval_results.json` to download; that path does not exist):
@@ -72,7 +97,8 @@ Task-level outcome (default `all_metrics` pass rule): task passes iff all metric
 
 - **win_rate** = wins / total paired tasks
 - **regression_rate** = regressions / total paired tasks
-- Ship rule of thumb: win_rate > 0 AND zero regressions on easy tasks (pass `--difficulty` to have the script check this). A regression on a task the difficulty map does not label also blocks the gate, because the script cannot tell whether that task was easy. Anything else needs error analysis before a decision.
+- Ship rule: win_rate > 0 AND zero regressions, at any difficulty (pass `--difficulty` to enable the gate). A hard or edge regression blocks the gate just like an easy one, because a regression on the adversarial task is the result the eval exists to surface.
+- For a regression re-run against a previous candidate, where 0 wins and 0 regressions is the healthy result, use `--gate no-regressions`. The default rule requires a win and would fail an unchanged, healthy skill.
 
 With 3-5 tasks, treat the numbers as directional. One flip = 20-33% swing; report the flips themselves, not just rates.
 
