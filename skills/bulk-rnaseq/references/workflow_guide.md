@@ -560,7 +560,7 @@ plt.ylabel("Frequency")
 plt.show()
 
 # Check size factors (should be close to 1)
-print("Size factors:", dds.obsm["size_factors"])
+print("Size factors:", dds.obs["size_factors"].to_numpy())
 
 # Look at top genes even if not significant
 top_genes = ds.results_df.nsmallest(20, "pvalue")

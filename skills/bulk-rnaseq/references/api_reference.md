@@ -52,9 +52,10 @@ with open("result_adata.pkl", "wb") as f:
 ```
 
 **Attributes (after running deseq2()):**
-- `layers`: dict containing various matrices (normalized counts, etc.)
+- `layers`: dict containing various matrices — `normed_counts` holds size-factor-normalized counts
 - `varm`: dict containing gene-level results (log fold changes, dispersions, etc.)
-- `obsm`: dict containing sample-level information
+- `obs`: sample-level DataFrame — `size_factors` lives here (not in `obsm`)
+- `obsm`: dict containing sample-level matrices (e.g. design matrix)
 - `uns`: dict containing global parameters
 
 ---

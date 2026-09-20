@@ -2,7 +2,7 @@
 name: bulk-rnaseq
 description: PyDESeq2 differential expression for bulk RNA-seq. Counts + metadata → Wald tests, FDR, optional apeGLM shrinkage, PCA/volcano/MA plots. For pathway enrichment of DE results use pathway-enrichment-analysis.
 author: Yen Low
-version: 0.1
+version: 0.2
 license: Databricks License
 ---
 
@@ -150,8 +150,9 @@ Generate a PCA on log2(size-factor-normalized counts + 1) using the top ~500 var
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-size_factors = dds.obsm["size_factors"]
-normalized_counts = counts_df / size_factors[:, None]
+normalized_counts = pd.DataFrame(
+    dds.layers["normed_counts"], index=dds.obs_names, columns=dds.var_names
+)
 log_counts = np.log2(normalized_counts + 1)
 top_var_genes = log_counts.var(axis=0).nlargest(500).index
 pcs = PCA(n_components=2).fit_transform(
@@ -312,7 +313,48 @@ down = significant[significant.log2FoldChange < 0]
 - CLI (`scripts/run_deseq2_analysis.py --output results/`): same artifacts under the output directory
 
 ## Evaluation
-All 39 unit [tests](./tests) passed.
+All 35 unit [tests](./tests) passed (`pytest skills/bulk-rnaseq/tests`).
+
+### Standardized paired eval (skill-eval pipeline, 2026-09-15)
+
+**Setup**: 4 benchmark tasks (easy/hard/hard/edge) on synthetic bulk RNA-seq data with 60 planted DE genes (ground truth known), run with and without the skill on a serverless job. Scored with MLflow 3 `mlflow.genai.evaluate`: 9 deterministic scorers (artifact/schema/planted-truth thresholds) + 1 binary judge (`task_completion`, gpt-5-mini).
+
+**Results** (deterministic scorers; artifact booleans were verified by the executing agent against the produced files, not independently re-inspected):
+
+| task_id | difficulty | baseline | with skill | outcome |
+|---------|-----------|----------|------------|---------|
+| se-001 | easy | pass (58/60 planted) | pass (58/60) | tie-pass |
+| se-002 | hard (batch) | pass (57/60) | pass (57/60) | tie-pass |
+| se-003 | hard (full workflow; no planted threshold set) | pass | pass | tie-pass |
+| se-004 | edge (column name with a space) | pass (58/60) | pass (58/60) | tie-pass |
+
+Final-output parity: 4/4 tie-pass. Both arms completed every task with pydeseq2, correct designs (`~batch + condition` for se-002), and 57-58/60 planted genes recovered in the top 60 by padj.
+
+**First-attempt reliability**: baseline 4/4 first-attempt success, with skill 2/4 — the with-skill arm hit `KeyError: 'size_factors'` on se-002/se-003 because the Step 4 PCA snippet read `dds.obsm["size_factors"]`, which current pydeseq2 does not populate (size factors live in `dds.obs`, normalized counts in `dds.layers["normed_counts"]`). **Fixed in v0.2**: Step 4 now reads `dds.layers["normed_counts"]` directly, and the same stale reference was corrected in `references/workflow_guide.md` and `references/api_reference.md`. The reliability numbers above are pre-fix and have not been re-measured.
+
+**Failure taxonomy**:
+
+| failure mode | count | arm | status |
+|--------------|-------|-----|--------|
+| stale-skill-snippet (size_factors location) | 2 tasks | with skill | fixed in v0.2 |
+| judge-unverifiable-evidence | 6/8 rows | both | judge design issue, not a skill issue — the judge demanded file contents it cannot access |
+
+**Verdict**: tie on final outputs. The base model already handles this domain well; the skill's value on these tasks is convention consistency (plots, exports, design formulas), not task success. Judge scores were **excluded pending human-label validation** — rationale inspection showed the judge grading narrative verifiability rather than completion (a judge-spec error, since corrected in skill-eval's scorer pack), so its TPR/TNR is unknown.
+
+**Limitations**: 4 tasks, one dataset family (synthetic negative-binomial counts) — directional only. A discriminating eval needs harder tasks: messier real data, multi-factor designs, larger scale, or tasks where naive DESeq2 usage fails.
+
+**Reproduce**: evalset, difficulty map, and both score files are at `skills/skill-eval/assets/dogfood-bulk-rnaseq/`. Comparison:
+
+```bash
+python3 skills/skill-eval/scripts/compare_runs.py \
+  skills/skill-eval/assets/dogfood-bulk-rnaseq/baseline_scores.json \
+  skills/skill-eval/assets/dogfood-bulk-rnaseq/with_skill_scores.json \
+  --difficulty skills/skill-eval/assets/dogfood-bulk-rnaseq/difficulties.json
+```
+
+The persisted score files still include the unvalidated judge metric (`task_completion`), so the raw comparison reports 1 win / 1 regression / 2 tie-fail. The verdict above excludes the judge; on deterministic scorers alone every task is tie-pass.
+
+### Manual comparison vs publication
 
 #### Comparison of code generated without and with skill
 Data and results sourced from [Campbell et al., J Clin Invest. 2022;132(23):e153014](https://pmc.ncbi.nlm.nih.gov/articles/PMC9711880) identifying DEG in patients with non-viral sepsis (vs healthy)
@@ -333,6 +375,14 @@ Takeaways:
 * The irony: the no-skills notebook's underpowered DEG method (only 38 genes) actually produces a more focused gene list for ORA, which happens to enrich for platelet-specific biology — exactly what the paper is about. Analysis with skills finds 1,210 DEGs (matching the paper's count), but the broader gene list dilutes the platelet signal in GSEA.
 * Because the paper's suggested pathways are expert-inferred and then validated in the lab, the discovery process differs considerably from typical computational pathway enrichment methods (ORA or GSEA) and thus, it can be difficult to definitively compare either enrichment method to the paper's results.
 
+
+## Guardrails
+
+1. Verify counts orientation (samples × genes after load) before fitting — transpose genes × samples files.
+2. Use `design="~col"` string notation only; rename metadata columns containing spaces before fitting.
+3. Report unshrunken p-values for significance; use shrunk LFCs only for visualization and ranking.
+4. Do not retry a failing fit more than 3 times — read the error (see Troubleshooting) first.
+5. Confirm with the user before running on matrices larger than ~50k genes × 100 samples.
 
 ## Troubleshooting
 
