@@ -323,14 +323,16 @@ All 35 unit [tests](./tests) passed (`pytest skills/bulk-rnaseq/tests`).
 
 | task_id | difficulty | baseline | with skill | outcome |
 |---------|-----------|----------|------------|---------|
-| se-001 | easy | pass (58/60 planted) | pass (58/60) | tie-pass |
-| se-002 | hard (batch) | pass (57/60) | pass (57/60) | tie-pass |
+| se-001 | easy | pass | pass | tie-pass |
+| se-002 | hard (batch) | pass | pass | tie-pass |
 | se-003 | hard (full workflow; no planted threshold set) | pass | pass | tie-pass |
-| se-004 | edge (column name with a space) | pass (58/60) | pass (58/60) | tie-pass |
+| se-004 | edge (column name with a space) | pass | pass | tie-pass |
 
-Final-output parity: 4/4 tie-pass. Both arms completed every task with pydeseq2, correct designs (`~batch + condition` for se-002), and 57-58/60 planted genes recovered in the top 60 by padj.
+`planted_check` is a threshold test, so the committed score files record only whether each run cleared the planted-gene bar, not how many genes it recovered.
 
-**First-attempt reliability**: baseline 4/4 first-attempt success, with skill 2/4 — the with-skill arm hit `KeyError: 'size_factors'` on se-002/se-003 because the Step 4 PCA snippet read `dds.obsm["size_factors"]`, which current pydeseq2 does not populate (size factors live in `dds.obs`, normalized counts in `dds.layers["normed_counts"]`). **Fixed in v0.2**: Step 4 now reads `dds.layers["normed_counts"]` directly, and the same stale reference was corrected in `references/workflow_guide.md` and `references/api_reference.md`. The reliability numbers above are pre-fix and have not been re-measured.
+Final-output parity: 4/4 tie-pass. Both arms completed every task with pydeseq2 and used the correct designs (`~batch + condition` for se-002).
+
+**First-attempt reliability** (read off the run transcripts, not derivable from the committed score files): baseline 4/4 first-attempt success, with skill 2/4 — the with-skill arm hit `KeyError: 'size_factors'` on se-002/se-003 because the Step 4 PCA snippet read `dds.obsm["size_factors"]`, which current pydeseq2 does not populate (size factors live in `dds.obs`, normalized counts in `dds.layers["normed_counts"]`). **Fixed in v0.2**: Step 4 now reads `dds.layers["normed_counts"]` directly, and the same stale reference was corrected in `references/workflow_guide.md` and `references/api_reference.md`. The reliability numbers above are pre-fix and have not been re-measured.
 
 **Failure taxonomy**:
 
@@ -339,7 +341,7 @@ Final-output parity: 4/4 tie-pass. Both arms completed every task with pydeseq2,
 | stale-skill-snippet (size_factors location) | 2 tasks | with skill | fixed in v0.2 |
 | judge-unverifiable-evidence | 6/8 rows | both | judge design issue, not a skill issue — the judge demanded file contents it cannot access |
 
-**Verdict**: tie on final outputs. The base model already handles this domain well; the skill's value on these tasks is convention consistency (plots, exports, design formulas), not task success. Judge scores were **excluded pending human-label validation** — rationale inspection showed the judge grading narrative verifiability rather than completion (a judge-spec error, since corrected in skill-eval's scorer pack), so its TPR/TNR is unknown.
+**Verdict**: tie on final outputs, which fails the default ship gate (it requires at least one win). The base model already handles this domain well; the skill's value on these tasks is convention consistency (plots, exports, design formulas), not task success. Judge scores were **excluded pending human-label validation** — rationale inspection showed the judge grading narrative verifiability rather than completion (a judge-spec error, since corrected in skill-eval's scorer pack), so its TPR/TNR is unknown.
 
 **Limitations**: 4 tasks, one dataset family (synthetic negative-binomial counts) — directional only. A discriminating eval needs harder tasks: messier real data, multi-factor designs, larger scale, or tasks where naive DESeq2 usage fails.
 
@@ -352,7 +354,9 @@ python3 skills/skill-eval/scripts/compare_runs.py \
   --difficulty skills/skill-eval/assets/dogfood-bulk-rnaseq/difficulties.json
 ```
 
-The persisted score files still include the unvalidated judge metric (`task_completion`), so the raw comparison reports 1 win / 1 regression / 2 tie-fail. The verdict above excludes the judge; on deterministic scorers alone every task is tie-pass.
+The persisted score files still include the unvalidated judge metric (`task_completion`), so that command prints `1 win | 1 regression | 2 tie-fail` and `SHIP GATE PASS`. Both numbers come from the judge, and the gate passes only because the one regression falls on an `edge` task rather than an `easy` one.
+
+Drop `task_completion` from both files and the same command prints `0 wins | 0 regressions | 4 tie-pass` and `SHIP GATE FAIL (no wins)`. That is the honest reading of this eval. On the deterministic scorers the skill neither helped nor hurt the final output, and a tie does not clear a gate that requires a win.
 
 ### Manual comparison vs publication
 

@@ -119,6 +119,7 @@ class TaskComparison:
 class Comparison:
     tasks: list[TaskComparison]
     unpaired: dict[str, str] = field(default_factory=dict)  # task_id -> which file lacks it
+    no_common_metrics: list[str] = field(default_factory=list)  # task_id present in both, 0 shared
 
     def counts(self) -> dict[str, int]:
         c = {OUTCOME_WIN: 0, OUTCOME_REGRESSION: 0, OUTCOME_TIE_PASS: 0, OUTCOME_TIE_FAIL: 0}
@@ -144,9 +145,27 @@ class Comparison:
         ]
 
     @property
+    def unlabeled_regressions(self) -> list[str]:
+        """task_ids of regressions with no difficulty label, so easiness is unknown."""
+        return [t.task_id for t in self.tasks if t.outcome == OUTCOME_REGRESSION and not t.difficulty]
+
+    @property
+    def unlabeled_tasks(self) -> list[str]:
+        """Paired task_ids missing from the difficulty map."""
+        return [t.task_id for t in self.tasks if not t.difficulty]
+
+    @property
     def ship_gate_passed(self) -> bool:
-        """Default ship rule: at least one win AND zero regressions on easy tasks."""
-        return self.counts()[OUTCOME_WIN] > 0 and not self.easy_regressions
+        """Ship rule: at least one win, and no regression that is easy or unlabeled.
+
+        An unlabeled regression blocks the gate because a partial difficulty map
+        must not let an easy-task regression through unnoticed.
+        """
+        return (
+            self.counts()[OUTCOME_WIN] > 0
+            and not self.easy_regressions
+            and not self.unlabeled_regressions
+        )
 
 
 def compare(
@@ -165,6 +184,7 @@ def compare(
         raise ValueError(f"pass_rule must be one of {PASS_RULES}, got {pass_rule!r}")
 
     unpaired: dict[str, str] = {}
+    no_common_metrics: list[str] = []
     paired_ids: list[str] = []
     for task_id in baseline:
         if task_id in candidate:
@@ -186,7 +206,7 @@ def compare(
         }
         if not common:
             # No comparable evidence — do not count this task in rates at all.
-            unpaired[task_id] = "comparable metrics (no shared metric keys)"
+            no_common_metrics.append(task_id)
             continue
         b_pass = task_passed({m: b_metrics[m] for m in common}, pass_rule)
         c_pass = task_passed({m: c_metrics[m] for m in common}, pass_rule)
@@ -202,7 +222,7 @@ def compare(
                 difficulty=(difficulty or {}).get(task_id),
             )
         )
-    return Comparison(tasks=tasks, unpaired=unpaired)
+    return Comparison(tasks=tasks, unpaired=unpaired, no_common_metrics=no_common_metrics)
 
 
 def gate_evaluable(comp: Comparison) -> bool:
@@ -226,8 +246,19 @@ def format_text(comp: Comparison) -> str:
             reasons.append("no wins")
         if comp.easy_regressions:
             reasons.append(f"easy regressions: {', '.join(comp.easy_regressions)}")
+        if comp.unlabeled_regressions:
+            reasons.append(
+                f"regressions with no difficulty label: {', '.join(comp.unlabeled_regressions)}"
+            )
         suffix = f" ({'; '.join(reasons)})" if reasons else ""
         lines.append(f"{verdict}{suffix}")
+        if comp.unlabeled_tasks:
+            lines.append(
+                f"NOTE: no difficulty label for {', '.join(comp.unlabeled_tasks)} "
+                "— the difficulty map is incomplete."
+            )
+    elif comp.tasks:
+        lines.append("SHIP GATE NOT EVALUATED (pass --difficulty to enable it)")
     lines.append("")
     for t in comp.tasks:
         diff = f" [{t.difficulty}]" if t.difficulty else ""
@@ -242,6 +273,10 @@ def format_text(comp: Comparison) -> str:
             lines.append(f"    {metric}: excluded (missing from {missing_in} file)")
     for task_id, missing_in in sorted(comp.unpaired.items()):
         lines.append(f"UNPAIRED: task '{task_id}' missing from {missing_in} file (excluded)")
+    for task_id in sorted(comp.no_common_metrics):
+        lines.append(
+            f"UNCOMPARABLE: task '{task_id}' is in both files but shares no metric (excluded)"
+        )
     return "\n".join(lines)
 
 
@@ -272,9 +307,26 @@ def format_markdown(comp: Comparison) -> str:
             reasons.append("no wins")
         if comp.easy_regressions:
             reasons.append(f"easy regressions: {', '.join(comp.easy_regressions)}")
+        if comp.unlabeled_regressions:
+            reasons.append(
+                f"regressions with no difficulty label: {', '.join(comp.unlabeled_regressions)}"
+            )
         suffix = f" — {'; '.join(reasons)}" if reasons else ""
         lines.append(f"{verdict}{suffix}")
+        if comp.unlabeled_tasks:
+            lines.append(
+                f"No difficulty label for {', '.join(comp.unlabeled_tasks)}. "
+                "The difficulty map is incomplete."
+            )
+    elif comp.tasks:
+        lines.append("**Ship gate not evaluated** — pass `--difficulty` to enable it.")
     notes = [
+        f"- `{t.task_id}` metric `{m}` flipped to {flip}"
+        for t in comp.tasks
+        for m, flip in sorted(t.metric_flips.items())
+        if flip in (OUTCOME_WIN, OUTCOME_REGRESSION)
+    ]
+    notes += [
         f"- `{t.task_id}` metric `{m}` excluded (missing from {missing_in} file)"
         for t in comp.tasks
         for m, missing_in in sorted(t.excluded_metrics.items())
@@ -282,6 +334,10 @@ def format_markdown(comp: Comparison) -> str:
     notes += [
         f"- UNPAIRED: `{task_id}` missing from {missing_in} file (excluded)"
         for task_id, missing_in in sorted(comp.unpaired.items())
+    ]
+    notes += [
+        f"- UNCOMPARABLE: `{task_id}` is in both files but shares no metric (excluded)"
+        for task_id in sorted(comp.no_common_metrics)
     ]
     if notes:
         lines.append("")
@@ -316,8 +372,16 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(format_markdown(comp) if args.format == "markdown" else format_text(comp))
-    if args.strict and gate_evaluable(comp) and not comp.ship_gate_passed:
-        return 1
+    if args.strict:
+        if not gate_evaluable(comp):
+            print(
+                "--strict requires an evaluable ship gate: pass --difficulty with a label "
+                "for at least one paired task.",
+                file=sys.stderr,
+            )
+            return 1
+        if not comp.ship_gate_passed:
+            return 1
     return 0
 
 

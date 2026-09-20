@@ -70,7 +70,19 @@ def test_compare_metric_flips_only_common_metrics():
     baseline = {"t1": {"a": True, "b": False}}
     candidate = {"t1": {"a": True, "c": False}}
     comp = compare(baseline, candidate)
-    assert set(comp.tasks[0].metric_flips) == {"a"}
+    assert comp.tasks[0].metric_flips == {"a": OUTCOME_TIE_PASS}
+
+
+def test_compare_metric_flips_classify_each_direction():
+    baseline = {"t1": {"up": False, "down": True, "same_pass": True, "same_fail": False}}
+    candidate = {"t1": {"up": True, "down": False, "same_pass": True, "same_fail": False}}
+    comp = compare(baseline, candidate)
+    assert comp.tasks[0].metric_flips == {
+        "up": OUTCOME_WIN,
+        "down": OUTCOME_REGRESSION,
+        "same_pass": OUTCOME_TIE_PASS,
+        "same_fail": OUTCOME_TIE_FAIL,
+    }
 
 
 def test_compare_unpaired_excluded_and_reported():
@@ -136,14 +148,17 @@ def test_main_no_paired_tasks_returns_1(tmp_path, capsys):
     assert "No paired tasks" in capsys.readouterr().err
 
 
-def test_main_pass_rule_any_metric(tmp_path, capsys):
+def test_main_pass_rule_any_metric_changes_outcome(tmp_path, capsys):
     b = tmp_path / "b.json"
     c = tmp_path / "c.json"
     b.write_text(json.dumps({"t1": {"m1": True, "m2": False}}))
     c.write_text(json.dumps({"t1": {"m1": True, "m2": False}}))
-    rc = main([str(b), str(c), "--pass-rule", "any_metric"])
-    assert rc == 0
-    assert "tie-pass" in capsys.readouterr().out
+
+    assert main([str(b), str(c), "--pass-rule", "all_metrics"]) == 0
+    assert "t1: baseline=FAIL candidate=FAIL -> tie-fail" in capsys.readouterr().out
+
+    assert main([str(b), str(c), "--pass-rule", "any_metric"]) == 0
+    assert "t1: baseline=PASS candidate=PASS -> tie-pass" in capsys.readouterr().out
 
 
 def test_main_format_markdown(tmp_path, capsys):
@@ -203,7 +218,7 @@ def test_asymmetric_metrics_reported_in_text():
 def test_zero_shared_metrics_excluded_from_rates():
     comp = compare({"t1": {"a": False}}, {"t1": {"b": False}})
     assert comp.tasks == []
-    assert "t1" in comp.unpaired
+    assert comp.no_common_metrics == ["t1"]
     assert comp.win_rate == 0.0
 
 
@@ -267,3 +282,50 @@ def test_main_strict_exit_codes(tmp_path, capsys):
     b.write_text(json.dumps({"t1": {"m": False}}))
     c.write_text(json.dumps({"t1": {"m": True}}))
     assert main([str(b), str(c), "--difficulty", str(d), "--strict"]) == 0
+
+
+def test_unlabeled_regression_blocks_gate():
+    """A partial difficulty map must not let a regression through unchecked."""
+    comp = compare(
+        {"t1": {"m": False}, "t2": {"m": True}},
+        {"t1": {"m": True}, "t2": {"m": False}},
+        difficulty={"t1": "easy"},
+    )
+    assert comp.counts()[OUTCOME_WIN] == 1
+    assert comp.counts()[OUTCOME_REGRESSION] == 1
+    assert comp.unlabeled_regressions == ["t2"]
+    assert comp.ship_gate_passed is False
+    text = format_text(comp)
+    assert "regressions with no difficulty label: t2" in text
+    assert "difficulty map is incomplete" in text
+
+
+def test_main_strict_fails_when_gate_not_evaluable(tmp_path, capsys):
+    """--strict without --difficulty must not report success."""
+    b = tmp_path / "b.json"
+    c = tmp_path / "c.json"
+    b.write_text(json.dumps({"t1": {"m": True}}))
+    c.write_text(json.dumps({"t1": {"m": False}}))
+    rc = main([str(b), str(c), "--strict"])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "--strict requires an evaluable ship gate" in captured.err
+    assert "SHIP GATE NOT EVALUATED" in captured.out
+
+
+def test_no_shared_metrics_is_not_an_unpaired_task():
+    """A task in both files with no shared metric is reported as uncomparable."""
+    comp = compare({"t1": {"a": True}}, {"t1": {"b": True}})
+    assert comp.unpaired == {}
+    assert "UNCOMPARABLE: task 't1' is in both files but shares no metric" in format_text(comp)
+
+
+def test_markdown_renders_metric_flips():
+    comp = compare(
+        {"t1": {"a": True, "b": True}},
+        {"t1": {"a": False, "b": True}},
+        difficulty={"t1": "easy"},
+    )
+    md = format_markdown(comp)
+    assert "`t1` metric `a` flipped to regression" in md
+    assert "`b`" not in md.split("Regressions:")[1]

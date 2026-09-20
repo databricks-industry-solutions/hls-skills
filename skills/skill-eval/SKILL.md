@@ -117,6 +117,7 @@ Run both datasets through `mlflow.genai.evaluate()` into the **same experiment**
 
 ```bash
 # from the repository root; --difficulty enables the ship gate, --strict exits 1 on gate fail (CI)
+# --strict also exits 1 if --difficulty is missing, since the gate cannot be evaluated without it
 python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skill_scores.json \
     --difficulty difficulties.json [--strict]
 # -> per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, SHIP GATE PASS/FAIL verdict
@@ -139,7 +140,7 @@ Read every task that ended `tie-fail` or `regression` in either arm. Open-code t
 | `judge_model` | `databricks:/databricks-gpt-5-mini` | any served judge endpoint | Judge cost/quality; must differ from generator model |
 | `score_mode` | `precomputed` | `precomputed`, `predict_fn` | `precomputed` for Genie Code sessions; `predict_fn` only if a code agent can be replayed programmatically |
 | `pass_rule` | `all_metrics` | `all_metrics`, `any_metric` | Task-level pass definition used by compare_runs.py |
-| `ship_threshold` | `win_rate > 0` and `no regressions on easy tasks` | team policy | Ship/no-ship gate; the script checks the easy-task rule when given `--difficulty` |
+| `ship_threshold` | `win_rate > 0` and `no regressions on easy or unlabeled tasks` | team policy | Ship/no-ship gate. The script checks it when given `--difficulty`. A regression on a task missing from the difficulty map also blocks the gate, so a partial map cannot hide one |
 
 ## Common Recipes
 

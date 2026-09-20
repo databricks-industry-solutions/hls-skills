@@ -72,7 +72,7 @@ Task-level outcome (default `all_metrics` pass rule): task passes iff all metric
 
 - **win_rate** = wins / total paired tasks
 - **regression_rate** = regressions / total paired tasks
-- Ship rule of thumb: win_rate > 0 AND zero regressions on easy tasks (pass `--difficulty` to have the script check this). Anything else needs error analysis before a decision.
+- Ship rule of thumb: win_rate > 0 AND zero regressions on easy tasks (pass `--difficulty` to have the script check this). A regression on a task the difficulty map does not label also blocks the gate, because the script cannot tell whether that task was easy. Anything else needs error analysis before a decision.
 
 With 3-5 tasks, treat the numbers as directional. One flip = 20-33% swing; report the flips themselves, not just rates.
 
@@ -83,7 +83,7 @@ With 3-5 tasks, treat the numbers as directional. One flip = 20-33% swing; repor
 python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skill_scores.json
 python3 skills/skill-eval/scripts/compare_runs.py baseline.json with_skill.json \
     --pass-rule any_metric --format markdown --difficulty difficulties.json
-# CI: --strict exits 1 when the ship gate fails
+# CI: --strict exits 1 when the ship gate fails, and also when --difficulty is absent
 python3 skills/skill-eval/scripts/compare_runs.py baseline.json with_skill.json \
     --difficulty difficulties.json --strict
 ```
