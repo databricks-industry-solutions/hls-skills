@@ -161,6 +161,16 @@ Load the matching reference file on demand and adapt variable names to the user'
    - Packages: `gseapy`, `pandas`, `matplotlib`, `networkx`, `seaborn`.
    - Install: `pip install gseapy`. Internet required unless a local `.gmt` is supplied.
 
+## Guardrails
+
+1. Apply the Decision Framework before the first `gp.enrichr` / `gp.prerank` / `gp.gsea` call — do not pick a method after seeing results.
+2. Never pool up- and down-regulated genes into one ORA call; run each direction separately.
+3. Check symbol overlap against the chosen library before interpreting. A near-zero overlap is an identifier problem (e.g. Ensembl IDs against symbol-based libraries), not absent biology.
+4. Treat an Enrichr network or API failure as a failure, not an empty result. Report it, or fall back to a local `.gmt` via `gene_sets=`; never state "no enriched pathways" on the back of a failed request.
+5. State the significance threshold with every result set. GSEA/Prerank hits are reported at FDR q < 0.25 and must not be presented as significant at the ORA adjusted P < 0.05 bar.
+6. Do not retry a failing enrichment more than 3 times — read the error (see Troubleshooting) first.
+7. Confirm with the user before heavy workloads: `permutation_num` above 1000, sweeping many contrasts in one run, or standard `gp.gsea` on large expression matrices.
+
 ## Related Skills
 
 - `bulk-rnaseq` — upstream differential expression (DESeq2); produce the ranked lists and DEG tables this guide consumes.
