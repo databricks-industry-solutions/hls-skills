@@ -35,7 +35,7 @@ pip install "pydeseq2>=0.5"
 # or: conda install -c bioconda pydeseq2
 ```
 
-Snippets here are verified against pydeseq2 0.5.4. Where size factors and normalized counts are stored moved between releases, so the workflow reads `dds.layers["normed_counts"]`, which is stable across 0.4 and 0.5.
+Snippets here are verified against pydeseq2 0.5.4. The storage location of size factors and normalized counts changed between releases, so the workflow reads `dds.layers["normed_counts"]`, which is stable across 0.4 and 0.5.
 
 Python 3.10–3.11 recommended.
 

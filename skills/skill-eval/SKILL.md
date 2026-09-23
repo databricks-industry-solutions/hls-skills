@@ -47,7 +47,7 @@ python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skil
 
 ### Step 1: Define Benchmark Tasks
 
-Author 3-5 tasks that represent the skill's core jobs, each with ground truth a grader could check. Vary difficulty: at least one easy, one hard, one adversarial/edge case. Store as an evalset (one JSON object per task: `task_id`, `query`, `expectations`).
+Author 3-5 tasks that represent the skill's core jobs, each with ground truth a grader could check. Vary difficulty: at least one easy, one hard, one adversarial/edge case. Store as an evalset — one JSON object per task with `task_id`, `query`, `difficulty` (`easy`/`hard`/`edge`), and `expectations`. `compare_runs.py --difficulty` reads a `{task_id: difficulty}` map lifted from that same `difficulty` field (see the dogfood assets), so the label lives in one place.
 
 - Full schema + the dimension-tuple method for coverage: `references/benchmark-tasks.md`
 
@@ -55,6 +55,7 @@ Author 3-5 tasks that represent the skill's core jobs, each with ground truth a 
 {
   "task_id": "rnaseq-001",
   "query": "Run DESeq2 on <volume path> and list top 10 DE genes by padj",
+  "difficulty": "easy",
   "expectations": {
     "expected_facts": ["Table contains padj column", "EGFR in top 10"],
     "guidelines": ["No fabricated gene names"]
@@ -117,8 +118,10 @@ Run both datasets through `mlflow.genai.evaluate()` into the **same experiment**
 
 ```bash
 # from the repository root; --difficulty enables the ship gate, --strict exits 1 on gate fail (CI)
-# --strict also exits 1 if --difficulty is missing, since the gate cannot be evaluated without it
-# --gate no-regressions drops the win requirement (see the regression re-run recipe)
+# --strict also exits 1 if --difficulty is missing, or if any task is unpaired/uncomparable
+#   (a candidate that dropped a task must not ship on the surviving subset; --allow-incomplete overrides)
+# --gate no-regressions drops the win requirement — use it for a regression re-run, and for a
+#   convention-value skill whose honest result is parity (all tie-pass, which the default gate fails)
 python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skill_scores.json \
     --difficulty difficulties.json [--strict]
 # -> per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, SHIP GATE PASS/FAIL verdict
@@ -229,6 +232,7 @@ Findings that changed this skill:
 1. **Judge scope bug (found, fixed in scorer-pack)**: the stock `task_completion` judge demanded artifact *contents* it cannot access and graded narrative verifiability — its flips were pure noise against deterministic ground truth. Judges must only grade what the provided `{{ inputs }}/{{ outputs }}` can actually evidence; artifact existence belongs to deterministic scorers.
 2. **Easy tasks don't discriminate**: base model completed all tasks unaided (parity 4/4 tie-pass). Task design rule added: include at least one task where the naive approach fails, or accept that parity is the honest result.
 3. **Extraction path**: per-row results are not run artifacts in MLflow 3.x — read scorer values from trace assessments (`mlflow.search_traces`) or the `EvaluationResult` object. paired-comparison.md documents this.
+4. **Extraction column names (found on re-validation, MLflow 3.16, 2026-09-23)**: the `eval_results` table and `search_traces` frames name the input column `request`, not `inputs` — the earlier recipe's `r["inputs"]["task_id"]` raised `KeyError: 'inputs'`. Fixed in paired-comparison.md: read `task_id` from `request` (dict or JSON string). The same run re-confirmed the judge-noise finding live — a stock `task_completion` judge marked a crashed baseline `yes` and a clean candidate `no`, while the deterministic scorers cleanly scored the crash 0/3 and the fix 3/3.
 
 ## Bundled Resources
 

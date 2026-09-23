@@ -187,15 +187,6 @@ def test_main_difficulty_ship_gate(tmp_path, capsys):
     assert "t1" in out
 
 
-def test_easy_regressions_only_flags_easy():
-    comp = compare(
-        {"t1": {"m": True}, "t2": {"m": True}},
-        {"t1": {"m": False}, "t2": {"m": False}},
-        difficulty={"t1": "easy", "t2": "hard"},
-    )
-    assert comp.easy_regressions == ["t1"]
-
-
 def test_asymmetric_metrics_pass_computed_on_common_only():
     # baseline has extra metric b (False) — must not drag baseline to FAIL
     comp = compare(
@@ -357,6 +348,66 @@ def test_main_reports_metric_name_mismatch_not_task_id_mismatch(tmp_path, capsys
     assert rc == 1
     assert "share no metric name" in err
     assert "task_id values match" not in err
+
+
+def test_main_strict_fails_on_unpaired_task(tmp_path, capsys):
+    """A candidate that dropped a task must not clear the gate under --strict."""
+    b = tmp_path / "b.json"
+    c = tmp_path / "c.json"
+    d = tmp_path / "d.json"
+    d.write_text(json.dumps({"t1": "easy", "t2": "hard"}))
+    # t1 is a clean win; t2 (which baseline passed) is missing from the candidate.
+    b.write_text(json.dumps({"t1": {"m": False}, "t2": {"m": True}}))
+    c.write_text(json.dumps({"t1": {"m": True}}))
+    rc = main([str(b), str(c), "--difficulty", str(d), "--strict"])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "complete comparison" in captured.err
+    # --allow-incomplete ships on the paired subset (t1 win, no regressions).
+    assert main([str(b), str(c), "--difficulty", str(d), "--strict", "--allow-incomplete"]) == 0
+
+
+def test_main_strict_fails_on_uncomparable_task(tmp_path, capsys):
+    """A task present in both files but sharing no metric blocks --strict."""
+    b = tmp_path / "b.json"
+    c = tmp_path / "c.json"
+    d = tmp_path / "d.json"
+    d.write_text(json.dumps({"t1": "easy", "t2": "hard"}))
+    b.write_text(json.dumps({"t1": {"m": False}, "t2": {"planted_check": True}}))
+    c.write_text(json.dumps({"t1": {"m": True}, "t2": {"planted_genes_check": True}}))
+    rc = main([str(b), str(c), "--difficulty", str(d), "--strict"])
+    assert rc == 1
+    assert "complete comparison" in capsys.readouterr().err
+
+
+def test_main_strict_fails_on_partial_metric_rename(tmp_path, capsys):
+    """Renaming only the metric that would regress must not clear --strict."""
+    b = tmp_path / "b.json"
+    c = tmp_path / "c.json"
+    d = tmp_path / "d.json"
+    d.write_text(json.dumps({"t1": "easy", "t2": "hard"}))
+    # t1: clean win. t2: baseline would regress on `regressing`, but the candidate
+    # renamed that metric, so only `shared` is compared -> tie-pass hides the loss.
+    b.write_text(json.dumps({"t1": {"m": False}, "t2": {"shared": True, "regressing": True}}))
+    c.write_text(json.dumps({"t1": {"m": True}, "t2": {"shared": True, "renamed": False}}))
+    rc = main([str(b), str(c), "--difficulty", str(d), "--strict"])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "complete comparison" in captured.err
+    # The non-strict verdict must carry the incompleteness caveat, not a bare PASS.
+    assert "comparison incomplete" in captured.out
+    # --allow-incomplete ships on the paired subset deliberately.
+    assert main([str(b), str(c), "--difficulty", str(d), "--strict", "--allow-incomplete"]) == 0
+
+
+def test_allow_incomplete_without_strict_warns(tmp_path, capsys):
+    b = tmp_path / "b.json"
+    c = tmp_path / "c.json"
+    b.write_text(json.dumps({"t1": {"m": False}}))
+    c.write_text(json.dumps({"t1": {"m": True}}))
+    rc = main([str(b), str(c), "--allow-incomplete"])
+    assert rc == 0
+    assert "no effect without --strict" in capsys.readouterr().err
 
 
 def test_main_strict_fails_when_gate_not_evaluable(tmp_path, capsys):

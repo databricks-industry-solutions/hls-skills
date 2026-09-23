@@ -104,10 +104,6 @@ def outcome(baseline_pass: bool, candidate_pass: bool) -> str:
     return OUTCOME_TIE_FAIL
 
 
-def metric_flip(baseline_val: bool, candidate_val: bool) -> str:
-    return outcome(baseline_val, candidate_val)
-
-
 @dataclass
 class TaskComparison:
     task_id: str
@@ -138,15 +134,6 @@ class Comparison:
     @property
     def regression_rate(self) -> float:
         return self.counts()[OUTCOME_REGRESSION] / len(self.tasks) if self.tasks else 0.0
-
-    @property
-    def easy_regressions(self) -> list[str]:
-        """task_ids of regressions on tasks marked easy via --difficulty."""
-        return [
-            t.task_id
-            for t in self.tasks
-            if t.outcome == OUTCOME_REGRESSION and t.difficulty == "easy"
-        ]
 
     @property
     def regressions(self) -> list[TaskComparison]:
@@ -221,7 +208,7 @@ def compare(
             continue
         b_pass = task_passed({m: b_metrics[m] for m in common}, pass_rule)
         c_pass = task_passed({m: c_metrics[m] for m in common}, pass_rule)
-        flips = {m: metric_flip(b_metrics[m], c_metrics[m]) for m in common}
+        flips = {m: outcome(b_metrics[m], c_metrics[m]) for m in common}
         tasks.append(
             TaskComparison(
                 task_id=task_id,
@@ -241,8 +228,45 @@ def gate_evaluable(comp: Comparison) -> bool:
     return bool(comp.tasks) and any(t.difficulty for t in comp.tasks)
 
 
+def comparison_complete(comp: Comparison) -> bool:
+    """Every task paired, and every metric shared by both arms.
+
+    Three ways a comparison hides evidence, all of which let a candidate that
+    crashed on — or renamed the metrics of — a would-be regression clear the
+    gate on the surviving signal:
+      - unpaired: a task_id present in only one file;
+      - no_common_metrics: a task in both files sharing zero metric names;
+      - excluded_metrics: a task where *some* metric names differ, so the odd
+        ones (possibly the very metric that regressed) drop out of the verdict.
+    --strict treats all three as failure unless --allow-incomplete is set.
+    """
+    return (
+        not comp.unpaired
+        and not comp.no_common_metrics
+        and not any(t.excluded_metrics for t in comp.tasks)
+    )
+
+
 def _regression_labels(comp: Comparison) -> str:
     return ", ".join(f"{t.task_id} ({t.difficulty or 'no label'})" for t in comp.regressions)
+
+
+def _incompleteness_summary(comp: Comparison) -> str | None:
+    """One-line description of hidden evidence, or None when the comparison is complete."""
+    if comparison_complete(comp):
+        return None
+    parts = []
+    if comp.unpaired:
+        parts.append(f"{len(comp.unpaired)} unpaired")
+    if comp.no_common_metrics:
+        parts.append(f"{len(comp.no_common_metrics)} uncomparable")
+    partial = [t.task_id for t in comp.tasks if t.excluded_metrics]
+    if partial:
+        parts.append(f"{len(partial)} with metrics on only one arm")
+    return (
+        f"comparison incomplete ({'; '.join(parts)}) — the verdict is on the paired subset "
+        "only; a dropped or renamed metric could hide a regression (see detail below)"
+    )
 
 
 def format_text(comp: Comparison, gate_mode: str = GATE_DEFAULT) -> str:
@@ -264,6 +288,9 @@ def format_text(comp: Comparison, gate_mode: str = GATE_DEFAULT) -> str:
             reasons.append(f"regressions: {_regression_labels(comp)}")
         suffix = f" ({'; '.join(reasons)})" if reasons else ""
         lines.append(f"{verdict}{suffix}")
+        incomplete = _incompleteness_summary(comp)
+        if incomplete:
+            lines.append(f"NOTE: {incomplete}")
         if comp.unlabeled_tasks:
             lines.append(
                 f"NOTE: no difficulty label for {', '.join(comp.unlabeled_tasks)} "
@@ -322,6 +349,9 @@ def format_markdown(comp: Comparison, gate_mode: str = GATE_DEFAULT) -> str:
             reasons.append(f"regressions: {_regression_labels(comp)}")
         suffix = f" — {'; '.join(reasons)}" if reasons else ""
         lines.append(f"{verdict}{suffix}")
+        incomplete = _incompleteness_summary(comp)
+        if incomplete:
+            lines.append(f"_{incomplete}_")
         if comp.unlabeled_tasks:
             lines.append(
                 f"No difficulty label for {', '.join(comp.unlabeled_tasks)}. "
@@ -377,9 +407,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Exit 1 when the ship gate fails (for CI)",
+        help="Exit 1 when the ship gate fails, --difficulty is absent, or any task is unpaired/uncomparable (for CI)",
+    )
+    parser.add_argument(
+        "--allow-incomplete",
+        action="store_true",
+        help="Under --strict, do not fail on unpaired/uncomparable tasks (they are still excluded from rates)",
     )
     args = parser.parse_args(argv)
+
+    if args.allow_incomplete and not args.strict:
+        print(
+            "WARNING: --allow-incomplete has no effect without --strict; it only relaxes "
+            "the strict completeness check.",
+            file=sys.stderr,
+        )
 
     baseline = load_scores(args.baseline)
     candidate = load_scores(args.candidate)
@@ -406,6 +448,14 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(format_text(comp, gate_mode=args.gate))
     if args.strict:
+        if not args.allow_incomplete and not comparison_complete(comp):
+            print(
+                "--strict requires a complete comparison: every task must be paired and "
+                "share at least one metric. Fix the dropped/renamed tasks reported above, "
+                "or pass --allow-incomplete to ship on the paired subset anyway.",
+                file=sys.stderr,
+            )
+            return 1
         if not gate_evaluable(comp):
             print(
                 "--strict requires an evaluable ship gate: pass --difficulty with a label "
