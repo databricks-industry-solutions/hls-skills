@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math as _math
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,6 +40,10 @@ def _to_bool(value, context: str) -> bool:
     """Strict score coercion — unknown values are an error, never silently False."""
     if isinstance(value, bool):
         return value
+    if value is None:
+        raise ValueError(f"{context}: score is None (scorer produced no value)")
+    if isinstance(value, float) and _math.isnan(value):
+        raise ValueError(f"{context}: score is NaN (scorer produced no value)")
     normalized = str(value).strip().lower()
     if normalized in TRUTHY:
         return True
@@ -68,20 +73,49 @@ DIFFICULTIES = ("easy", "hard", "edge")
 
 
 def load_difficulty(path: str | Path) -> dict[str, str]:
-    """Load {task_id: easy|hard|edge} with strict label validation."""
+    """Load {task_id: easy|hard|edge} with strict label validation.
+
+    Accepts two formats:
+    - Legacy: a flat dict {task_id: "easy"|"hard"|"edge"}.
+    - Expectations: an array of task objects with task_id and difficulty fields,
+      e.g. [{"task_id": "rwe-001", "difficulty": "easy", ...}, ...].
+    """
     with open(path, encoding="utf-8") as f:
         raw = json.load(f)
-    if not isinstance(raw, dict):
-        raise ValueError(f"{path}: difficulty file must be an object of task_id -> difficulty")
     out: dict[str, str] = {}
-    for task_id, level in raw.items():
-        label = str(level).strip().lower()
-        if label not in DIFFICULTIES:
-            raise ValueError(
-                f"{path}: task '{task_id}' has invalid difficulty {level!r} "
-                f"(expected one of {DIFFICULTIES})"
-            )
-        out[str(task_id)] = label
+    if isinstance(raw, list):
+        # Expectations array format: extract task_id and difficulty from each object.
+        for i, task in enumerate(raw):
+            if not isinstance(task, dict):
+                raise ValueError(f"{path}: element {i} is not an object")
+            task_id = task.get("task_id")
+            if task_id is None:
+                raise ValueError(f"{path}: element {i} has no task_id")
+            level = task.get("difficulty")
+            if level is None:
+                raise ValueError(f"{path}: task '{task_id}' has no difficulty field")
+            label = str(level).strip().lower()
+            if label not in DIFFICULTIES:
+                raise ValueError(
+                    f"{path}: task '{task_id}' has invalid difficulty {level!r} "
+                    f"(expected one of {DIFFICULTIES})"
+                )
+            out[str(task_id)] = label
+    elif isinstance(raw, dict):
+        # Legacy flat dict format.
+        for task_id, level in raw.items():
+            label = str(level).strip().lower()
+            if label not in DIFFICULTIES:
+                raise ValueError(
+                    f"{path}: task '{task_id}' has invalid difficulty {level!r} "
+                    f"(expected one of {DIFFICULTIES})"
+                )
+            out[str(task_id)] = label
+    else:
+        raise ValueError(
+            f"{path}: expected a JSON array (expectations) or object (legacy difficulties dict), "
+            f"got {type(raw).__name__}"
+        )
     return out
 
 
@@ -392,7 +426,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format", choices=("text", "markdown"), default="text")
     parser.add_argument(
         "--difficulty",
-        help="Optional JSON {task_id: easy|hard|edge} from the evalset; enables the ship gate",
+        help="JSON file with task difficulty labels (evalset array or legacy {task_id: level} dict); enables the ship gate",
     )
     parser.add_argument(
         "--gate",
