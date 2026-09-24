@@ -25,3 +25,20 @@ If you are contributing on behalf of an organization, you confirm that you have 
 4. Folder name must match frontmatter `name`. Check format with `test_skill_quality.py`
 5. Update the skill table in `README.md` (Table to be created).
 6. Open a PR and request a second-party review.
+
+## Checks
+
+CI (`.github/workflows/ci.yml`) runs on every non-draft PR. Run the same checks locally with [uv](https://docs.astral.sh/uv/) from the repository root:
+
+```bash
+# SKILL.md quality gate for every skill + sync bundle filter
+uv run --isolated --with pytest python -m pytest -q tests
+
+# One skill's unit tests, with its test-only deps if it declares any
+uv run --isolated --with pytest --with-requirements skills/<name>/tests/requirements.txt \
+    python -m pytest -q skills/<name>/tests
+```
+
+- Put a skill's test-only dependencies in `skills/<name>/tests/requirements.txt`, pinned to versions you ran. CI finds every `skills/*/tests/` folder automatically.
+- A skill's `eval/` folder is never published by `sync_skills_git2unity.py`; `tests/test_sync_bundle.py` fails if that filter is removed.
+- CI also scans the full git history for secrets with gitleaks.
