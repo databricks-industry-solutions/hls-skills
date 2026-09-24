@@ -10,16 +10,21 @@ description: >
   in observational data, run propensity score analysis, build external control arms, emulate
   a target trial, perform causal inference from EHR/claims data, or conduct comparative
   cohort studies with confounding adjustment.
+author: Yen Low
+version: 0.1
+license: Databricks License
 ---
 
 # Real-World Evidence Analysis in Python
+
+## Overview
 
 This skill provides a complete toolkit for comparative effectiveness research (CER) and
 real-world evidence studies using Python. It maps the standard R-based RWE workflow
 (MatchIt, WeightIt, cobalt, survival, survey, tableone, EValue, tipr) to Python equivalents
 using scikit-learn, statsmodels, lifelines, and custom implementations.
 
-## When to Use This Skill
+## When to Use
 
 Load this skill when the user wants to:
 - Compare two or more treatment groups in observational (non-randomized) data
@@ -69,7 +74,7 @@ warnings.filterwarnings('ignore')
 | twang | sklearn GBM + custom weight extraction | GBM-based PS with balance optimization |
 | optmatch | scipy.optimize.linear_sum_assignment | Optimal matching via Hungarian algorithm |
 
-## Workflow Overview
+## Workflow
 
 1. Define the study question (PICO: population, intervention, comparator, outcome)
 2. Cohort assembly (inclusion/exclusion criteria, treatment assignment, follow-up)
@@ -80,6 +85,27 @@ warnings.filterwarnings('ignore')
 7. Treatment effect estimation (outcome model on adjusted sample/weights)
 8. Sensitivity analysis (E-values, tipping point analysis)
 9. Reporting (baseline table, balance table, effect estimates with CIs, survival curves)
+
+## Guardrails
+
+1. Adjust only for baseline confounders measured before treatment; never put post-treatment variables in the propensity score model.
+2. Check common support before estimating effects; report how many patients fall outside it and trim (Section 4.3) rather than extrapolate.
+3. Do not report an effect until balance is verified: every covariate needs SMD < 0.1 after adjustment.
+4. Never present an unadjusted comparison as a causal effect; confounding by indication is the default in observational data.
+5. Report every effect estimate with a 95% CI; use robust (sandwich) standard errors for weighted models.
+6. Pair every causal estimate with a sensitivity analysis for unmeasured confounding (E-value or tipping point).
+7. For time-to-event outcomes, test proportional hazards (Schoenfeld) before reporting a Cox HR.
+
+## Troubleshooting
+
+| Problem | Likely cause | Fix |
+|---|---|---|
+| Few treated patients matched | Caliper too tight or poor overlap | Check common support; caliper 0.1-0.2 SD of logit(PS) is typical (Section 3) |
+| Extreme IPW weights | PS near 0 or 1 | Stabilize weights, trim at percentiles, or use overlap weights (Section 4) |
+| SMD > 0.1 after adjustment | PS model misspecified | Add interactions or nonlinear terms, or use a GBM PS model; re-check balance |
+| Schoenfeld test rejects PH | Hazards not proportional | Report RMST difference, which does not assume PH (Section 7.3) |
+| Weighted Cox CIs too narrow | Naive SEs ignore weighting | Fit with `robust=True` in lifelines |
+| PS logistic model does not converge | Unscaled or collinear covariates | Standardize covariates, raise `max_iter`, or add L1/L2 regularization |
 
 ---
 
@@ -944,12 +970,12 @@ def baseline_table(data, covariates, treatment_col='treatment',
 9. Report sensitivity analyses (weight truncation, alternative estimators, alternative covariate sets)
 10. Discuss common support and potential for residual confounding
 
-### Methodological References
+## References
 
-- Austin PC. Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. Stat Med. 2009.
-- VanderWeele TJ, Ding P. Sensitivity analysis in observational research: introducing the E-value. Ann Intern Med. 2017.
-- Hernan MA, Robins JM. Using big data to emulate a target trial when a randomized trial is not available. Am J Epidemiol. 2016.
-- Robins JM, Hernan MA, Brumback B. Marginal structural models and causal inference in epidemiology. Epidemiology. 2000.
-- Crump RK et al. Dealing with limited overlap in estimation of average treatment effects. Biometrika. 2009.
-- Li F, Morgan KL, Zaslavsky AM. Balancing covariates via propensity score weighting. JASA. 2018.
-- Stuart EA. Matching methods for causal inference: a review and a look forward. Stat Sci. 2010.
+- Austin PC. Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. Stat Med. 2009. https://doi.org/10.1002/sim.3697
+- VanderWeele TJ, Ding P. Sensitivity analysis in observational research: introducing the E-value. Ann Intern Med. 2017. https://doi.org/10.7326/M16-2607
+- Hernan MA, Robins JM. Using big data to emulate a target trial when a randomized trial is not available. Am J Epidemiol. 2016. https://doi.org/10.1093/aje/kwv254
+- Robins JM, Hernan MA, Brumback B. Marginal structural models and causal inference in epidemiology. Epidemiology. 2000. https://doi.org/10.1097/00001648-200009000-00011
+- Crump RK et al. Dealing with limited overlap in estimation of average treatment effects. Biometrika. 2009. https://doi.org/10.1093/biomet/asn055
+- Li F, Morgan KL, Zaslavsky AM. Balancing covariates via propensity score weighting. JASA. 2018. https://doi.org/10.1080/01621459.2016.1260466
+- Stuart EA. Matching methods for causal inference: a review and a look forward. Stat Sci. 2010. https://doi.org/10.1214/09-STS313
