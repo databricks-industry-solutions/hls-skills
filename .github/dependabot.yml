@@ -1,0 +1,13 @@
+# Keeps the SHA-pinned actions in .github/workflows current: at most one grouped
+# PR a month. Skill test deps (skills/*/tests/requirements.txt) are pinned by hand
+# to versions verified together and are not tracked here.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]

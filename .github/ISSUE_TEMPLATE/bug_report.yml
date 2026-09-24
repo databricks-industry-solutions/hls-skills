@@ -1,0 +1,29 @@
+name: Bug report
+description: A skill gives wrong guidance, its code fails, or repo tooling breaks.
+labels: ["bug"]
+body:
+  - type: input
+    id: skill
+    attributes:
+      label: Skill or file
+      placeholder: "skills/bulk-rnaseq/SKILL.md"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the prompt, the agent's output, or the error text. Remove PHI and credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Agent (Genie Code, Claude Code, ...), Databricks runtime, and package versions if relevant.
