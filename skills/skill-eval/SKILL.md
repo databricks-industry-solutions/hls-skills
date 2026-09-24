@@ -41,7 +41,7 @@ skills/<skill-name>/
     ├── expectations.json    ← difficulty, expectations, deterministic_checks per task (keyed by task_id + dataset)
     ├── generate_data.py     ← synthetic data generator (seeds the volume)
     ├── scorers.py           ← deterministic + LLM judge definitions; exports the `scorers` list
-    ├── score_<skill>.ipynb  ← (generated) scoring notebook: evaluate + compare + report
+    ├── score_<skill>.py  ← (generated) scoring notebook: evaluate + compare + report
     ├── eval_report.md       ← (after running) paired comparison report + failure taxonomy
     ├── baseline_scores.json ← (after running) skill-OFF per-task scores
     └── with_skill_scores.json ← (after running) skill-ON per-task scores
@@ -129,7 +129,7 @@ Reinstall the skill, hard-refresh, repeat the identical queries in fresh chats. 
 
 ### Steps 4–6: Generate the Scoring Notebook
 
-Steps 4 (deterministic scoring), 5 (LLM judges), and 6 (paired comparison) are executed together in a **single scoring notebook** (`score_<skill>.ipynb`) that lives in the skill's `eval/` folder.
+Steps 4 (deterministic scoring), 5 (LLM judges), and 6 (paired comparison) are executed together in a **single scoring notebook** (`score_<skill>.py`) that lives in the skill's `eval/` folder.
 
 **Key rule**: import, don't redefine. The notebook contains zero function definitions:
 
@@ -147,6 +147,7 @@ The notebook runs `mlflow.genai.evaluate()` for both arms into the same experime
 - Full cell structure, reference code, and `scorers.py` contract: `references/scoring-notebook.md`
 - Ready-to-adapt scorer code: `references/scorer-pack.md`
 - Extraction semantics and column naming: `references/paired-comparison.md`
+- Reference implementation: `skills/rwe-cohortstudy/eval/score_rwe_cohortstudy.py`
 
 ### Step 7: Error Analysis and Report
 
@@ -214,7 +215,7 @@ python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candid
 
 ## Expected Outputs
 
-- **Scoring notebook** (`score_<skill>.ipynb`) in `eval/` — imports scorers from `scorers.py`, runs `mlflow.genai.evaluate()` for both arms, extracts scores via `compare_runs.extract_scores()`, calls `compare_runs.main()` with `--format text`, and prints the paired comparison report
+- **Scoring notebook** (`score_<skill>.py`) in `eval/` — imports scorers from `scorers.py`, runs `mlflow.genai.evaluate()` for both arms, extracts scores via `compare_runs.extract_scores()`, calls `compare_runs.main()` with `--format text`, and prints the paired comparison report
 - Two MLflow runs in one experiment (`baseline`, `with_skill`), each with per-task scorer results and linked traces
 - Score JSONs (`baseline_scores.json`, `with_skill_scores.json`) in `eval/` — consumed by `compare_runs.py`
 - Console comparison from `scripts/compare_runs.py`: per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, ship-gate verdict
@@ -271,6 +272,7 @@ Findings that changed this skill:
 
 ### Per-skill eval artifacts (in each skill's `eval/` folder)
 
+- `skills/rwe-cohortstudy/eval/` — reference implementation of the `eval/` convention: evalset, expectations, data generator, scorers, arm notebooks, scoring notebook, score JSONs, eval report
 - `assets/dogfood-bulk-rnaseq/` — (legacy location) bulk-rnaseq eval artifacts; predates the `eval/` convention. Its `evalset.json` (`{"tasks": [...]}` with `difficulty`) is accepted directly by `--difficulty`.
 
 ## References

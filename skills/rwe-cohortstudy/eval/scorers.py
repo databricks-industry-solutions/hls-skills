@@ -339,22 +339,18 @@ Answer with exactly one word: 'yes' or 'no'.
 
 @scorer
 def task_completion_judge(inputs: dict, outputs: dict) -> Feedback:
-    """LLM judge: did the session produce a methodologically sound RWE analysis?"""
-    try:
-        passed = _call_judge(TASK_COMPLETION_PROMPT, inputs, outputs)
-    except Exception as e:
-        return Feedback(name="task_completion", value=False, rationale=f"Judge error: {e}")
-    return Feedback(name="task_completion", value=passed)
+    """LLM judge: did the session produce a methodologically sound RWE analysis?
+
+    Judge errors propagate: MLflow records them as a missing value, which
+    extract_scores rejects, instead of a silent task failure.
+    """
+    return Feedback(name="task_completion", value=_call_judge(TASK_COMPLETION_PROMPT, inputs, outputs))
 
 
 @scorer
 def tool_use_judge(inputs: dict, outputs: dict) -> Feedback:
     """LLM judge: were the right tools/steps used in the right order?"""
-    try:
-        passed = _call_judge(TOOL_USE_PROMPT, inputs, outputs)
-    except Exception as e:
-        return Feedback(name="tool_use_quality", value=False, rationale=f"Judge error: {e}")
-    return Feedback(name="tool_use_quality", value=passed)
+    return Feedback(name="tool_use_quality", value=_call_judge(TOOL_USE_PROMPT, inputs, outputs))
 
 
 # ── Scorer Assembly ────────────────────────────────────────────────────────
@@ -369,71 +365,6 @@ scorers = [
     task_completion_judge,      # Level 2
     tool_use_judge,             # Level 2, process
 ]
-
-# Canonical scorer names — derived from the list above so they stay in sync.
-# LLM judges return Feedback objects whose .name differs from the @scorer function
-# name (e.g. task_completion_judge -> Feedback(name='task_completion')).  Add
-# those Feedback names explicitly so extract_scores can match eval_results columns.
-SCORER_NAMES = (
-    {s.name if hasattr(s, "name") else s.__name__ for s in scorers}
-    | {"task_completion", "tool_use_quality"}   # Feedback names for LLM judges
-)
-
-
-# ── Score Extraction from MLflow EvaluationResult ──────────────────────────
-
-import sys
-from pathlib import Path
-
-# Import _to_bool from compare_runs.py (the canonical bool-coercion utility).
-# compare_runs._to_bool handles None, NaN, and string coercion centrally.
-_COMPARE_RUNS_DIR = str(Path(__file__).resolve().parents[2] / "skill-eval" / "scripts")
-if _COMPARE_RUNS_DIR not in sys.path:
-    sys.path.insert(0, _COMPARE_RUNS_DIR)
-from compare_runs import _to_bool
-
-
-def extract_scores(
-    result,
-    rows: list[dict],
-    scorer_names: set[str] | None = None,
-) -> dict[str, dict[str, bool]]:
-    """Extract per-task boolean scores from an MLflow EvaluationResult.
-
-    Parameters
-    ----------
-    result : mlflow.models.EvaluationResult
-        Return value of ``mlflow.genai.evaluate()``.
-    rows : list[dict]
-        The ``data`` list passed to ``evaluate()``; used to verify all tasks
-        produced scores.
-    scorer_names : set[str] | None
-        Scorer names to extract.  Defaults to ``SCORER_NAMES`` (all scorers
-        defined in this module).
-
-    Returns
-    -------
-    dict[str, dict[str, bool]]
-        ``{task_id: {metric: bool}}`` — the format ``compare_runs.py`` expects.
-    """
-    names = scorer_names or SCORER_NAMES
-    df = result.tables["eval_results"]
-    value_cols = [
-        c for c in df.columns
-        if c.endswith("/value") and c[: -len("/value")] in names
-    ]
-    scores: dict[str, dict[str, bool]] = {}
-    for _, r in df.iterrows():
-        req = json.loads(r["request"]) if isinstance(r["request"], str) else r["request"]
-        tid = req["task_id"]
-        scores[tid] = {
-            col[: -len("/value")]: _to_bool(r[col], context=f"{tid}/{col}")
-            for col in value_cols
-        }
-    missing = {row["inputs"]["task_id"] for row in rows} - set(scores)
-    if missing:
-        raise ValueError(f"No scores returned for tasks: {sorted(missing)}")
-    return scores
 
 
 if __name__ == "__main__":

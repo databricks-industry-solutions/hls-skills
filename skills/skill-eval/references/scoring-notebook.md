@@ -26,7 +26,7 @@ Referenced from SKILL.md Steps 4–6. The scoring notebook is the deliverable th
 | 7 | Build eval rows: candidate | Define `with_skills_outputs` dict, assemble `rows_with_skill` |
 | 8 | Evaluate baseline | `mlflow.genai.evaluate(data=rows_baseline, scorers=all_scorers)` |
 | 9 | Evaluate candidate | `mlflow.genai.evaluate(data=rows_with_skill, scorers=all_scorers)` |
-| 10 | Extract scores + save | `extract_scores(result, rows, all_scorers)` → save `baseline_scores.json`, `with_skill_scores.json` |
+| 10 | Extract scores + save | `extract_scores(result, rows)` → save `baseline_scores.json`, `with_skill_scores.json` |
 | 11 | Paired comparison | `compare_main([...])` → call once with `--format text` (prints directly to stdout) |
 
 ## Cell-by-cell reference code
@@ -99,11 +99,11 @@ rows_baseline = [
 
 ### Cell 10 — Extract scores + save
 
-Extraction uses `compare_runs.extract_scores()`, not inline code. It raises on a missing task or a `None`/`NaN`/non-binary score rather than recording a silent fail:
+Extraction uses `compare_runs.extract_scores()`, not inline code. It raises on a missing task or a `None`/`NaN`/non-binary score rather than recording a silent fail. Metric names come from the `<name>/value` columns, and `name` is the returned `Feedback`'s name when the scorer sets one (rwe-cohortstudy's `task_completion_judge` lands as `task_completion`). Expectations are logged in the same `<key>/value` shape, so by default every `/value` column except the rows' expectation keys is a metric; pass `scorer_names={...}` to name the metrics explicitly:
 
 ```python
-baseline_scores = extract_scores(baseline_result, rows_baseline, all_scorers)
-candidate_scores = extract_scores(candidate_result, rows_with_skill, all_scorers)
+baseline_scores = extract_scores(baseline_result, rows_baseline)
+candidate_scores = extract_scores(candidate_result, rows_with_skill)
 
 # Save to JSON — these are the inputs to compare_runs.py
 with open(f"{EVAL_DIR}/baseline_scores.json", "w") as f:
@@ -147,6 +147,12 @@ The skill author writes one export, `scorers` — a list of all `@scorer` functi
 scorers = [artifact_produced, no_forbidden_content, ..., task_completion_judge, tool_use_judge]
 ```
 
-Nothing is appended to `scorers.py` when the scoring notebook is generated. Extraction (the `request` column, `<scorer>/value` columns, strict bool coercion of `None`/`NaN`/`yes`/`no`/`true`/`false`/`1`/`0`) lives once in `compare_runs.extract_scores()`; do not reimplement it in `scorers.py` or the notebook.
+Nothing is appended to `scorers.py` when the scoring notebook is generated. Extraction (the `request` column, `<name>/value` columns, strict bool coercion of `None`/`NaN`/`yes`/`no`/`true`/`false`/`1`/`0`) lives once in `compare_runs.extract_scores()`; do not reimplement it in `scorers.py` or the notebook.
+
+Judges must let errors propagate. A judge that catches its own exception and returns `Feedback(value=False)` turns an endpoint outage into a task failure the comparison cannot tell apart from a real one. Uncaught, MLflow records the error as a missing value and `extract_scores()` refuses it.
 
 The evaluation report is written to `eval/eval_report.md` (see `references/report-template.md`) — not into the skill's `SKILL.md`.
+
+## Reference implementation
+
+`skills/rwe-cohortstudy/eval/` follows this layout end to end: `evalset.json`, `expectations.json`, `generate_data.py`, `scorers.py`, the two arm notebooks, `score_rwe_cohortstudy.py` (this cell structure), the score JSONs and `eval_report.md`.

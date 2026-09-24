@@ -109,17 +109,29 @@ def load_difficulty(path: str | Path) -> dict[str, str]:
     return out
 
 
-def extract_scores(result, rows: list[dict], scorers: list) -> dict[str, dict[str, bool]]:
+def extract_scores(
+    result, rows: list[dict], scorer_names: set[str] | None = None
+) -> dict[str, dict[str, bool]]:
     """Per-task {task_id: {metric: bool}} from an mlflow.genai.evaluate() result.
 
     The results table keys inputs as `request` (dict or JSON string) and each
-    scorer as `<name>/value`. Raises if any row in `rows` came back unscored.
+    metric as `<name>/value`, where name is the returned Feedback's name when it
+    sets one (so a scorer `task_completion_judge` returning
+    Feedback(name="task_completion") lands as `task_completion/value`).
+    Expectations land in the same `<key>/value` shape, so by default every
+    `/value` column except the rows' expectation keys is a metric; pass
+    `scorer_names` to name the metrics explicitly. Raises if any row in `rows`
+    came back unscored.
     """
-    names = {getattr(s, "name", None) or s.__name__ for s in scorers}
     df = result.tables["eval_results"]
-    value_cols = [c for c in df.columns if c.endswith("/value") and c[: -len("/value")] in names]
+    expectation_keys = {k for row in rows for k in row.get("expectations", {})}
+
+    def is_metric(name: str) -> bool:
+        return name in scorer_names if scorer_names is not None else name not in expectation_keys
+
+    value_cols = [c for c in df.columns if c.endswith("/value") and is_metric(c[: -len("/value")])]
     if not value_cols:
-        raise ValueError(f"no '<scorer>/value' columns for scorers {sorted(names)}")
+        raise ValueError(f"no '<name>/value' columns in eval_results: {list(df.columns)}")
     scores: dict[str, dict[str, bool]] = {}
     for _, r in df.iterrows():
         req = json.loads(r["request"]) if isinstance(r["request"], str) else r["request"]

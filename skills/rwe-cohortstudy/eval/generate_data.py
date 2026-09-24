@@ -21,7 +21,7 @@ adjustment will report the wrong direction of effect.
 Usage:
     python3 generate_data.py
 
-Output volume (override via RWE_EVAL_DATA_DIR env var):
+Output volume (override via SKILL_EVAL_DATA_DIR, or legacy RWE_EVAL_DATA_DIR):
     /Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/
 """
 
@@ -36,7 +36,7 @@ N_SURVIVAL = 2000     # survival cohort size
 N_TTE = 1500          # target trial emulation cohort size
 RANDOM_STATE = 42
 
-OUT_DIR = os.environ.get(
+OUT_DIR = os.environ.get("SKILL_EVAL_DATA_DIR") or os.environ.get(
     "RWE_EVAL_DATA_DIR",
     "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy",
 )

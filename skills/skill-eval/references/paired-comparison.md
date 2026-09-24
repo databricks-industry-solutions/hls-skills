@@ -31,9 +31,9 @@ Both calls land as runs in the same experiment. The UI's Compare view gives side
 
 **Stable paths (both verified against MLflow 3.16 on Databricks):**
 
-The per-row table names the columns `request` / `response` (the dict you passed as `inputs` / `outputs`), **not** `inputs` / `outputs`, and each scorer adds `<name>/value` and `<name>/rationale`. So read `task_id` out of `request`, and note `request` may come back as a dict or a JSON string.
+The per-row table names the columns `request` / `response` (the dict you passed as `inputs` / `outputs`), **not** `inputs` / `outputs`, and each scorer adds `<name>/value` and `<name>/rationale` (`name` is the returned `Feedback`'s name when set, not the function name). Each **expectations** key also lands as `<key>/value`, so skip those columns. So read `task_id` out of `request`, and note `request` may come back as a dict or a JSON string.
 
-**Preferred: use `compare_runs.extract_scores(result, rows, scorers)`** (see SKILL.md Steps 4–6). It encapsulates the logic below with the same strict coercion as `load_scores`. The inline code is kept here as reference only.
+**Preferred: use `compare_runs.extract_scores(result, rows)`** (see SKILL.md Steps 4–6). It encapsulates the logic below with the same strict coercion as `load_scores`. The inline code is kept here as reference only.
 
 1. **Immediately, in the same process** — the `EvaluationResult` returned by `evaluate()` carries the per-row table. Extract before the process exits:
 
@@ -71,7 +71,8 @@ def task_id_of(request):
 
 
 result = mlflow.genai.evaluate(data=rows, scorers=scorers)
-df = result.tables["eval_results"]          # per-row: trace_id, request, response, <scorer>/value, <scorer>/rationale, assessments
+df = result.tables["eval_results"]          # per-row: trace_id, request, response, <name>/value, <name>/rationale, assessments
+expectation_keys = {k for row in rows for k in row.get("expectations", {})}   # also logged as <key>/value
 scores = {}
 for _, r in df.iterrows():
     # Join on the task_id carried in the row itself. evaluate() scores rows
@@ -81,7 +82,7 @@ for _, r in df.iterrows():
     scores[tid] = {
         col[: -len("/value")]: to_bool(tid, col, r[col])
         for col in df.columns
-        if col.endswith("/value")
+        if col.endswith("/value") and col[: -len("/value")] not in expectation_keys
     }
 missing = {row["inputs"]["task_id"] for row in rows} - set(scores)
 assert not missing, f"no scores returned for {sorted(missing)}"
@@ -97,10 +98,11 @@ for _, t in df.iterrows():
     tid = task_id_of(t["request"])
     metrics = {}
     for a in (t.get("assessments") or []):
+        if "feedback" not in a:                        # expectations are assessments too
+            continue
         name = a["assessment_name"]                    # e.g. "task_completion"
-        value = a.get("feedback", {}).get("value")     # "yes"/"no"/"true"/"false"
-        if name and value is not None:
-            metrics[name] = to_bool(tid, name, value)
+        # None = the scorer errored; to_bool raises rather than dropping the metric
+        metrics[name] = to_bool(tid, name, a["feedback"].get("value"))
     scores[tid] = metrics
 ```
 

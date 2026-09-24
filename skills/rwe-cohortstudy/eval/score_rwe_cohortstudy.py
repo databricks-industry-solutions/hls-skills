@@ -5,14 +5,14 @@
 # MAGIC
 # MAGIC This notebook scores two paired arms (baseline / with-skill) for the `rwe-cohortstudy` skill using `mlflow.genai.evaluate`.
 # MAGIC
-# MAGIC **Scorers** are imported from `scorers.py` (zero redefinitions inline).
+# MAGIC **Scorers** are imported from `scorers.py`; score extraction and comparison from `compare_runs.py` (zero redefinitions inline).
 # MAGIC
 # MAGIC **Comparison** is delegated to `compare_runs.py` from the shared `skill-eval/scripts/` folder.
 # MAGIC
 # MAGIC | Cell | Purpose |
 # MAGIC |------|---------|
 # MAGIC | 1 | Install deps + restart |
-# MAGIC | 2 | MLflow experiment + import scorers |
+# MAGIC | 2 | MLflow experiment + imports |
 # MAGIC | 3 | Load expectations |
 # MAGIC | 4 | Build eval rows — baseline (no skills) |
 # MAGIC | 5 | Build eval rows — candidate (with skills) |
@@ -33,7 +33,7 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# DBTITLE 1,MLflow experiment + import scorers
+# DBTITLE 1,MLflow experiment + imports
 import sys, mlflow
 
 mlflow.set_tracking_uri("databricks")
@@ -41,11 +41,15 @@ mlflow.set_tracking_uri("databricks")
 EXPERIMENT_PATH = "/Users/yen.low@databricks.com/skill-eval-rwe-cohortstudy"
 mlflow.set_experiment(EXPERIMENT_PATH)
 
-EVAL_DIR = "/Workspace/Users/yen.low@databricks.com/.assistant/skills/hls-skills/skills/rwe-cohortstudy/eval"
-if EVAL_DIR not in sys.path:
-    sys.path.insert(0, EVAL_DIR)
+SKILLS_ROOT = "/Workspace/Users/yen.low@databricks.com/.assistant/skills/hls-skills/skills"
+EVAL_DIR = f"{SKILLS_ROOT}/rwe-cohortstudy/eval"
+SCRIPTS_DIR = f"{SKILLS_ROOT}/skill-eval/scripts"
+for d in (EVAL_DIR, SCRIPTS_DIR):
+    if d not in sys.path:
+        sys.path.insert(0, d)
 
 from scorers import scorers as all_scorers
+from compare_runs import extract_scores, main as compare_main
 print(f"Loaded {len(all_scorers)} scorers: {[s.name if hasattr(s, 'name') else s.__name__ for s in all_scorers]}")
 
 # COMMAND ----------
@@ -302,13 +306,6 @@ print("Tables:", list(candidate_result.tables.keys()))
 # COMMAND ----------
 
 # DBTITLE 1,Extract scores + save JSONs
-import importlib
-import scorers as _sm
-importlib.reload(_sm)
-extract_scores = _sm.extract_scores
-SCORER_NAMES = _sm.SCORER_NAMES
-print("Active SCORER_NAMES:", sorted(SCORER_NAMES))
-
 baseline_scores  = extract_scores(baseline_result,  rows_baseline)
 candidate_scores = extract_scores(candidate_result, rows_with_skill)
 
@@ -330,11 +327,6 @@ print(json.dumps(candidate_scores, indent=2))
 # COMMAND ----------
 
 # DBTITLE 1,Paired comparison
-COMPARE_RUNS_DIR = "/Workspace/Users/yen.low@databricks.com/.assistant/skills/hls-skills/skills/skill-eval/scripts"
-if COMPARE_RUNS_DIR not in sys.path:
-    sys.path.insert(0, COMPARE_RUNS_DIR)
-from compare_runs import main as compare_main
-
 compare_main([
     baseline_path,
     candidate_path,

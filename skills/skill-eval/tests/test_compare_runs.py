@@ -287,30 +287,52 @@ class _FakeResult:
         self.tables = {"eval_results": _FakeFrame(records)}
 
 
-class _Named:
-    def __init__(self, name):
-        self.name = name
-
-
 def test_extract_scores_reads_request_column_and_coerces():
     from compare_runs import extract_scores
 
+    # Judge scorer `task_completion_judge` returns Feedback(name="task_completion"):
+    # the column carries the Feedback name, so the default must not filter by scorer name.
     result = _FakeResult([
-        {"request": {"task_id": "t1"}, "judge/value": "yes", "artifact/value": True, "other/value": "no"},
-        {"request": json.dumps({"task_id": "t2"}), "judge/value": "no", "artifact/value": False, "other/value": "yes"},
+        {"request": {"task_id": "t1"}, "request_time": 1, "task_completion/value": "yes", "artifact/value": True},
+        {"request": json.dumps({"task_id": "t2"}), "request_time": 2, "task_completion/value": "no", "artifact/value": False},
     ])
     rows = [{"inputs": {"task_id": "t1"}}, {"inputs": {"task_id": "t2"}}]
-    scores = extract_scores(result, rows, [_Named("judge"), _Named("artifact")])
-    assert scores == {"t1": {"judge": True, "artifact": True}, "t2": {"judge": False, "artifact": False}}
+    assert extract_scores(result, rows) == {
+        "t1": {"task_completion": True, "artifact": True},
+        "t2": {"task_completion": False, "artifact": False},
+    }
+    assert extract_scores(result, rows, {"artifact"}) == {"t1": {"artifact": True}, "t2": {"artifact": False}}
+
+
+def test_extract_scores_skips_expectation_columns():
+    from compare_runs import extract_scores
+
+    # MLflow logs each expectations key as `<key>/value` too; those are not metrics.
+    result = _FakeResult([
+        {"request": {"task_id": "t1"}, "judge/value": True, "guidelines/value": None, "required_artifacts/value": ["x"]},
+    ])
+    rows = [{"inputs": {"task_id": "t1"}, "expectations": {"guidelines": ["g"], "required_artifacts": ["x"]}}]
+    assert extract_scores(result, rows) == {"t1": {"judge": True}}
+
+
+def test_extract_scores_rejects_no_matching_columns():
+    from compare_runs import extract_scores
+
+    result = _FakeResult([{"request": {"task_id": "t1"}, "task_completion/value": True}])
+    try:
+        extract_scores(result, [{"inputs": {"task_id": "t1"}}], {"task_completion_judge"})
+    except ValueError as exc:
+        assert "task_completion/value" in str(exc)
+    else:
+        raise AssertionError("expected ValueError when scorer_names match no column")
 
 
 def test_extract_scores_fails_on_missing_task_or_null_score():
     from compare_runs import extract_scores
 
-    scorers = [_Named("judge")]
     result = _FakeResult([{"request": {"task_id": "t1"}, "judge/value": True}])
     try:
-        extract_scores(result, [{"inputs": {"task_id": "t1"}}, {"inputs": {"task_id": "t2"}}], scorers)
+        extract_scores(result, [{"inputs": {"task_id": "t1"}}, {"inputs": {"task_id": "t2"}}])
     except ValueError as exc:
         assert "t2" in str(exc)
     else:
@@ -318,7 +340,7 @@ def test_extract_scores_fails_on_missing_task_or_null_score():
 
     result = _FakeResult([{"request": {"task_id": "t1"}, "judge/value": float("nan")}])
     try:
-        extract_scores(result, [{"inputs": {"task_id": "t1"}}], scorers)
+        extract_scores(result, [{"inputs": {"task_id": "t1"}}])
     except ValueError as exc:
         assert "NaN" in str(exc)
     else:
