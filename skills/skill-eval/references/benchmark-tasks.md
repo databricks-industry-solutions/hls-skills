@@ -10,14 +10,30 @@ Referenced from SKILL.md Step 1.
 4. **Real inputs**: point at real data in the workspace (volumes, UC tables). Synthetic tasks need expert review before results are trusted.
 5. **Verbatim queries**: the `query` string is what gets pasted into Genie Code, character-for-character, in both arms.
 
-## Evalset Schema
+## Task Definition Schema
 
-One JSON object per task. This same object later becomes an MLflow eval row by adding `outputs`.
+Task definitions are split across two files, joined on `task_id` and `dataset`.
+
+### evalset.json — task prompts
+
+One JSON object per task. Only the fields needed to run the task:
 
 ```json
 {
   "task_id": "<skill>-<NNN>",
-  "query": "<exact prompt pasted into Genie Code>",
+  "dataset": "<volume path to the input data, e.g. /Volumes/catalog/schema/eval/skill/data.csv>",
+  "query": "<exact prompt pasted into Genie Code>"
+}
+```
+
+### expectations.json — grading criteria
+
+One JSON object per task. Difficulty, expected facts, and deterministic checks:
+
+```json
+{
+  "task_id": "<skill>-<NNN>",
+  "dataset": "<volume path to the input data>",
   "difficulty": "easy | hard | edge",
   "expectations": {
     "expected_facts": ["<checkable fact 1>", "<checkable fact 2>"],
@@ -31,9 +47,13 @@ One JSON object per task. This same object later becomes an MLflow eval row by a
 }
 ```
 
+Both files merged on `task_id` later become an MLflow eval row by adding `outputs`.
+
 Field notes:
 
 - `task_id` — stable string, identical across baseline and candidate runs. The comparison joins on it.
+- `dataset` — volume path to the input data for the task. Also embedded in the `query` string, but structured here so scoring scripts and session runners can reference it programmatically.
+- `difficulty` — `easy` / `hard` / `edge`. Lives in `expectations.json`, not `evalset.json`. `compare_runs.py --difficulty` reads this directly from `expectations.json`; no separate `difficulties.json` file is needed.
 - `expected_facts` — feeds the MLflow `Correctness` scorer. Facts, not prose: "Output table has a padj column", not "a good analysis".
 - `guidelines` — feeds `ExpectationsGuidelines`. Use for must/must-not rules.
 - `deterministic_checks` — consumed by your `@scorer` functions (Level 1), not by MLflow built-ins.
@@ -52,7 +72,7 @@ Hand-write ~6 tuples, keep the 3-5 that matter most, render each into a natural 
 
 ## Converting to MLflow Rows
 
-After both session arms are done, each task becomes two rows (one per arm). `deterministic_checks` merge into `expectations` so scorers read one place:
+After both session arms are done, merge `evalset.json` and `expectations.json` on `task_id`. Each task becomes two rows (one per arm). `deterministic_checks` merge into `expectations` so scorers read one place:
 
 ```python
 row = {

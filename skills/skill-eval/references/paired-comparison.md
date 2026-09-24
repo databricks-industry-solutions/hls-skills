@@ -1,6 +1,8 @@
 # Paired Comparison — Extraction and Semantics
 
-Referenced from SKILL.md Step 6. The comparison unit is the **task**, not the metric average.
+Referenced from SKILL.md Steps 4–6. The comparison unit is the **task**, not the metric average.
+
+> **Preferred path**: Use `scorers.extract_scores()` (defined in each skill's `scorers.py`) and `compare_runs.main()` (in `scripts/compare_runs.py`). The inline extraction code below is the reference implementation that `extract_scores()` encapsulates — **do not copy it into notebooks**; import from `scorers.py` instead. See SKILL.md "Steps 4–6: Generate the Scoring Notebook" for the notebook cell structure.
 
 ## Running the Two Arms into One Experiment
 
@@ -30,6 +32,8 @@ Both calls land as runs in the same experiment. The UI's Compare view gives side
 **Stable paths (both verified against MLflow 3.16 on Databricks):**
 
 The per-row table names the columns `request` / `response` (the dict you passed as `inputs` / `outputs`), **not** `inputs` / `outputs`, and each scorer adds `<name>/value` and `<name>/rationale`. So read `task_id` out of `request`, and note `request` may come back as a dict or a JSON string.
+
+**Preferred: use `scorers.extract_scores()`** (see SKILL.md Steps 4–6). It encapsulates the logic below and delegates bool coercion to `compare_runs._to_bool()`. The inline code is kept here as reference only.
 
 1. **Immediately, in the same process** — the `EvaluationResult` returned by `evaluate()` carries the per-row table. Extract before the process exits:
 
@@ -128,13 +132,13 @@ With 3-5 tasks, treat the numbers as directional. One flip = 20-33% swing; repor
 # from the repository root
 python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skill_scores.json
 python3 skills/skill-eval/scripts/compare_runs.py baseline.json with_skill.json \
-    --pass-rule any_metric --format markdown --difficulty difficulties.json
+    --pass-rule any_metric --format markdown --difficulty expectations.json
 # CI: --strict exits 1 when the ship gate fails, and also when --difficulty is absent
 python3 skills/skill-eval/scripts/compare_runs.py baseline.json with_skill.json \
-    --difficulty difficulties.json --strict
+    --difficulty expectations.json --strict
 ```
 
-`difficulties.json` is `{task_id: "easy"|"hard"|"edge"}` lifted from the evalset; it enables the ship-gate check in the output (a regression at any difficulty blocks it).
+`--difficulty` accepts the expectations JSON directly (array of task objects with `task_id` and `difficulty` fields); it can also accept the legacy `{task_id: "easy"|"hard"|"edge"}` dict format. It enables the ship-gate check in the output (a regression at any difficulty blocks it).
 
 `--strict` also fails on any incomplete comparison: a task **unpaired** (in one file only), **uncomparable** (in both but sharing no metric name), or **partially mismatched** (a metric present in only one arm — the odd metric, possibly the one that regressed, drops out of the verdict). A candidate that crashed on, dropped, or renamed a metric of a would-be regression must not clear the gate on the surviving signal. Fix the dropped/renamed metric, or pass `--allow-incomplete` to ship on the paired subset deliberately. Without `--strict`, the verdict still prints but carries a `comparison incomplete` caveat next to it.
 
