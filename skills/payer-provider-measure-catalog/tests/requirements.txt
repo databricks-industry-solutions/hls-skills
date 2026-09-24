@@ -1,0 +1,2 @@
+# Test-only dependencies for CI (.github/workflows/ci.yml). Versions verified together.
+pyyaml==6.0.3

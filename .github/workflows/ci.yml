@@ -1,0 +1,113 @@
+name: CI
+
+# Runs on every non-draft PR (any base, so stacked PRs are checked too) and on
+# pushes to dev and main. ready_for_review refires the workflow when a draft is
+# promoted. Three independent jobs:
+#   repo-checks  tests/: SKILL.md quality gate for every skill + sync bundle filter
+#   skill-tests  one matrix entry per skills/<name>/tests/, discovered at run time,
+#                so a new skill's tests run without editing this file
+#   secret-scan  gitleaks over the full history
+# Run the same commands locally: see "Checks" in CONTRIBUTING.md.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.11.32"
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+
+jobs:
+  repo-checks:
+    name: Repo checks
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: Skill quality gate and sync bundle filter
+        run: uv run --isolated --with pytest python -m pytest -q tests
+
+  discover:
+    name: Discover skill test suites
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      skills: ${{ steps.find.outputs.skills }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - id: find
+        run: |
+          skills=$(find skills -mindepth 2 -maxdepth 2 -type d -name tests | cut -d/ -f2 | sort | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "Found: ${skills}"
+          echo "skills=${skills}" >> "$GITHUB_OUTPUT"
+
+  skill-tests:
+    name: Skill tests (${{ matrix.skill }})
+    needs: discover
+    if: ${{ needs.discover.outputs.skills != '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: ${{ fromJSON(needs.discover.outputs.skills) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: skills/${{ matrix.skill }}/tests/requirements.txt
+      # Each skill runs in its own process and environment: suites reuse module
+      # names (scorers.py, objective.py) and declare their own test deps in an
+      # optional tests/requirements.txt.
+      - name: pytest skills/${{ matrix.skill }}/tests
+        env:
+          TESTS_DIR: skills/${{ matrix.skill }}/tests
+        run: |
+          req=()
+          if [ -f "${TESTS_DIR}/requirements.txt" ]; then
+            req=(--with-requirements "${TESTS_DIR}/requirements.txt")
+          fi
+          uv run --isolated --with pytest "${req[@]}" python -m pytest -q -rs "${TESTS_DIR}"
+
+  secret-scan:
+    name: Secret scan
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # The gitleaks binary is MIT-licensed; gitleaks-action needs a paid key on org repos.
+      - name: Install gitleaks (checksum-verified)
+        run: |
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "${tarball}" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "${tarball}" gitleaks
+      - name: Scan full history
+        run: ./gitleaks git --no-banner --redact --verbose .
