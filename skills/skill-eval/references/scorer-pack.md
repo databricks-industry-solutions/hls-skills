@@ -15,7 +15,7 @@ from mlflow.entities import Feedback
 
 ## Level 1 — Deterministic Scorers
 
-Cheapest signal. Write one per `deterministic_checks` entry in the evalset. Return `bool` or `Feedback`.
+Cheapest signal. Write one per `deterministic_checks` entry in `expectations.json`. Return `bool` or `Feedback`.
 
 ```python
 @scorer

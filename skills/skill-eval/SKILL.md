@@ -28,33 +28,87 @@ Standardized method to prove a Genie Code skill works: run the same benchmark ta
 - **Inputs**: the skill under test installed in Genie Code (`Workspace/.assistant/skills/<name>/SKILL.md` or user-level `~/.assistant/skills/`)
 - **Environment**: an MLflow experiment path you can write to, e.g. `/Users/<you>/skill-eval-<skill-name>`
 
+## File Layout Convention
+
+Evaluation artifacts live **in the evaluated skill's own `eval/` subfolder**, not in `skill-eval/assets/`. This keeps each skill self-contained and co-locates the evidence with the code it validates.
+
+```text
+skills/<skill-name>/
+├── SKILL.md               ← the skill itself (not modified during eval)
+└── eval/
+    ├── README.md            ← run protocol, scorer summary, ship gate
+    ├── evalset.json         ← 3-5 benchmark task definitions (task_id, dataset, query only)
+    ├── expectations.json    ← difficulty, expectations, deterministic_checks per task (keyed by task_id + dataset)
+    ├── generate_data.py     ← synthetic data generator (seeds the volume)
+    ├── scorers.py           ← deterministic + LLM judge definitions; SCORER_NAMES + extract_scores() added by agent
+    ├── score_<skill>.ipynb  ← (generated) scoring notebook: evaluate + compare + report
+    ├── eval_report.md       ← (after running) paired comparison report + failure taxonomy
+    ├── baseline_scores.json ← (after running) skill-OFF per-task scores
+    └── with_skill_scores.json ← (after running) skill-ON per-task scores
+```
+
+**Shared tooling** (comparison script, reference docs) stays in `skill-eval/` and is referenced by relative path.
+
+### Data Volume Convention
+
+Synthetic datasets for benchmark tasks are stored in a Unity Catalog volume, separate from workspace files. The default path is:
+
+```
+/Volumes/hls_amer_catalog/vital_skills/eval/<skill_name>/
+```
+
+If the default volume is not accessible, `generate_data.py` accepts an override via environment variable (`RWE_EVAL_DATA_DIR`, `RNASEQ_EVAL_DATA_DIR`, etc.) or direct edit of the `OUT_DIR` constant. Update the volume paths in `evalset.json` to match.
+
 ## Quick Start
 
 ```text
-# 1. Write 3-5 benchmark tasks with ground truth (references/benchmark-tasks.md)
+# 1. Write 3-5 benchmark tasks in two files:
+#    skills/<skill>/eval/expectations.json       — task_id, dataset, query (the prompt pasted into Genie Code)
+#    skills/<skill>/eval/expectations.json  — task_id, dataset, difficulty, expectations, deterministic_checks
+#    If tasks need data, write generate_data.py and seed the volume:
+#    python3 skills/<skill>/eval/generate_data.py
 # 2. Skill OFF: run each task in a fresh Genie Code chat, save outputs
 # 3. Skill ON:  same tasks, fresh chats, save outputs
-# 4. Score both runs (references/scorer-pack.md):
-mlflow.genai.evaluate(data=rows_baseline, scorers=scorers)    # run "baseline"
-mlflow.genai.evaluate(data=rows_with_skill, scorers=scorers)  # run "with_skill"
-# 5. Compare paired runs (from the repository root):
-python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skill_scores.json
-# 6. Error-analyze the losses (references/error-analysis.md), write the report
-#    (references/report-template.md) into the skill's Evaluation section
+# 4. Generate the scoring notebook (Steps 4-6 in Workflow):
+#    - imports scorers from scorers.py (not redefined inline)
+#    - loads task queries from evalset.json (not hardcoded)
+#    - runs mlflow.genai.evaluate() for both arms
+#    - extracts scores via scorers.extract_scores()
+#    - calls compare_runs.main() for text report
+#    See "Steps 4-6: Generate the Scoring Notebook" in Workflow below.
+# 5. Error-analyze the losses (references/error-analysis.md), write the report
+#    to eval/eval_report.md (references/report-template.md) — do NOT modify the skill's SKILL.md
 ```
 
 ## Workflow
 
 ### Step 1: Define Benchmark Tasks
 
-Author 3-5 tasks that represent the skill's core jobs, each with ground truth a grader could check. Vary difficulty: at least one easy, one hard, one adversarial/edge case. Store as an evalset — one JSON object per task with `task_id`, `query`, `difficulty` (`easy`/`hard`/`edge`), and `expectations`. `compare_runs.py --difficulty` reads a `{task_id: difficulty}` map lifted from that same `difficulty` field (see the dogfood assets), so the label lives in one place.
+Author 3-5 tasks that represent the skill's core jobs, each with ground truth a grader could check. Vary difficulty: at least one easy, one hard, one adversarial/edge case. Split task definitions across two files in `skills/<skill-name>/eval/`:
+
+- `evalset.json` — one JSON object per task with `task_id`, `dataset`, and `query` (the verbatim prompt pasted into Genie Code).
+- `expectations.json` — one JSON object per task with `task_id`, `dataset`, `difficulty` (`easy`/`hard`/`edge`), `expectations` (expected_facts, ground_truth_estimates, guidelines), and `deterministic_checks` (required_artifacts, forbidden_patterns).
+
+Both files share `task_id` and `dataset` as join keys. The `difficulty` field is read directly from `expectations.json` by `compare_runs.py --difficulty`; no separate difficulties file is needed.
+
+If the tasks require data, write a `generate_data.py` in the same `eval/` folder that seeds synthetic datasets into the configured volume (default: `/Volumes/hls_amer_catalog/vital_skills/eval/<skill_name>/`).
 
 - Full schema + the dimension-tuple method for coverage: `references/benchmark-tasks.md`
 
 ```json
+// evalset.json
 {
   "task_id": "rnaseq-001",
-  "query": "Run DESeq2 on <volume path> and list top 10 DE genes by padj",
+  "dataset": "/Volumes/<catalog>/<schema>/eval/<skill-name>/counts.csv",
+  "query": "Run DESeq2 on <volume path> and list top 10 DE genes by padj"
+}
+```
+
+```json
+// expectations.json
+{
+  "task_id": "rnaseq-001",
+  "dataset": "/Volumes/<catalog>/<schema>/eval/<skill-name>/counts.csv",
   "difficulty": "easy",
   "expectations": {
     "expected_facts": ["Table contains padj column", "EGFR in top 10"],
@@ -73,68 +127,34 @@ Guardrail: fresh chat per task. Carry-over context contaminates the comparison.
 
 Reinstall the skill, hard-refresh, repeat the identical queries in fresh chats. Save outputs the same way. Do not re-prompt or steer differently than baseline — steering invalidates the pair.
 
-### Step 4: Score Deterministically (Level 1)
+### Steps 4–6: Generate the Scoring Notebook
 
-Assemble rows as `{"inputs": {...}, "outputs": {...}, "expectations": {...}}` with pre-collected outputs (no `predict_fn` needed — outputs already exist). Apply cheap deterministic checks first with `@scorer` functions: artifact produced? schema valid? forbidden content absent?
+Steps 4 (deterministic scoring), 5 (LLM judges), and 6 (paired comparison) are executed together in a **single scoring notebook** (`score_<skill>.ipynb`) that lives in the skill's `eval/` folder.
 
+**Key rule**: import, don't redefine. The notebook contains zero function definitions:
+
+| Import from | What |
+|-------------|------|
+| `scorers.py` | `scorers` (all scorers); `SCORER_NAMES` + `extract_scores()` are agent-generated on the fly (see below) |
+| `compare_runs.py` | `main()` (paired comparison, callable with `argv`) |
+| `evalset.json` | Task queries (not hardcoded) |
+| `expectations.json` | Difficulty labels, expected facts, deterministic checks |
+
+The notebook runs `mlflow.genai.evaluate()` for both arms into the same experiment, extracts per-task boolean scores via `scorers.extract_scores()`, saves the score JSONs, then calls `compare_runs.main()` with `--format text` for the paired comparison report.
+
+**`scorers.py` two-phase contract**: The skill author writes the `scorers` list (Phase 1). When generating the scoring notebook, the agent appends `SCORER_NAMES` and `extract_scores()` to `scorers.py` if not already present (Phase 2) — these adapt to the actual scorer names and delegate bool coercion to `compare_runs._to_bool()`.
+
+- Full cell structure, reference code, and `scorers.py` contract: `references/scoring-notebook.md`
 - Ready-to-adapt scorer code: `references/scorer-pack.md`
-
-```python
-from mlflow.genai.scorers import scorer
-
-@scorer
-def artifact_produced(outputs: dict) -> bool:
-    return bool(outputs.get("result_table"))
-```
-
-### Step 5: Score with Binary Judges (Level 2)
-
-Add LLM judges for subjective criteria. Binary pass/fail only — never Likert scales. Use a judge model **different from the generator** (default: `databricks:/databricks-gpt-5-mini`). For process quality ("did it call the right tools in a sensible order?"), use a `make_judge` with `{{ trace }}`.
-
-- Judge instructions pattern (critique-first, few-shot): `references/scorer-pack.md`
-
-```python
-from typing import Literal
-
-from mlflow.genai.judges import make_judge
-
-task_judge = make_judge(
-    name="task_completion",
-    instructions=(
-        "Given the task {{ inputs }} and the session outputs {{ outputs }}, "
-        "grade only claims checkable from that text (method soundness, "
-        "internal consistency of reported numbers); artifact existence is "
-        "covered by deterministic scorers, not you. "
-        "Answer exactly 'yes' or 'no'."
-    ),
-    feedback_value_type=Literal["yes", "no"],
-    model="databricks:/databricks-gpt-5-mini",
-)
-```
-
-### Step 6: Paired Comparison
-
-Run both datasets through `mlflow.genai.evaluate()` into the **same experiment**, then compare per task. A paired comparison reports flips (baseline-pass → candidate-fail = regression; baseline-fail → candidate-pass = win), not just two averages.
-
-```bash
-# from the repository root; --difficulty enables the ship gate, --strict exits 1 on gate fail (CI)
-# --strict also exits 1 if --difficulty is missing, or if any task is unpaired/uncomparable
-#   (a candidate that dropped a task must not ship on the surviving subset; --allow-incomplete overrides)
-# --gate no-regressions drops the win requirement — use it for a regression re-run, and for a
-#   convention-value skill whose honest result is parity (all tie-pass, which the default gate fails)
-python3 skills/skill-eval/scripts/compare_runs.py baseline_scores.json with_skill_scores.json \
-    --difficulty difficulties.json [--strict]
-# -> per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, SHIP GATE PASS/FAIL verdict
-```
-
-- Extraction recipe (search_runs -> per-task score JSON): `references/paired-comparison.md`
+- Extraction semantics and column naming: `references/paired-comparison.md`
+- Reference implementation: `skills/rwe-cohortstudy/eval/score_rwe_cohortstudy`
 
 ### Step 7: Error Analysis and Report
 
-Read every task that ended `tie-fail` or `regression` in either arm. Open-code the **first** observed failure per trace, then group notes into a named failure taxonomy (axial coding). The taxonomy is the evidence: it shows which failure modes the skill eliminates and which it introduces.
+Read every task that ended `tie-fail` or `regression` in either arm. Open-code the **first** observed failure per trace, then group notes into a named failure taxonomy (axial coding). The taxonomy is the evidence: it shows which failure modes the skill eliminates and which it introduces. Write the report to `eval/eval_report.md` in the evaluated skill's folder — do NOT modify the skill's `SKILL.md`.
 
 - Worksheet + HLS seed taxonomy: `references/error-analysis.md`
-- Final report format (goes into the skill's `## Evaluation` section): `references/report-template.md`
+- Final report format: `references/report-template.md`
 
 ## Key Parameters
 
@@ -195,10 +215,12 @@ python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candid
 
 ## Expected Outputs
 
+- **Scoring notebook** (`score_<skill>.ipynb`) in `eval/` — imports scorers from `scorers.py`, runs `mlflow.genai.evaluate()` for both arms, extracts scores via `scorers.extract_scores()`, calls `compare_runs.main()` with `--format text`, and prints the paired comparison report
 - Two MLflow runs in one experiment (`baseline`, `with_skill`), each with per-task scorer results and linked traces
-- Console/markdown comparison from `scripts/compare_runs.py`: per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, ship-gate verdict
+- Score JSONs (`baseline_scores.json`, `with_skill_scores.json`) in `eval/` — consumed by `compare_runs.py`
+- Console comparison from `scripts/compare_runs.py`: per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, ship-gate verdict
 - Failure taxonomy: named failure modes with counts and example task_ids
-- Completed `## Evaluation` section in the evaluated skill's SKILL.md (from `references/report-template.md`)
+- Evaluation report (`eval_report.md`) in `eval/` — paired comparison results, failure taxonomy, verdict, limitations, and reproduce instructions. Do NOT modify the evaluated skill's `SKILL.md`.
 
 ## Troubleshooting
 
@@ -222,6 +244,7 @@ python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candid
 5. Confirm with the user before any run > 20 tasks or repeated judge calls (judge cost is real).
 6. Do not retry failed judge/scorer calls more than 3 times; inspect the error first.
 7. Small samples (3-5 tasks) show direction, not significance — say so in the report.
+8. **Information isolation**: When generating a notebook to execute benchmark tasks (Steps 2-3), the agent must read **only `evalset.json`** from the skill's `eval/` folder. It must NOT read `expectations.json`, `generate_data.py`, reference notebooks (`with_skills_*`, `no_skills_*`), or any other file in `eval/` that contains expected answers, ground truth, or evaluation criteria — doing so contaminates the run by leaking the answer key into the generation context. The agent MAY import `scorers.py` when generating the **scoring** notebook (Steps 4-5), since scoring happens after task execution is complete and requires the scorer definitions.
 
 ## Evaluation
 
@@ -236,13 +259,21 @@ Findings that changed this skill:
 
 ## Bundled Resources
 
+### Shared tooling (in `skill-eval/`)
+
 - `references/benchmark-tasks.md` — evalset schema, task design rules, dimension-tuple coverage method
 - `references/scorer-pack.md` — deterministic `@scorer` and binary `make_judge` starter code
 - `references/paired-comparison.md` — extracting per-task scores from MLflow runs, comparison semantics
 - `references/error-analysis.md` — open/axial coding worksheet, HLS failure-mode seeds
 - `references/report-template.md` — the Evaluation section template for evaluated skills
+- `references/scoring-notebook.md` — scoring notebook generation guide: cell structure, imports, `scorers.py` contract
 - `scripts/compare_runs.py` — paired per-task comparison (win/loss/flip, win-rate); stdlib only
 - `tests/test_compare_runs.py` — unit tests for the comparison logic
+
+### Per-skill eval artifacts (in each skill's `eval/` folder)
+
+- `skills/rwe-cohortstudy/eval/` — evalset (task_id, dataset, query) + expectations (difficulty, expectations, deterministic_checks), data generator, scorers for rwe-cohortstudy
+- `assets/dogfood-bulk-rnaseq/` — (legacy location) bulk-rnaseq eval artifacts; predates the `eval/` convention
 
 ## References
 
