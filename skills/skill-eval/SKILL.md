@@ -40,7 +40,7 @@ skills/<skill-name>/
     ├── evalset.json         ← 3-5 benchmark task definitions (task_id, dataset, query only)
     ├── expectations.json    ← difficulty, expectations, deterministic_checks per task (keyed by task_id + dataset)
     ├── generate_data.py     ← synthetic data generator (seeds the volume)
-    ├── scorers.py           ← deterministic + LLM judge definitions; SCORER_NAMES + extract_scores() added by agent
+    ├── scorers.py           ← deterministic + LLM judge definitions; exports the `scorers` list
     ├── score_<skill>.ipynb  ← (generated) scoring notebook: evaluate + compare + report
     ├── eval_report.md       ← (after running) paired comparison report + failure taxonomy
     ├── baseline_scores.json ← (after running) skill-OFF per-task scores
@@ -54,16 +54,16 @@ skills/<skill-name>/
 Synthetic datasets for benchmark tasks are stored in a Unity Catalog volume, separate from workspace files. The default path is:
 
 ```
-/Volumes/hls_amer_catalog/vital_skills/eval/<skill_name>/
+/Volumes/<catalog>/<schema>/eval/<skill_name>/
 ```
 
-If the default volume is not accessible, `generate_data.py` accepts an override via environment variable (`RWE_EVAL_DATA_DIR`, `RNASEQ_EVAL_DATA_DIR`, etc.) or direct edit of the `OUT_DIR` constant. Update the volume paths in `evalset.json` to match.
+`generate_data.py` should read the output path from the `SKILL_EVAL_DATA_DIR` environment variable, falling back to an `OUT_DIR` constant. Update the volume paths in `evalset.json` to match. The human evaluator (or the skill author) runs `generate_data.py` before either arm; the agent executing tasks never reads it (Guardrail 8).
 
 ## Quick Start
 
 ```text
 # 1. Write 3-5 benchmark tasks in two files:
-#    skills/<skill>/eval/expectations.json       — task_id, dataset, query (the prompt pasted into Genie Code)
+#    skills/<skill>/eval/evalset.json       — task_id, dataset, query (the prompt pasted into Genie Code)
 #    skills/<skill>/eval/expectations.json  — task_id, dataset, difficulty, expectations, deterministic_checks
 #    If tasks need data, write generate_data.py and seed the volume:
 #    python3 skills/<skill>/eval/generate_data.py
@@ -73,7 +73,7 @@ If the default volume is not accessible, `generate_data.py` accepts an override 
 #    - imports scorers from scorers.py (not redefined inline)
 #    - loads task queries from evalset.json (not hardcoded)
 #    - runs mlflow.genai.evaluate() for both arms
-#    - extracts scores via scorers.extract_scores()
+#    - extracts scores via compare_runs.extract_scores()
 #    - calls compare_runs.main() for text report
 #    See "Steps 4-6: Generate the Scoring Notebook" in Workflow below.
 # 5. Error-analyze the losses (references/error-analysis.md), write the report
@@ -91,7 +91,7 @@ Author 3-5 tasks that represent the skill's core jobs, each with ground truth a 
 
 Both files share `task_id` and `dataset` as join keys. The `difficulty` field is read directly from `expectations.json` by `compare_runs.py --difficulty`; no separate difficulties file is needed.
 
-If the tasks require data, write a `generate_data.py` in the same `eval/` folder that seeds synthetic datasets into the configured volume (default: `/Volumes/hls_amer_catalog/vital_skills/eval/<skill_name>/`).
+If the tasks require data, write a `generate_data.py` in the same `eval/` folder that seeds synthetic datasets into the configured volume (default: `/Volumes/<catalog>/<schema>/eval/<skill_name>/`).
 
 - Full schema + the dimension-tuple method for coverage: `references/benchmark-tasks.md`
 
@@ -135,19 +135,18 @@ Steps 4 (deterministic scoring), 5 (LLM judges), and 6 (paired comparison) are e
 
 | Import from | What |
 |-------------|------|
-| `scorers.py` | `scorers` (all scorers); `SCORER_NAMES` + `extract_scores()` are agent-generated on the fly (see below) |
-| `compare_runs.py` | `main()` (paired comparison, callable with `argv`) |
+| `scorers.py` | `scorers` (all `@scorer` + `make_judge` objects) |
+| `compare_runs.py` | `extract_scores()` (MLflow result → per-task scores) and `main()` (paired comparison, callable with `argv`) |
 | `evalset.json` | Task queries (not hardcoded) |
 | `expectations.json` | Difficulty labels, expected facts, deterministic checks |
 
-The notebook runs `mlflow.genai.evaluate()` for both arms into the same experiment, extracts per-task boolean scores via `scorers.extract_scores()`, saves the score JSONs, then calls `compare_runs.main()` with `--format text` for the paired comparison report.
+The notebook runs `mlflow.genai.evaluate()` for both arms into the same experiment, extracts per-task boolean scores via `compare_runs.extract_scores()`, saves the score JSONs, then calls `compare_runs.main()` with `--format text` for the paired comparison report.
 
-**`scorers.py` two-phase contract**: The skill author writes the `scorers` list (Phase 1). When generating the scoring notebook, the agent appends `SCORER_NAMES` and `extract_scores()` to `scorers.py` if not already present (Phase 2) — these adapt to the actual scorer names and delegate bool coercion to `compare_runs._to_bool()`.
+**`scorers.py` contract**: the skill author writes one export, the `scorers` list. Nothing is appended to it at scoring time — extraction and bool coercion live in the shared `compare_runs.py`, so every skill scores the same way.
 
 - Full cell structure, reference code, and `scorers.py` contract: `references/scoring-notebook.md`
 - Ready-to-adapt scorer code: `references/scorer-pack.md`
 - Extraction semantics and column naming: `references/paired-comparison.md`
-- Reference implementation: `skills/rwe-cohortstudy/eval/score_rwe_cohortstudy`
 
 ### Step 7: Error Analysis and Report
 
@@ -210,12 +209,12 @@ The healthy result here is 0 wins and 0 regressions, which the default gate fail
 
 ```bash
 python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candidate.json \
-    --difficulty difficulties.json --gate no-regressions --strict
+    --difficulty expectations.json --gate no-regressions --strict
 ```
 
 ## Expected Outputs
 
-- **Scoring notebook** (`score_<skill>.ipynb`) in `eval/` — imports scorers from `scorers.py`, runs `mlflow.genai.evaluate()` for both arms, extracts scores via `scorers.extract_scores()`, calls `compare_runs.main()` with `--format text`, and prints the paired comparison report
+- **Scoring notebook** (`score_<skill>.ipynb`) in `eval/` — imports scorers from `scorers.py`, runs `mlflow.genai.evaluate()` for both arms, extracts scores via `compare_runs.extract_scores()`, calls `compare_runs.main()` with `--format text`, and prints the paired comparison report
 - Two MLflow runs in one experiment (`baseline`, `with_skill`), each with per-task scorer results and linked traces
 - Score JSONs (`baseline_scores.json`, `with_skill_scores.json`) in `eval/` — consumed by `compare_runs.py`
 - Console comparison from `scripts/compare_runs.py`: per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, ship-gate verdict
@@ -267,13 +266,12 @@ Findings that changed this skill:
 - `references/error-analysis.md` — open/axial coding worksheet, HLS failure-mode seeds
 - `references/report-template.md` — the Evaluation section template for evaluated skills
 - `references/scoring-notebook.md` — scoring notebook generation guide: cell structure, imports, `scorers.py` contract
-- `scripts/compare_runs.py` — paired per-task comparison (win/loss/flip, win-rate); stdlib only
+- `scripts/compare_runs.py` — MLflow score extraction (`extract_scores`) and paired per-task comparison (win/loss/flip, win-rate); stdlib only
 - `tests/test_compare_runs.py` — unit tests for the comparison logic
 
 ### Per-skill eval artifacts (in each skill's `eval/` folder)
 
-- `skills/rwe-cohortstudy/eval/` — evalset (task_id, dataset, query) + expectations (difficulty, expectations, deterministic_checks), data generator, scorers for rwe-cohortstudy
-- `assets/dogfood-bulk-rnaseq/` — (legacy location) bulk-rnaseq eval artifacts; predates the `eval/` convention
+- `assets/dogfood-bulk-rnaseq/` — (legacy location) bulk-rnaseq eval artifacts; predates the `eval/` convention. Its `evalset.json` (`{"tasks": [...]}` with `difficulty`) is accepted directly by `--difficulty`.
 
 ## References
 

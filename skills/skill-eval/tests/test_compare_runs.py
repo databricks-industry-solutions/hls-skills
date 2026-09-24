@@ -240,6 +240,91 @@ def test_load_difficulty_validates_labels(tmp_path):
     raise AssertionError("expected ValueError for invalid difficulty label")
 
 
+def test_load_difficulty_accepts_task_objects(tmp_path):
+    from compare_runs import load_difficulty
+
+    tasks = [{"task_id": "t1", "difficulty": "easy", "expectations": {}}, {"task_id": "t2", "difficulty": "Edge"}]
+    arr = tmp_path / "expectations.json"
+    arr.write_text(json.dumps(tasks))
+    assert load_difficulty(arr) == {"t1": "easy", "t2": "edge"}
+
+    wrapped = tmp_path / "evalset.json"
+    wrapped.write_text(json.dumps({"tasks": tasks}))
+    assert load_difficulty(wrapped) == {"t1": "easy", "t2": "edge"}
+
+
+def test_load_difficulty_rejects_bad_task_objects(tmp_path):
+    from compare_runs import load_difficulty
+
+    cases = {
+        "missing_difficulty": [{"task_id": "t1"}],
+        "missing_task_id": [{"difficulty": "easy"}],
+        "not_object": ["t1"],
+        "duplicate": [{"task_id": "t1", "difficulty": "easy"}, {"task_id": "t1", "difficulty": "hard"}],
+        "scalar": "easy",
+    }
+    for name, payload in cases.items():
+        p = tmp_path / f"{name}.json"
+        p.write_text(json.dumps(payload))
+        try:
+            load_difficulty(p)
+        except ValueError:
+            continue
+        raise AssertionError(f"expected ValueError for {name}")
+
+
+class _FakeFrame:
+    def __init__(self, records):
+        self._records = records
+        self.columns = list(records[0])
+
+    def iterrows(self):
+        return enumerate(self._records)
+
+
+class _FakeResult:
+    def __init__(self, records):
+        self.tables = {"eval_results": _FakeFrame(records)}
+
+
+class _Named:
+    def __init__(self, name):
+        self.name = name
+
+
+def test_extract_scores_reads_request_column_and_coerces():
+    from compare_runs import extract_scores
+
+    result = _FakeResult([
+        {"request": {"task_id": "t1"}, "judge/value": "yes", "artifact/value": True, "other/value": "no"},
+        {"request": json.dumps({"task_id": "t2"}), "judge/value": "no", "artifact/value": False, "other/value": "yes"},
+    ])
+    rows = [{"inputs": {"task_id": "t1"}}, {"inputs": {"task_id": "t2"}}]
+    scores = extract_scores(result, rows, [_Named("judge"), _Named("artifact")])
+    assert scores == {"t1": {"judge": True, "artifact": True}, "t2": {"judge": False, "artifact": False}}
+
+
+def test_extract_scores_fails_on_missing_task_or_null_score():
+    from compare_runs import extract_scores
+
+    scorers = [_Named("judge")]
+    result = _FakeResult([{"request": {"task_id": "t1"}, "judge/value": True}])
+    try:
+        extract_scores(result, [{"inputs": {"task_id": "t1"}}, {"inputs": {"task_id": "t2"}}], scorers)
+    except ValueError as exc:
+        assert "t2" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for unscored task")
+
+    result = _FakeResult([{"request": {"task_id": "t1"}, "judge/value": float("nan")}])
+    try:
+        extract_scores(result, [{"inputs": {"task_id": "t1"}}], scorers)
+    except ValueError as exc:
+        assert "NaN" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for NaN score")
+
+
 def test_ship_gate_pass_verdict():
     comp = compare(
         {"t1": {"m": False}, "t2": {"m": True}},

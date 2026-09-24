@@ -2,7 +2,7 @@
 
 Referenced from SKILL.md Steps 4–6. The comparison unit is the **task**, not the metric average.
 
-> **Preferred path**: Use `scorers.extract_scores()` (defined in each skill's `scorers.py`) and `compare_runs.main()` (in `scripts/compare_runs.py`). The inline extraction code below is the reference implementation that `extract_scores()` encapsulates — **do not copy it into notebooks**; import from `scorers.py` instead. See SKILL.md "Steps 4–6: Generate the Scoring Notebook" for the notebook cell structure.
+> **Preferred path**: Use `compare_runs.extract_scores()` and `compare_runs.main()` (both in `scripts/compare_runs.py`). The inline extraction code below documents what `extract_scores()` does — **do not copy it into notebooks**; import it instead. See SKILL.md "Steps 4–6: Generate the Scoring Notebook" for the notebook cell structure.
 
 ## Running the Two Arms into One Experiment
 
@@ -33,7 +33,7 @@ Both calls land as runs in the same experiment. The UI's Compare view gives side
 
 The per-row table names the columns `request` / `response` (the dict you passed as `inputs` / `outputs`), **not** `inputs` / `outputs`, and each scorer adds `<name>/value` and `<name>/rationale`. So read `task_id` out of `request`, and note `request` may come back as a dict or a JSON string.
 
-**Preferred: use `scorers.extract_scores()`** (see SKILL.md Steps 4–6). It encapsulates the logic below and delegates bool coercion to `compare_runs._to_bool()`. The inline code is kept here as reference only.
+**Preferred: use `compare_runs.extract_scores(result, rows, scorers)`** (see SKILL.md Steps 4–6). It encapsulates the logic below with the same strict coercion as `load_scores`. The inline code is kept here as reference only.
 
 1. **Immediately, in the same process** — the `EvaluationResult` returned by `evaluate()` carries the per-row table. Extract before the process exits:
 
