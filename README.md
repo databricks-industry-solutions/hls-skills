@@ -1,6 +1,15 @@
-# HLS Skills
+# <img src="vitalskills.png" alt="Vital Skills" width="40" height="40"> Vital Skills 
 
-Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
+Agent skills for Health & Life Sciences workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
+
+
+## Setup
+#### Option 1: git clone this repo to Databricks
+Git clone this repo onto Databricks. Then open Genie Code and click on Customizations to add the cloned folder. It should point to the `skills` subfolder
+
+#### Optional: Register and sync the skills to [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/)
+On Databricks, run [`sync_skills_git2unity.py`](sync_skills_git2unity.py). It should sync the latest skills from the repo to Unity Catalog. So specify the catalog and schema in the notebook. They also show up on Unity Gateway under Skills
+
 
 
 ## Available Skills
@@ -13,6 +22,7 @@ Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` f
 | **phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
 | **payer-provider-measure-catalog** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
 | **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
+| **rwe-cohortstudy** | Perform comparative effectiveness research (aka cohort study design) with appropriate propensity score adjustment, including matching and IPW |
 | **skill-eval** | Benchmark a skill: paired runs with and without it, MLflow `genai.evaluate` scoring, per-task win/loss comparison, failure taxonomy, standardized Evaluation report |
 
 ## Repository Layout
