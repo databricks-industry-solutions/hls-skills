@@ -304,8 +304,18 @@ for row in audit_rows:
 
 # COMMAND ----------
 
+# A skill's eval/ folder holds its benchmark answer key (expectations, arm outputs).
+# It stays in git next to the skill but never ships: an agent that loads the
+# published skill must not be able to read the ground truth it is graded on.
+EXCLUDED_DIRS = {"eval"}
+
+
 def read_bundle(skill_dir: Path) -> dict[str, bytes]:
-    return {str(f.relative_to(skill_dir)): f.read_bytes() for f in sorted(skill_dir.rglob("*")) if f.is_file()}
+    return {
+        str(f.relative_to(skill_dir)): f.read_bytes()
+        for f in sorted(skill_dir.rglob("*"))
+        if f.is_file() and f.relative_to(skill_dir).parts[0] not in EXCLUDED_DIRS
+    }
 
 
 def bundle_hash(bundle: dict[str, bytes]) -> str:

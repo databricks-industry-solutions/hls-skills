@@ -10,7 +10,7 @@ license: Databricks License
 
 ## Overview
 
-Standardized method to prove a Genie Code skill works: run the same benchmark tasks with the skill OFF and ON, score both runs in one MLflow experiment, and compare per-task. The output is a ship/no-ship Evaluation section for the skill's SKILL.md, backed by a failure taxonomy — not vibes. This codifies the repo requirement (AGENTS.md step 5: report performance with and without the skill) into a repeatable pipeline.
+Standardized method to prove a Genie Code skill works: run the same benchmark tasks with the skill OFF and ON, score both runs in one MLflow experiment, and compare per-task. The output is a ship/no-ship report in the evaluated skill's `eval/eval_report.md`, backed by a failure taxonomy — not vibes. This codifies the repo requirement (AGENTS.md step 5: report performance with and without the skill) into a repeatable pipeline.
 
 ## When to Use
 
@@ -125,7 +125,7 @@ Guardrail: fresh chat per task. Carry-over context contaminates the comparison.
 
 ### Step 3: Run Candidate Sessions (Skill ON)
 
-Reinstall the skill, hard-refresh, repeat the identical queries in fresh chats. Save outputs the same way. Do not re-prompt or steer differently than baseline — steering invalidates the pair.
+Reinstall the skill **without its `eval/` folder** (copy `SKILL.md` plus `references/`, `assets/`, `scripts/` only), hard-refresh, repeat the identical queries in fresh chats. An installed `eval/` puts the answer key next to the skill the agent is reading. Save outputs the same way. Do not re-prompt or steer differently than baseline — steering invalidates the pair.
 
 ### Steps 4–6: Generate the Scoring Notebook
 
@@ -244,7 +244,7 @@ python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candid
 5. Confirm with the user before any run > 20 tasks or repeated judge calls (judge cost is real).
 6. Do not retry failed judge/scorer calls more than 3 times; inspect the error first.
 7. Small samples (3-5 tasks) show direction, not significance — say so in the report.
-8. **Information isolation**: When generating a notebook to execute benchmark tasks (Steps 2-3), the agent must read **only `evalset.json`** from the skill's `eval/` folder. It must NOT read `expectations.json`, `generate_data.py`, reference notebooks (`with_skills_*`, `no_skills_*`), or any other file in `eval/` that contains expected answers, ground truth, or evaluation criteria — doing so contaminates the run by leaking the answer key into the generation context. The agent MAY import `scorers.py` when generating the **scoring** notebook (Steps 4-5), since scoring happens after task execution is complete and requires the scorer definitions.
+8. **Information isolation**: When generating a notebook to execute benchmark tasks (Steps 2-3), the agent must read **only `evalset.json`** from the skill's `eval/` folder. It must NOT read `expectations.json`, `generate_data.py`, reference notebooks (`with_skills_*`, `no_skills_*`), or any other file in `eval/` that contains expected answers, ground truth, or evaluation criteria — doing so contaminates the run by leaking the answer key into the generation context. The agent MAY import `scorers.py` when generating the **scoring** notebook (Steps 4-5), since scoring happens after task execution is complete and requires the scorer definitions. Keep `eval/` out of the installed skill tree in both arms (Step 3): the scoring notebook reads it from a repo checkout outside `.assistant/skills/`. `sync_skills_git2unity.py` never publishes `eval/`.
 
 ## Evaluation
 
@@ -265,7 +265,7 @@ Findings that changed this skill:
 - `references/scorer-pack.md` — deterministic `@scorer` and binary `make_judge` starter code
 - `references/paired-comparison.md` — extracting per-task scores from MLflow runs, comparison semantics
 - `references/error-analysis.md` — open/axial coding worksheet, HLS failure-mode seeds
-- `references/report-template.md` — the Evaluation section template for evaluated skills
+- `references/report-template.md` — the `eval/eval_report.md` template for evaluated skills
 - `references/scoring-notebook.md` — scoring notebook generation guide: cell structure, imports, `scorers.py` contract
 - `scripts/compare_runs.py` — MLflow score extraction (`extract_scores`) and paired per-task comparison (win/loss/flip, win-rate); stdlib only
 - `tests/test_compare_runs.py` — unit tests for the comparison logic

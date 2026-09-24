@@ -40,7 +40,7 @@ import sys, mlflow
 mlflow.set_tracking_uri("databricks")
 EXPERIMENT_PATH = "/Users/<you>/skill-eval-<skill-name>"
 mlflow.set_experiment(EXPERIMENT_PATH)
-SKILLS_ROOT = "/Workspace/Users/<you>/.assistant/skills/<repo>/skills"
+SKILLS_ROOT = "/Workspace/Users/<you>/<repo>/skills"   # a checkout outside .assistant/skills/, so eval/ is never installed
 EVAL_DIR = f"{SKILLS_ROOT}/<skill>/eval"
 SCRIPTS_DIR = f"{SKILLS_ROOT}/skill-eval/scripts"
 for d in (EVAL_DIR, SCRIPTS_DIR):
