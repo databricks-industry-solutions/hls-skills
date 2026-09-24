@@ -1,0 +1,119 @@
+[
+  {
+    "task_id": "rwe-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_cohort.csv",
+    "difficulty": "easy",
+    "expectations": {
+      "expected_facts": [
+        "Propensity scores estimated via logistic regression",
+        "1:1 nearest-neighbor matching performed",
+        "Caliper of 0.2 applied on logit of propensity score",
+        "Balance table shows SMD before and after matching",
+        "Love plot generated",
+        "Majority of covariates balanced (SMD < 0.1) after matching"
+      ],
+      "ground_truth_estimates": {
+        "odds_ratio": 0.65,
+        "risk_ratio": 0.65
+      },
+      "guidelines": [
+        "Must use logit of propensity score for matching, not raw PS",
+        "Must report matched sample size",
+        "Must not skip the balance diagnostics step"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["balance_table", "love_plot"],
+      "forbidden_patterns": ["fabricated.*sample size", "SMD.*exactly 0"]
+    }
+  },
+  {
+    "task_id": "rwe-002",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_cohort.csv",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "Propensity scores estimated via logistic regression",
+        "Stabilized IPW computed (weights multiplied by marginal treatment probability)",
+        "Balance assessed using weighted SMDs",
+        "Doubly robust estimator used (combines PS model and outcome model)",
+        "E-value computed for risk ratio point estimate",
+        "E-value computed for confidence interval bound",
+        "Treatment effect reported with confidence interval"
+      ],
+      "ground_truth_estimates": {
+        "odds_ratio": 0.65,
+        "risk_ratio": 0.65
+      },
+      "guidelines": [
+        "Doubly robust formula must use both PS and outcome model correctly",
+        "E-value formula: E = RR + sqrt(RR * (RR - 1)) for RR >= 1",
+        "Stabilized weights must multiply by marginal P(treatment), not just 1/PS",
+        "Must not confuse ATE with ATT weighting scheme",
+        "Must report bootstrap or sandwich confidence intervals for DR estimate"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["doubly_robust_estimate", "evalue", "balance_table"],
+      "forbidden_patterns": ["E-value.*negative", "DR.*without.*propensity", "weights.*not.*stabilized"]
+    }
+  },
+  {
+    "task_id": "rwe-003",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_survival.csv",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "Propensity scores estimated and IPW computed",
+        "Weighted Cox PH model fitted with robust (sandwich) standard errors",
+        "Hazard ratio for treatment reported with confidence interval",
+        "Proportional hazards assumption tested via Schoenfeld residuals",
+        "RMST difference computed up to tau=365 days",
+        "RMST ratio reported"
+      ],
+      "ground_truth_estimates": {
+        "hazard_ratio": 0.70
+      },
+      "guidelines": [
+        "Must use robust SEs (robust=True) for weighted Cox model",
+        "Schoenfeld test must use time_transform (e.g. rank) not just km",
+        "RMST must be computed as area under survival curve, not median survival",
+        "Must not use unweighted Cox model",
+        "Weights must be applied to the Cox model, not just described"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["cox_model", "ph_test", "rmst_difference"],
+      "forbidden_patterns": ["unweighted.*Cox", "RMST.*median", "robust.*False"]
+    }
+  },
+  {
+    "task_id": "rwe-004",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_tte.csv",
+    "difficulty": "edge",
+    "expectations": {
+      "expected_facts": [
+        "Two strategies defined: treatment initiation within grace period vs no initiation",
+        "Cloning applied: each patient duplicated under both strategies",
+        "Censoring applied for strategy deviation",
+        "Inverse probability weights computed for censoring",
+        "Per-protocol effect estimated on uncensored subset",
+        "Grace period of 30 days used"
+      ],
+      "ground_truth_estimates": {
+        "odds_ratio": 0.65
+      },
+      "guidelines": [
+        "Cloning must duplicate ALL patients under both strategies, not just some",
+        "Censoring must occur when patient deviates from assigned strategy",
+        "Censoring weights must model probability of remaining uncensored",
+        "Must not use intention-to-treat analysis (this is per-protocol)",
+        "Must not skip the censoring weight step"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["cloned_data", "censoring_weights", "per_protocol_effect"],
+      "forbidden_patterns": ["intention.to.treat", "no.*censoring", "no.*cloning"]
+    }
+  }
+]

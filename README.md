@@ -3,7 +3,13 @@
 Agent skills for Health & Life Sciences workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
 
 
-# Setup
+## Setup
+#### Option 1: git clone this repo to Databricks
+Git clone this repo onto Databricks. Then open Genie Code and click on Customizations to add the cloned folder. It should point to the `skills` subfolder
+
+#### Optional: Register and sync the skills to [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/)
+On Databricks, run [`sync_skills_git2unity.py`](sync_skills_git2unity.py). It should sync the latest skills from the repo to Unity Catalog. So specify the catalog and schema in the notebook. They also show up on Unity Gateway under Skills
+
 
 
 ## Available Skills
