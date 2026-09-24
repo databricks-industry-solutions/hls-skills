@@ -1,6 +1,9 @@
-# HLS Skills
+# <img src="vitalskills.png" alt="Vital Skills" width="40" height="40"> Vital Skills 
 
-Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
+Agent skills for Health & Life Sciences workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
+
+
+# Setup
 
 
 ## Available Skills
