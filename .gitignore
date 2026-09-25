@@ -25,6 +25,9 @@ build/
 .cursor/skills/
 .agents/skills/
 
+# Local Isaac tooling state
+.isaac/
+
 # Local reference clones
 .ref-*/
 .ref-tmp/
