@@ -75,48 +75,74 @@ DIFFICULTIES = ("easy", "hard", "edge")
 def load_difficulty(path: str | Path) -> dict[str, str]:
     """Load {task_id: easy|hard|edge} with strict label validation.
 
-    Accepts two formats:
-    - Legacy: a flat dict {task_id: "easy"|"hard"|"edge"}.
-    - Expectations: an array of task objects with task_id and difficulty fields,
-      e.g. [{"task_id": "rwe-001", "difficulty": "easy", ...}, ...].
+    Accepts a flat {task_id: level} dict, or task objects carrying task_id and
+    difficulty fields (expectations.json) — as a bare array or under "tasks".
     """
     with open(path, encoding="utf-8") as f:
         raw = json.load(f)
-    out: dict[str, str] = {}
+    if isinstance(raw, dict) and isinstance(raw.get("tasks"), list):
+        raw = raw["tasks"]
     if isinstance(raw, list):
-        # Expectations array format: extract task_id and difficulty from each object.
+        pairs = []
         for i, task in enumerate(raw):
-            if not isinstance(task, dict):
-                raise ValueError(f"{path}: element {i} is not an object")
-            task_id = task.get("task_id")
-            if task_id is None:
-                raise ValueError(f"{path}: element {i} has no task_id")
-            level = task.get("difficulty")
-            if level is None:
-                raise ValueError(f"{path}: task '{task_id}' has no difficulty field")
-            label = str(level).strip().lower()
-            if label not in DIFFICULTIES:
-                raise ValueError(
-                    f"{path}: task '{task_id}' has invalid difficulty {level!r} "
-                    f"(expected one of {DIFFICULTIES})"
-                )
-            out[str(task_id)] = label
+            if not isinstance(task, dict) or "task_id" not in task or "difficulty" not in task:
+                raise ValueError(f"{path}: element {i} needs task_id and difficulty fields")
+            pairs.append((task["task_id"], task["difficulty"]))
     elif isinstance(raw, dict):
-        # Legacy flat dict format.
-        for task_id, level in raw.items():
-            label = str(level).strip().lower()
-            if label not in DIFFICULTIES:
-                raise ValueError(
-                    f"{path}: task '{task_id}' has invalid difficulty {level!r} "
-                    f"(expected one of {DIFFICULTIES})"
-                )
-            out[str(task_id)] = label
+        pairs = list(raw.items())
     else:
         raise ValueError(
-            f"{path}: expected a JSON array (expectations) or object (legacy difficulties dict), "
+            f"{path}: expected an array of task objects or an object of task_id -> difficulty, "
             f"got {type(raw).__name__}"
         )
+    out: dict[str, str] = {}
+    for task_id, level in pairs:
+        label = str(level).strip().lower()
+        if label not in DIFFICULTIES:
+            raise ValueError(
+                f"{path}: task '{task_id}' has invalid difficulty {level!r} "
+                f"(expected one of {DIFFICULTIES})"
+            )
+        if str(task_id) in out:
+            raise ValueError(f"{path}: duplicate task_id '{task_id}'")
+        out[str(task_id)] = label
     return out
+
+
+def extract_scores(
+    result, rows: list[dict], scorer_names: set[str] | None = None
+) -> dict[str, dict[str, bool]]:
+    """Per-task {task_id: {metric: bool}} from an mlflow.genai.evaluate() result.
+
+    The results table keys inputs as `request` (dict or JSON string) and each
+    metric as `<name>/value`, where name is the returned Feedback's name when it
+    sets one (so a scorer `task_completion_judge` returning
+    Feedback(name="task_completion") lands as `task_completion/value`).
+    Expectations land in the same `<key>/value` shape, so by default every
+    `/value` column except the rows' expectation keys is a metric; pass
+    `scorer_names` to name the metrics explicitly. Raises if any row in `rows`
+    came back unscored.
+    """
+    df = result.tables["eval_results"]
+    expectation_keys = {k for row in rows for k in row.get("expectations", {})}
+
+    def is_metric(name: str) -> bool:
+        return name in scorer_names if scorer_names is not None else name not in expectation_keys
+
+    value_cols = [c for c in df.columns if c.endswith("/value") and is_metric(c[: -len("/value")])]
+    if not value_cols:
+        raise ValueError(f"no '<name>/value' columns in eval_results: {list(df.columns)}")
+    scores: dict[str, dict[str, bool]] = {}
+    for _, r in df.iterrows():
+        req = json.loads(r["request"]) if isinstance(r["request"], str) else r["request"]
+        tid = str(req["task_id"])
+        scores[tid] = {
+            c[: -len("/value")]: _to_bool(r[c], context=f"{tid}/{c}") for c in value_cols
+        }
+    missing = {str(row["inputs"]["task_id"]) for row in rows} - set(scores)
+    if missing:
+        raise ValueError(f"no scores returned for tasks: {sorted(missing)}")
+    return scores
 
 
 def task_passed(metrics: dict[str, bool], pass_rule: str) -> bool:
@@ -426,7 +452,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format", choices=("text", "markdown"), default="text")
     parser.add_argument(
         "--difficulty",
-        help="JSON file with task difficulty labels (evalset array or legacy {task_id: level} dict); enables the ship gate",
+        help="JSON with task difficulty labels (expectations.json array, {\"tasks\": [...]}, or {task_id: level}); enables the ship gate",
     )
     parser.add_argument(
         "--gate",

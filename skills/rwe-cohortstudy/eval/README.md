@@ -29,7 +29,7 @@ Synthetic datasets with built-in confounding by indication:
 
 Volume: `/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/`
 
-Override: `RWE_EVAL_DATA_DIR` env var.
+Override: `SKILL_EVAL_DATA_DIR` env var (legacy `RWE_EVAL_DATA_DIR` still honored).
 
 ## Scorer Summary
 
@@ -89,8 +89,12 @@ mlflow.set_experiment("/Users/<you>/skill-eval-rwe-cohortstudy")
 baseline_result = mlflow.genai.evaluate(data=rows_baseline, scorers=scorers)
 with_skill_result = mlflow.genai.evaluate(data=rows_with_skill, scorers=scorers)
 
-# Extract per-task scores (see paired-comparison.md)
+# Extract per-task scores (compare_runs.py in skill-eval/scripts must be on sys.path)
+from compare_runs import extract_scores
+baseline_scores = extract_scores(baseline_result, rows_baseline)
+with_skill_scores = extract_scores(with_skill_result, rows_with_skill)
 # Save to baseline_scores.json and with_skill_scores.json
+# Full runnable version: score_rwe_cohortstudy.py
 ```
 
 ### 5. Paired comparison
@@ -107,8 +111,8 @@ python3 skills/skill-eval/scripts/compare_runs.py \
 - Read every `tie-fail` or `regression` task in both arms
 - Open-code the first failure per trace, group into a failure taxonomy
 - See `skill-eval/references/error-analysis.md`
-- Write the Evaluation section into `rwe-cohortstudy/SKILL.md`
-  using `skill-eval/references/report-template.md`
+- Write `eval/eval_report.md` using `skill-eval/references/report-template.md`
+  (do not modify `rwe-cohortstudy/SKILL.md`)
 
 ## Files
 
@@ -118,14 +122,18 @@ eval/
 ├── evalset.json         ← 4 benchmark task definitions (task_id, dataset, query)
 ├── expectations.json    ← difficulty, expectations, deterministic_checks per task
 ├── generate_data.py     ← synthetic data generator
-└── scorers.py           ← deterministic + LLM judge scorers
+├── scorers.py           ← deterministic + LLM judge scorers (exports `scorers`)
+├── no_skills_rwe_cohortstudy.py    ← baseline arm notebook
+├── with_skills_rwe_cohortstudy.py  ← skill-on arm notebook
+└── score_rwe_cohortstudy.py        ← scoring notebook: evaluate + extract + compare
 ```
 
 After running, add:
 ```text
 eval/
 ├── baseline_scores.json    ← skill-OFF per-task scores
-└── with_skill_scores.json  ← skill-ON per-task scores
+├── with_skill_scores.json  ← skill-ON per-task scores
+└── eval_report.md          ← paired comparison report + failure taxonomy
 ```
 
 ## Reproduce

@@ -4,14 +4,14 @@ Referenced from SKILL.md Steps 4–6. The scoring notebook is the deliverable th
 
 ## Principle
 
-**Import, don't redefine.** The notebook contains zero function definitions. Scorers come from `scorers.py`, score extraction from `scorers.extract_scores()`, and paired comparison from `compare_runs.main()`.
+**Import, don't redefine.** The notebook contains zero function definitions. Scorers come from `scorers.py`, score extraction from `compare_runs.extract_scores()`, and paired comparison from `compare_runs.main()`.
 
 ## Shared modules the notebook imports
 
 | Module | What it provides | Location |
 |--------|-----------------|----------|
-| `scorers.py` | `scorers` list (all `@scorer` + `make_judge` objects), `SCORER_NAMES`, `extract_scores()` | `skills/<skill>/eval/scorers.py` |
-| `compare_runs.py` | `main()` (CLI entry point callable with `argv`), `_to_bool()`, `compare()`, `format_text()`, `format_markdown()` | `skills/skill-eval/scripts/compare_runs.py` |
+| `scorers.py` | `scorers` list (all `@scorer` + `make_judge` objects) | `skills/<skill>/eval/scorers.py` |
+| `compare_runs.py` | `extract_scores()` (MLflow result → `{task_id: {metric: bool}}`), `main()` (CLI entry point callable with `argv`) | `skills/skill-eval/scripts/compare_runs.py` |
 
 ## Notebook cell structure
 
@@ -20,30 +20,34 @@ Referenced from SKILL.md Steps 4–6. The scoring notebook is the deliverable th
 | 1 | Overview (markdown) | Describes the skill being evaluated, scorer source, workflow |
 | 2 | Install dependencies | `%pip install "mlflow[databricks]>=3.5.0" --quiet` |
 | 3 | Restart Python | `dbutils.library.restartPython()` |
-| 4 | MLflow experiment + import scorers | `mlflow.set_experiment(...)`, `sys.path.insert(0, EVAL_DIR)`, `from scorers import scorers as all_scorers` |
+| 4 | MLflow experiment + imports | `mlflow.set_experiment(...)`, put `EVAL_DIR` and `SCRIPTS_DIR` on `sys.path`, import `scorers` and `compare_runs` |
 | 5 | Load expectations | Parse `expectations.json`, merge `deterministic_checks` into `expectations` |
 | 6 | Build eval rows: baseline | Load `task_queries` from `evalset.json`, define `no_skills_outputs` dict, assemble `rows_baseline` |
 | 7 | Build eval rows: candidate | Define `with_skills_outputs` dict, assemble `rows_with_skill` |
 | 8 | Evaluate baseline | `mlflow.genai.evaluate(data=rows_baseline, scorers=all_scorers)` |
 | 9 | Evaluate candidate | `mlflow.genai.evaluate(data=rows_with_skill, scorers=all_scorers)` |
-| 10 | Extract scores + save | `from scorers import extract_scores` → save `baseline_scores.json`, `with_skill_scores.json` |
-| 11 | Paired comparison | `from compare_runs import main as compare_main` → call once with `--format text` (prints directly to stdout) |
+| 10 | Extract scores + save | `extract_scores(result, rows)` → save `baseline_scores.json`, `with_skill_scores.json` |
+| 11 | Paired comparison | `compare_main([...])` → call once with `--format text` (prints directly to stdout) |
 
 ## Cell-by-cell reference code
 
-### Cell 4 — MLflow experiment + import scorers
+### Cell 4 — MLflow experiment + imports
 
-Scorers come from `scorers.py`, not redefined inline:
+Scorers come from `scorers.py`, extraction and comparison from `compare_runs.py`. Both directories go on `sys.path` here, before any import:
 
 ```python
 import sys, mlflow
 mlflow.set_tracking_uri("databricks")
 EXPERIMENT_PATH = "/Users/<you>/skill-eval-<skill-name>"
 mlflow.set_experiment(EXPERIMENT_PATH)
-EVAL_DIR = "/Workspace/Users/<you>/.assistant/skills/<repo>/skills/<skill>/eval"
-if EVAL_DIR not in sys.path:
-    sys.path.insert(0, EVAL_DIR)
+SKILLS_ROOT = "/Workspace/Users/<you>/<repo>/skills"   # a checkout outside .assistant/skills/, so eval/ is never installed
+EVAL_DIR = f"{SKILLS_ROOT}/<skill>/eval"
+SCRIPTS_DIR = f"{SKILLS_ROOT}/skill-eval/scripts"
+for d in (EVAL_DIR, SCRIPTS_DIR):
+    if d not in sys.path:
+        sys.path.insert(0, d)
 from scorers import scorers as all_scorers
+from compare_runs import extract_scores, main as compare_main
 ```
 
 ### Cell 5 — Load expectations
@@ -95,11 +99,9 @@ rows_baseline = [
 
 ### Cell 10 — Extract scores + save
 
-Extraction uses `scorers.extract_scores()`, not inline code:
+Extraction uses `compare_runs.extract_scores()`, not inline code. It raises on a missing task or a `None`/`NaN`/non-binary score rather than recording a silent fail. Metric names come from the `<name>/value` columns, and `name` is the returned `Feedback`'s name when the scorer sets one (rwe-cohortstudy's `task_completion_judge` lands as `task_completion`). Expectations are logged in the same `<key>/value` shape, so by default every `/value` column except the rows' expectation keys is a metric; pass `scorer_names={...}` to name the metrics explicitly:
 
 ```python
-from scorers import extract_scores
-
 baseline_scores = extract_scores(baseline_result, rows_baseline)
 candidate_scores = extract_scores(candidate_result, rows_with_skill)
 
@@ -115,11 +117,6 @@ with open(f"{EVAL_DIR}/with_skill_scores.json", "w") as f:
 Comparison uses `compare_runs.main()` programmatically, not inline reimplementation. Call once with `--format text` — the output prints directly to stdout and is sufficient for the eval report:
 
 ```python
-COMPARE_RUNS_DIR = "/Workspace/Users/<you>/.assistant/skills/<repo>/skills/skill-eval/scripts"
-if COMPARE_RUNS_DIR not in sys.path:
-    sys.path.insert(0, COMPARE_RUNS_DIR)
-from compare_runs import main as compare_main
-
 compare_main([
     f"{EVAL_DIR}/baseline_scores.json",
     f"{EVAL_DIR}/with_skill_scores.json",
@@ -144,51 +141,18 @@ These are assembled into eval rows as `{"inputs": {"task_id": ..., "query": ...}
 
 ## `scorers.py` contract
 
-`scorers.py` is authored in two phases:
-
-### Phase 1 — Skill author writes (before any eval run)
-
-- `scorers` — list of all `@scorer` functions and `make_judge` objects
-
-This is the only export required when the file is first created. See `references/scorer-pack.md` for starter code.
-
-### Phase 2 — Agent appends during scoring notebook generation
-
-When generating the scoring notebook, the agent adds the following to `scorers.py` if not already present:
-
-- `SCORER_NAMES` — set of scorer name strings, derived from the `scorers` list (stays in sync automatically)
-- `extract_scores(result, rows, scorer_names=None)` — parses `EvaluationResult.tables["eval_results"]` into `{task_id: {metric: bool}}`; delegates bool coercion to `compare_runs._to_bool()`
-
-These are generated on the fly because they depend on the MLflow column naming convention (`<scorer>/value`) and `compare_runs._to_bool()`, which the skill author shouldn't need to know about. The agent adapts the extraction logic to the actual scorer names present in `scorers.py`.
-
-`compare_runs._to_bool()` handles `None`, `NaN`, `bool`, and string (`"yes"/"no"/"true"/"false"/"1"/"0"`) coercion centrally. Do not reimplement this logic anywhere else.
-
-### Final state after both phases
+The skill author writes one export, `scorers` — a list of all `@scorer` functions and `make_judge` objects. See `references/scorer-pack.md` for starter code.
 
 ```python
-# Phase 1 (skill author)
 scorers = [artifact_produced, no_forbidden_content, ..., task_completion_judge, tool_use_judge]
-
-# Phase 2 (agent-generated)
-SCORER_NAMES = {s.name if hasattr(s, 'name') else s.__name__ for s in scorers}
-
-from compare_runs import _to_bool
-
-def extract_scores(result, rows, scorer_names=None):
-    names = scorer_names or SCORER_NAMES
-    df = result.tables["eval_results"]
-    value_cols = [c for c in df.columns if c.endswith("/value") and c[:-len("/value")] in names]
-    scores = {}
-    for _, r in df.iterrows():
-        req = json.loads(r["request"]) if isinstance(r["request"], str) else r["request"]
-        tid = req["task_id"]
-        scores[tid] = {col[:-len("/value")]: _to_bool(r[col], context=f"{tid}/{col}") for col in value_cols}
-    missing = {row["inputs"]["task_id"] for row in rows} - set(scores)
-    if missing:
-        raise ValueError(f"No scores returned for tasks: {sorted(missing)}")
-    return scores
 ```
+
+Nothing is appended to `scorers.py` when the scoring notebook is generated. Extraction (the `request` column, `<name>/value` columns, strict bool coercion of `None`/`NaN`/`yes`/`no`/`true`/`false`/`1`/`0`) lives once in `compare_runs.extract_scores()`; do not reimplement it in `scorers.py` or the notebook.
+
+Judges must let errors propagate. A judge that catches its own exception and returns `Feedback(value=False)` turns an endpoint outage into a task failure the comparison cannot tell apart from a real one. Uncaught, MLflow records the error as a missing value and `extract_scores()` refuses it.
+
+The evaluation report is written to `eval/eval_report.md` (see `references/report-template.md`) — not into the skill's `SKILL.md`.
 
 ## Reference implementation
 
-See `skills/rwe-cohortstudy/eval/score_rwe_cohortstudy` for a working example. The evaluation report is written to `eval/eval_report.md` (see `references/report-template.md`) — not into the skill's `SKILL.md`.
+`skills/rwe-cohortstudy/eval/` follows this layout end to end: `evalset.json`, `expectations.json`, `generate_data.py`, `scorers.py`, the two arm notebooks, `score_rwe_cohortstudy.py` (this cell structure), the score JSONs and `eval_report.md`.
