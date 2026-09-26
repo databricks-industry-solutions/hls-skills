@@ -11,6 +11,7 @@ Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` f
 | **bulk-rnaseq** | Analyze for top differentially expressed genes (DEG) from bulk RNA-seq count data |
 | **pathway-enrichment-analysis** | Pathway enrichment for RNA-seq. Choose from ORA or GSEA |
 | **cohort-builder** | Build a defensible, reproducible, feasibility-checked patient cohort from structured coded data and free-text clinical notes — grounds codes, surfaces threshold + code/note combine choices, never fabricates citations |
+| **rwe-cohortstudy** | Perform comparative effectiveness research (aka cohort study design) with appropriate propensity score adjustment, including matching and IPW |
 | **phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
 | **payer-provider-measure-catalog** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
 | **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
