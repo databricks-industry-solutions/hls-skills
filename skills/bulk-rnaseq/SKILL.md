@@ -3,7 +3,7 @@ name: bulk-rnaseq
 description: PyDESeq2 differential expression for bulk RNA-seq. Counts + metadata → Wald tests, FDR, optional apeGLM shrinkage, PCA/volcano/MA plots. For pathway enrichment of DE results use pathway-enrichment-analysis.
 author: Yen Low
 version: 0.2
-license: Databricks License
+license: Databricks
 ---
 
 # PyDESeq2 — Bulk RNA-seq Differential Expression

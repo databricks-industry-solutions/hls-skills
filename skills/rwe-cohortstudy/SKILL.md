@@ -10,16 +10,20 @@ description: >
   in observational data, run propensity score analysis, build external control arms, emulate
   a target trial, perform causal inference from EHR/claims data, or conduct comparative
   cohort studies with confounding adjustment.
+author: Yen Low
+version: 0.3
+license: Databricks
 ---
 
-# Real-World Evidence Analysis in Python
+# Cohort study design analysis in Python for Real-World Evidence
+## Overview
 
 This skill provides a complete toolkit for comparative effectiveness research (CER) and
 real-world evidence studies using Python. It maps the standard R-based RWE workflow
 (MatchIt, WeightIt, cobalt, survival, survey, tableone, EValue, tipr) to Python equivalents
 using scikit-learn, statsmodels, lifelines, and custom implementations.
 
-## When to Use This Skill
+## When to Use
 
 Load this skill when the user wants to:
 - Compare two or more treatment groups in observational (non-randomized) data
@@ -31,7 +35,23 @@ Load this skill when the user wants to:
 - Produce balance diagnostics (standardized mean differences, love plots)
 - Estimate treatment effects with proper confidence intervals
 
-## Python Package Stack
+
+## Prerequisites
+### Package Mapping: R to Python
+
+| R Package | Python Equivalent | Notes |
+|---|---|---|
+| MatchIt | sklearn + custom nearest-neighbor | Logistic regression for PS, sklearn.neighbors for matching |
+| WeightIt | sklearn + manual weight computation | IPW, stabilized, overlap weights computed directly |
+| cobalt | Custom SMD functions + matplotlib | Love plots and balance tables from scratch |
+| tableone | Custom groupby + SMD | Baseline characteristics table with tests |
+| survey | statsmodels.stats.weightstats | Weighted mean, proportion, quantile estimation |
+| survival | lifelines | KM curves, Cox PH, logrank tests |
+| EValue | Custom E-value function | See sensitivity analysis section |
+| tipr | Custom tipping point function | See sensitivity analysis section |
+| twang | sklearn GBM + custom weight extraction | GBM-based PS with balance optimization |
+| optmatch | scipy.optimize.linear_sum_assignment | Optimal matching via Hungarian algorithm |
+
 
 ```python
 %pip install scikit-learn statsmodels lifelines matplotlib seaborn --quiet
@@ -54,28 +74,13 @@ import warnings
 warnings.filterwarnings('ignore')
 ```
 
-### Package Mapping: R to Python
-
-| R Package | Python Equivalent | Notes |
-|---|---|---|
-| MatchIt | sklearn + custom nearest-neighbor | Logistic regression for PS, sklearn.neighbors for matching |
-| WeightIt | sklearn + manual weight computation | IPW, stabilized, overlap weights computed directly |
-| cobalt | Custom SMD functions + matplotlib | Love plots and balance tables from scratch |
-| tableone | Custom groupby + SMD | Baseline characteristics table with tests |
-| survey | statsmodels.stats.weightstats | Weighted mean, proportion, quantile estimation |
-| survival | lifelines | KM curves, Cox PH, logrank tests |
-| EValue | Custom E-value function | See sensitivity analysis section |
-| tipr | Custom tipping point function | See sensitivity analysis section |
-| twang | sklearn GBM + custom weight extraction | GBM-based PS with balance optimization |
-| optmatch | scipy.optimize.linear_sum_assignment | Optimal matching via Hungarian algorithm |
-
-## Workflow Overview
+## Workflow
 
 1. Define the study question (PICO: population, intervention, comparator, outcome)
 2. Cohort assembly (inclusion/exclusion criteria, treatment assignment, follow-up)
 3. Covariate assessment (baseline confounders measured pre-treatment)
 4. Propensity score estimation (probability of treatment given covariates)
-5. Confounding adjustment (matching, weighting, stratification, or doubly robust)
+5. Confounding adjustment (matching, weighting, or stratification)
 6. Balance diagnostics (verify covariate balance after adjustment, SMD < 0.1)
 7. Treatment effect estimation (outcome model on adjusted sample/weights)
 8. Sensitivity analysis (E-values, tipping point analysis)
@@ -474,98 +479,66 @@ def love_plot(data, covariates, treatment_col='treatment', weight_col=None,
 
 ## 6. Treatment Effect Estimation
 
-### 6.1 Continuous Outcome (Weighted Mean Difference)
+### 6.1 Continuous Outcome (Weighted Linear Regression)
 
 ```python
-def estimate_ate_continuous(data, outcome_col, treatment_col='treatment', weight_col='ipw'):
-    t, c = data[data[treatment_col]==1], data[data[treatment_col]==0]
-    wt, wc = t[weight_col].values, c[weight_col].values
-    mt, mc = np.average(t[outcome_col], weights=wt), np.average(c[outcome_col], weights=wc)
-    ate = mt - mc
-    vt = np.average((t[outcome_col]-mt)**2, weights=wt)
-    vc = np.average((c[outcome_col]-mc)**2, weights=wc)
-    ess_t = (wt.sum()**2)/(wt**2).sum()
-    ess_c = (wc.sum()**2)/(wc**2).sum()
-    se = np.sqrt(vt/ess_t + vc/ess_c)
-    z = 1.96
-    print(f"ATE (continuous): {ate:.3f} [{ate-z*se:.3f}, {ate+z*se:.3f}]")
-    return {'ate': ate, 'se': se, 'ci': (ate-z*se, ate+z*se)}
-```
-
-### 6.2 Binary Outcome (Risk Difference, RR, OR)
-
-```python
-def estimate_ate_binary(data, outcome_col, treatment_col='treatment', weight_col='ipw'):
-    t, c = data[data[treatment_col]==1], data[data[treatment_col]==0]
-    pt = np.average(t[outcome_col], weights=t[weight_col].values)
-    pc = np.average(c[outcome_col], weights=c[weight_col].values)
-    rd, rr = pt - pc, pt/pc if pc > 0 else np.inf
-    or_val = (pt/(1-pt))/(pc/(1-pc)) if (0<pt<1 and 0<pc<1) else np.inf
-    ess_t = (t[weight_col].sum()**2)/(t[weight_col]**2).sum()
-    ess_c = (c[weight_col].sum()**2)/(c[weight_col]**2).sum()
-    se_rd = np.sqrt(pt*(1-pt)/ess_t + pc*(1-pc)/ess_c)
-    z = 1.96
-    print(f"Risk diff: {rd:.4f} [{rd-z*se_rd:.4f}, {rd+z*se_rd:.4f}]")
-    print(f"Risk ratio: {rr:.4f} | Odds ratio: {or_val:.4f}")
-    print(f"NNT: {1/rd:.1f}" if rd != 0 else "NNT: undefined")
-    return {'rd': rd, 'rr': rr, 'or': or_val}
-```
-
-### 6.3 G-computation (Outcome Regression Standardization)
-
-```python
-def g_computation(data, outcome_col, treatment_col='treatment', covariates=None,
-                  outcome_type='continuous', n_boot=500):
-    """Fit outcome model, predict under treatment=1 and treatment=0, take mean diff."""
-    if covariates is None:
-        covariates = [c for c in data.columns if c not in [outcome_col, treatment_col]]
+def estimate_ate_continuous(data, outcome_col, covariates, treatment_col='treatment',
+                            weight_col='ipw'):
+    """
+    Estimate ATE for a continuous outcome via weighted least squares (WLS).
+    Reports the treatment coefficient with robust (HC1) 95% CI.
+    """
     formula = f"{outcome_col} ~ {treatment_col} + " + " + ".join(covariates)
-    fit_fn = smf.ols if outcome_type == 'continuous' else smf.logit
-    model = fit_fn(formula, data=data).fit(disp=0)
-    ate = model.predict(data.assign(**{treatment_col: 1})).mean() - model.predict(data.assign(**{treatment_col: 0})).mean()
-    boots = []
-    for _ in range(n_boot):
-        bd = data.sample(n=len(data), replace=True)
-        try:
-            bm = fit_fn(formula, data=bd).fit(disp=0)
-            boots.append(bm.predict(bd.assign(**{treatment_col: 1})).mean() - bm.predict(bd.assign(**{treatment_col: 0})).mean())
-        except:
-            continue
-    ci = (np.percentile(boots, 2.5), np.percentile(boots, 97.5))
-    print(f"G-computation ATE: {ate:.4f} [{ci[0]:.4f}, {ci[1]:.4f}]")
-    return {'ate': ate, 'ci': ci}
+    model = smf.wls(formula, data=data, weights=data[weight_col]).fit(
+        cov_type='HC1'  # sandwich SEs for IPW
+    )
+    ate = model.params[treatment_col]
+    ci = model.conf_int(alpha=0.05).loc[treatment_col]
+    p = model.pvalues[treatment_col]
+    print(f"ATE (WLS): {ate:.4f} [95% CI {ci[0]:.4f}, {ci[1]:.4f}], p={p:.6f}")
+    print(model.summary().tables[1])
+    return {'ate': ate, 'ci': (ci[0], ci[1]), 'p': p, 'model': model}
+
+# Example:
+# estimate_ate_continuous(df_weighted, 'outcome', covariates, weight_col='ipw')
 ```
 
-### 6.4 Doubly Robust Estimation
+### 6.2 Binary Outcome (Weighted Logistic Regression)
 
 ```python
-def doubly_robust(data, outcome_col, treatment_col='treatment', covariates=None,
-                  ps_col='propensity_score', outcome_type='continuous', n_boot=500):
+def estimate_ate_binary(data, outcome_col, covariates, treatment_col='treatment',
+                        weight_col='ipw'):
     """
-    Doubly robust: consistent if EITHER the PS model OR the outcome model is correct.
-    DR = mean[ (Z*Y - (Z-e)*m1)/e - ((1-Z)*Y + (Z-e)*m0)/(1-e) ]
+    Estimate treatment OR for a binary outcome via IPW logistic regression.
+    Reports OR with 95% CI (profile-likelihood based via statsmodels).
+    Also derives risk difference and risk ratio from marginal predictions.
     """
-    if covariates is None:
-        covariates = [c for c in data.columns if c not in [outcome_col, treatment_col, ps_col]]
-    z, y, e = data[treatment_col].values, data[outcome_col].values, data[ps_col].values
-    formula = f"{outcome_col} ~ " + " + ".join(covariates)
-    fit_fn = smf.ols if outcome_type == 'continuous' else smf.logit
-    m1 = fit_fn(formula, data=data[data[treatment_col]==1]).fit(disp=0).predict(data)
-    m0 = fit_fn(formula, data=data[data[treatment_col]==0]).fit(disp=0).predict(data)
-    dr = (((z*y - (z-e)*m1)/e) - ((1-z)*y + (z-e)*m0)/(1-e)).mean()
-    boots = []
-    for _ in range(n_boot):
-        bd = data.sample(n=len(data), replace=True)
-        try:
-            mt = fit_fn(formula, data=bd[bd[treatment_col]==1]).fit(disp=0).predict(bd)
-            mc = fit_fn(formula, data=bd[bd[treatment_col]==0]).fit(disp=0).predict(bd)
-            zb, yb, eb = bd[treatment_col].values, bd[outcome_col].values, bd[ps_col].values
-            boots.append((((zb*yb-(zb-eb)*mt)/eb) - ((1-zb)*yb+(zb-eb)*mc)/(1-eb)).mean())
-        except:
-            continue
-    se = np.std(boots, ddof=1)
-    print(f"Doubly Robust ATE: {dr:.4f} [{dr-1.96*se:.4f}, {dr+1.96*se:.4f}]")
-    return {'ate': dr, 'se': se, 'ci': (dr-1.96*se, dr+1.96*se)}
+    formula = f"{outcome_col} ~ {treatment_col} + " + " + ".join(covariates)
+    model = smf.glm(
+        formula, data=data, family=sm.families.Binomial(),
+        freq_weights=data[weight_col].values
+    ).fit(cov_type='HC1')
+
+    # Odds ratio with 95% CI
+    log_or = model.params[treatment_col]
+    log_ci = model.conf_int(alpha=0.05).loc[treatment_col]
+    or_val = np.exp(log_or)
+    or_ci = np.exp(log_ci)
+    p = model.pvalues[treatment_col]
+    print(f"OR: {or_val:.4f} [95% CI {or_ci[0]:.4f}, {or_ci[1]:.4f}], p={p:.6f}")
+
+    # Marginal risk difference and risk ratio via standardization
+    p1 = model.predict(data.assign(**{treatment_col: 1})).mean()
+    p0 = model.predict(data.assign(**{treatment_col: 0})).mean()
+    rd = p1 - p0
+    rr = p1 / p0 if p0 > 0 else np.inf
+    print(f"Marginal risk diff: {rd:.4f} | Risk ratio: {rr:.4f}")
+    print(f"NNT: {1/rd:.1f}" if rd != 0 else "NNT: undefined")
+    print(model.summary().tables[1])
+    return {'or': or_val, 'or_ci': (or_ci[0], or_ci[1]), 'rd': rd, 'rr': rr, 'p': p, 'model': model}
+
+# Example:
+# estimate_ate_binary(df_weighted, 'mortality', covariates, weight_col='ipw')
 ```
 
 ---
@@ -931,7 +904,7 @@ def baseline_table(data, covariates, treatment_col='treatment',
     return pd.DataFrame(rows)
 ```
 
-### Reporting Checklist
+## Expected Outputs
 
 1. State the target trial specification (PICO, eligibility, treatment strategies, outcomes, follow-up)
 2. Report sample sizes at each stage (exclusions, matched/weighted N, effective sample size)
@@ -944,8 +917,23 @@ def baseline_table(data, covariates, treatment_col='treatment',
 9. Report sensitivity analyses (weight truncation, alternative estimators, alternative covariate sets)
 10. Discuss common support and potential for residual confounding
 
-### Methodological References
 
+## Troubleshooting
+
+## Guardrails
+
+1. **Specify the target trial before writing analysis code** — lock PICO, time zero, eligibility, and follow-up. Do not reverse-engineer a study question from a significant effect.
+2. **Measure all covariates before time zero** — post-index labs, procedures, or diagnoses are not baseline confounders; using them as such is immortal-time / collider bias.
+3. **Prefer a new-user, active-comparator design** — do not analyze prevalent users as initiators, and do not use an untreated comparator when an active alternative exists unless the user explicitly wants that contrast.
+4. **Do not report effects until balance is shown** — require SMD < 0.1 on pre-treatment covariates after matching/weighting (Austin 2009). If covariates remain imbalanced, change the PS model or adjustment method; do not proceed to outcome models.
+5. **Respect positivity / common support** — inspect PS overlap and report how many patients fall outside the overlapping range. Extreme weights need truncation or overlap weights; do not treat infinite IPW as a valid ATE.
+6. **Do not interpret observational estimates as randomized trial results** — always pair the primary effect with E-value (and tipping-point) sensitivity for unmeasured confounding.
+7. **Confirm before heavy workloads** — large GBM/RF PS fits with nested cross-fitting, fine-grid tipping-point heatmaps, or MSM fits on long person-time tables need an explicit go-ahead.
+8. **Never fabricate balance, sample sizes, or citations** — report attrition at each eligibility step; cite only the methods papers listed in References (or user-supplied PMIDs).
+
+## References
+
+- Adapted from [RWE analysis in R skill on MCP Market](https://mcpmarket.com/tools/skills/real-world-evidence-analysis-in-r-1)
 - Austin PC. Balance diagnostics for comparing the distribution of baseline covariates between treatment groups in propensity-score matched samples. Stat Med. 2009.
 - VanderWeele TJ, Ding P. Sensitivity analysis in observational research: introducing the E-value. Ann Intern Med. 2017.
 - Hernan MA, Robins JM. Using big data to emulate a target trial when a randomized trial is not available. Am J Epidemiol. 2016.
