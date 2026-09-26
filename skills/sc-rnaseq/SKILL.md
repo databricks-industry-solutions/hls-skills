@@ -7,11 +7,14 @@ description: >
   cell-type annotation, batch correction, harmony, UMAP, leiden clustering,
   MLflow experiment tracking for single-cell, marker genes, pseudotime,
   or asks to build tables/dashboards from single-cell experiments.
+author: Peter Hawkins
+version: 0.1
+license: Databricks
 ---
 
 # Single-Cell Analysis on Databricks
 
-## Scope
+## Overview
 
 This skill is a **router**. It contains decision logic, compute rules, and
 mandatory gates. Detailed tool-specific workflows live in reference files
@@ -22,8 +25,13 @@ analysis with **scanpy**, large-scale tabular extraction with **cspray**,
 GPU-accelerated workflows with **rapids-singlecell**, and **MLflow
 experiment tracking** for reproducible single-cell pipelines.
 
----
 
+## When to Use
+Load this skill when the user mentions h5ad, AnnData, scanpy, single-cell, scRNA-seq, rapids-singlecell, cspray, 10x Genomics, cell-type annotation, batch correction, harmony, UMAP, leiden clustering,
+
+
+---
+## Workflow
 ## Reference Files — Load After Routing
 
 After the decision flowchart determines the tool path, load the matching
@@ -242,3 +250,12 @@ Tool-specific pitfalls are in each reference file. Cross-cutting issues:
 13. **Include markdown narration** — decisions and justification only.
 14. Log final run to MLflow: confirmed params, cell type annotations JSON,
     h5ad path (artifact only if user opts in).
+
+
+## Expected Outputs
+
+## Troubleshooting
+
+## Guardrails
+
+## References
