@@ -7,11 +7,14 @@ description: >
   cell-type annotation, batch correction, harmony, UMAP, leiden clustering,
   MLflow experiment tracking for single-cell, marker genes, pseudotime,
   or asks to build tables/dashboards from single-cell experiments.
+author: Peter Hawkins
+version: 0.1
+license: Databricks
 ---
 
 # Single-Cell Analysis on Databricks
 
-## Scope
+## Overview
 
 This skill is a **router**. It contains decision logic, compute rules, and
 mandatory gates. Detailed tool-specific workflows live in reference files
@@ -22,8 +25,13 @@ analysis with **scanpy**, large-scale tabular extraction with **cspray**,
 GPU-accelerated workflows with **rapids-singlecell**, and **MLflow
 experiment tracking** for reproducible single-cell pipelines.
 
----
 
+## When to Use
+Load this skill when the user mentions h5ad, AnnData, scanpy, single-cell, scRNA-seq, rapids-singlecell, cspray, 10x Genomics, cell-type annotation, batch correction, harmony, UMAP, leiden clustering,
+
+
+---
+## Workflow
 ## Reference Files — Load After Routing
 
 After the decision flowchart determines the tool path, load the matching
@@ -205,6 +213,8 @@ Tool-specific pitfalls are in each reference file. Cross-cutting issues:
 
 | Pitfall | Remedy |
 |---|---|
+| Plots don't render inline in Databricks notebooks | Add `%matplotlib inline` in the first cell after `restartPython()`. Call `plt.show()` explicitly after every `sc.pl.*` call. See `references/scanpy-workflow.md` Install section. |
+| Saved plot PNG is blank or missing from MLflow artifacts | Pass `show=False` to every `sc.pl.*` call so the figure stays open, then `plt.savefig(os.path.join(tmpdir.name, "name.png"), bbox_inches="tight")`, then `plt.show()`. Without `show=False`, scanpy shows and closes the figure before `savefig` runs. Don't use scanpy's `save=` kwarg (writes outside tmpdir). |
 | Kernel dies silently reading h5ad | Almost always OOM. Check file size, increase RAM (§3). |
 | `scanpy` import error on serverless | Run `%pip install scanpy[leiden]` + restart. |
 | cspray `CLEAR CACHE` error on serverless | Call `sdata.set_intermediary_persistance(persist=False)` after `from_h5ads()`. See `references/cspray-tables.md`. |
@@ -235,6 +245,10 @@ Tool-specific pitfalls are in each reference file. Cross-cutting issues:
 7. If single large file → offer rapids-singlecell (ask user about GPU).
 8. If goal is tables/dashboards → recommend cspray.
 9. Install packages in the first cell, restart Python.
+10. **Enable inline plots:** Add `%matplotlib inline` + `import matplotlib.pyplot as plt`
+    in the first code cell after restart. Call every `sc.pl.*` with `show=False`,
+    then `plt.savefig(...)` into tmpdir, then `plt.show()` — so each plot both
+    renders inline and is saved for MLflow.
 10. **Start MLflow parent run** (`references/mlflow-tracking.md`) — log iterations as nested runs.
 11. After clustering, **suggest cell type annotations** (Gate G4) with LLM —
     present as suggestions requiring expert review.
@@ -242,3 +256,12 @@ Tool-specific pitfalls are in each reference file. Cross-cutting issues:
 13. **Include markdown narration** — decisions and justification only.
 14. Log final run to MLflow: confirmed params, cell type annotations JSON,
     h5ad path (artifact only if user opts in).
+
+
+## Expected Outputs
+
+## Troubleshooting
+
+## Guardrails
+
+## References
