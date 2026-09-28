@@ -126,6 +126,10 @@ size on GPU early and prevents CUDA OOM errors.
 import rapids_singlecell as rsc
 import scanpy as sc
 import numpy as np
+import matplotlib.pyplot as plt
+import os, tempfile
+
+tmpdir = tempfile.TemporaryDirectory()   # plots/artifacts for MLflow
 
 adata = sc.read_h5ad("/Volumes/...")
 adata.obs_names_make_unique()
@@ -204,7 +208,9 @@ rsc.tl.umap(adata)
 
 # --- Transfer to CPU for plotting and DE ---
 rsc.get.anndata_to_CPU(adata)
-sc.pl.umap(adata, color=["leiden"])
+sc.pl.umap(adata, color=["leiden"], show=False)
+plt.savefig(os.path.join(tmpdir.name, "umap_leiden.png"), bbox_inches="tight")
+plt.show()
 
 # --- Marker genes (CPU only — no rsc equivalent) ---
 sc.tl.rank_genes_groups(adata, groupby="leiden", method="wilcoxon")

@@ -1,0 +1,17 @@
+[
+  {
+    "task_id": "scrna-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_symbols.h5ad",
+    "query": "Load the h5ad file at /Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_symbols.h5ad and run the standard scanpy pipeline."
+  },
+  {
+    "task_id": "scrna-002",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_ensembl.h5ad",
+    "query": "Load the h5ad file at /Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_ensembl.h5ad and run the standard scanpy pipeline."
+  },
+  {
+    "task_id": "scrna-003",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_symbols.h5ad",
+    "query": "I have a large h5ad file at /Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_symbols.h5ad with over 500k cells. scanpy is too slow — use rapids-singlecell for GPU-accelerated analysis (QC, normalize, HVG, PCA, UMAP, Leiden clustering) and show the UMAP."
+  }
+]

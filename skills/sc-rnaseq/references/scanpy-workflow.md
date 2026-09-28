@@ -19,6 +19,40 @@ analysis.
 dbutils.library.restartPython()
 ```
 
+Immediately after the restart, add a setup cell that enables inline
+plotting and imports core libraries:
+
+```python
+%matplotlib inline
+import os, tempfile
+import scanpy as sc
+import matplotlib.pyplot as plt
+
+sc.settings.set_figure_params(dpi=100, frameon=False)
+tmpdir = tempfile.TemporaryDirectory()   # plots/artifacts for MLflow
+```
+
+> **Inline plots in Databricks notebooks:** scanpy's `sc.pl.*` functions
+> rely on matplotlib. On Databricks serverless compute the inline backend
+> is NOT always active by default. Without `%matplotlib inline` (or
+> `%matplotlib widget`) at the top of the notebook, `sc.pl.umap()` and
+> similar calls may render to a file or silently produce no output.
+> Always include `%matplotlib inline` in the first code cell after
+> restart. Additionally, call `plt.show()` explicitly after every plot
+> call to guarantee the figure is flushed to the notebook output.
+>
+> **Always pass `show=False` to `sc.pl.*`.** By default scanpy shows and
+> closes the figure itself, so a following `plt.savefig()` writes a blank
+> image. With `show=False` the figure stays open: save it, then show it:
+> ```python
+> sc.pl.umap(adata, color="leiden", show=False)
+> plt.savefig(os.path.join(tmpdir.name, "umap_leiden.png"), bbox_inches="tight")
+> plt.show()
+> ```
+> Don't use scanpy's `save=` kwarg — it writes to `./figures/` with a
+> prefixed filename, so MLflow's `log_artifacts(tmpdir.name)` misses it.
+> See `references/mlflow-tracking.md`.
+
 > **Version pinning:** For reproducible pipelines (especially MLflow-tracked
 > runs), pin exact versions, e.g.:
 > `%pip install numpy==1.26.4 scanpy==1.11.4 anndata==0.12.10`.
@@ -307,7 +341,9 @@ sc.pp.neighbors(adata, n_pcs=30)
 sc.tl.umap(adata)
 sc.tl.leiden(adata, resolution=1.0)
 
-sc.pl.umap(adata, color=["leiden"])
+sc.pl.umap(adata, color=["leiden"], show=False)
+plt.savefig(os.path.join(tmpdir.name, "umap_leiden.png"), bbox_inches="tight")
+plt.show()  # explicit show — required in Databricks notebooks
 ```
 
 > **QC notes:**
@@ -378,7 +414,9 @@ After clustering, identify differentially expressed genes per cluster:
 ```python
 # Wilcoxon rank-sum test per cluster
 sc.tl.rank_genes_groups(adata, groupby="leiden", method="wilcoxon")
-sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False, save="marker_genes.png")
+sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False, show=False)
+plt.savefig(os.path.join(tmpdir.name, "marker_genes.png"), bbox_inches="tight")
+plt.show()
 
 # Extract top N markers per cluster to a DataFrame
 import pandas as pd
@@ -498,7 +536,9 @@ import numpy as np
 adata.uns["iroot"] = int(np.flatnonzero(adata.obs["leiden"] == "0")[0])
 sc.tl.diffmap(adata)
 sc.tl.dpt(adata)
-sc.pl.umap(adata, color=["dpt_pseudotime"])
+sc.pl.umap(adata, color=["dpt_pseudotime"], show=False)
+plt.savefig(os.path.join(tmpdir.name, "umap_dpt_pseudotime.png"), bbox_inches="tight")
+plt.show()
 ```
 
 > Only compute pseudotime when biologically meaningful. Ask the user if their
