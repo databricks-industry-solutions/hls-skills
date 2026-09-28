@@ -41,10 +41,17 @@ class Q:
         self.catalog, self.schema = catalog, schema
 
     def __call__(self, stmt: str):
+        import time
+        from databricks.sdk.service.sql import StatementState
         r = self.w.statement_execution.execute_statement(
             warehouse_id=self.wid, catalog=self.catalog, schema=self.schema,
             statement=stmt, wait_timeout="50s")
-        if r.status and str(r.status.state) != "StatementState.SUCCEEDED":
+        # ai_parse_document / ai_query over many files routinely exceeds the 50s synchronous
+        # cap, so POLL to completion instead of raising the moment it is still RUNNING.
+        while r.status and r.status.state in (StatementState.PENDING, StatementState.RUNNING):
+            time.sleep(2)
+            r = self.w.statement_execution.get_statement(r.statement_id)
+        if r.status and r.status.state != StatementState.SUCCEEDED:
             raise RuntimeError(f"{r.status.error} :: {stmt[:200]}")
         return r.result.data_array if r.result else []
 

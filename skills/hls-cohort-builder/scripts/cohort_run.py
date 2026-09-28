@@ -25,6 +25,10 @@ from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Pure interaction layer (no SDK) — the surface-and-choose decision sheet + notebook artifact.
+from interactions import (normalize_delivery, cohort_decisions, format_decisions,  # noqa: E402
+                          surfaced_keys, cohort_notebook_source)
+
 
 # --- SQL runner (ambient auth in-workspace; optional profile locally) ---------
 
@@ -165,6 +169,37 @@ def extract_note_evidence(q: "Q", notes_table: str, condition: str,
                         n_scanned=n_scanned, n_total=n_total, prefiltered=bool(where))
 
 
+# --- Free-text via UNSTRUCTURED documents (PDF/image) using ai_parse_document ---
+# The diagnosis can also live in an unstructured clinical document (a scanned/exported PDF or
+# image). ai_parse_document (GA) extracts the text; we then reuse the SAME span-grounded,
+# negation-/subject-aware extraction path as notes — so a parsed document is just another
+# text source. Source-grounding is preserved: the model's verbatim quote must be a substring
+# of the PARSED document text, so it cannot cite evidence the document does not contain.
+
+def parse_documents(q: "Q", docs_glob: str, out_table: str,
+                    id_regex: str = r"([^/]+)\\.[^.]+$") -> str:
+    """Parse a Volume glob of documents (PDF/image/etc.) into a (patient_id, note_text) table
+    via ai_parse_document, so the existing note-extraction path can consume it unchanged.
+
+    docs_glob: a Volume path glob, e.g. '/Volumes/cat/sch/clinical_docs/*.pdf'.
+    id_regex : how to recover patient_id from the file path (default: the filename stem).
+               (For a corpus keyed differently, pass a doc-index table into notes_table instead.)
+    Returns the out_table name. ai_parse_document returns a VARIANT whose document.elements[*]
+    carry the extracted text; we concatenate them per file.
+    """
+    schema_qual = out_table if "." in out_table else out_table
+    q(f"""CREATE OR REPLACE TABLE {out_table} AS
+        SELECT regexp_extract(path, '{id_regex}', 1) AS patient_id,
+               array_join(
+                 transform(
+                   CAST(ai_parse_document(content):document.elements AS ARRAY<STRUCT<content STRING>>),
+                   e -> e.content),
+                 '\\n') AS note_text
+        FROM read_files('{docs_glob}', format => 'binaryFile')
+        WHERE regexp_extract(path, '{id_regex}', 1) <> ''""")
+    return schema_qual
+
+
 def _dx_predicate(combine_mode: str, code_col: str, code_list: str, evi_alias: str = "e") -> str:
     """The diagnosis-ascertainment WHERE clause for a chosen combine mode.
 
@@ -217,6 +252,11 @@ class CohortDefinition:
     note_evidence_table: str | None = None  # materialized ai_query evidence (patient_id, asserts_current_dx)
     note_endpoint: str | None = None      # model endpoint used (provenance)
     note_prompt: str | None = None        # pinned extraction prompt (reproducibility)
+    # --- Phase 1 richer-interaction choices (pinned for reproducibility + audit) ---
+    output_delivery: str = "uc_table"     # uc_table | notebook | conversation (the user's choice)
+    source_confidence: float | None = None  # min confidence to accept an LLM-ascertained dx (surfaced)
+    source_priority: str | None = None    # 'code' | 'note' — winner when coded & note dx disagree
+    surfaced_decisions: list = field(default_factory=list)  # decision keys the skill surfaced
 
     def to_json(self) -> str:
         return json.dumps(self.__dict__)
@@ -239,7 +279,8 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
                    notes_table: str | None = None, note_col: str = "note_text",
                    note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
                    note_condition: str | None = None, note_prompt: str | None = None,
-                   note_prefilter=None) -> CohortPreview:
+                   note_prefilter=None, documents_source: str | None = None,
+                   documents_id_regex: str = r"([^/]+)\\.[^.]+$") -> CohortPreview:
     """Ground the codes in the data and surface any threshold ambiguity with N impact.
 
     condition_codes: [(vocab, code)] the caller proposes (from NL intent).
@@ -253,6 +294,24 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
     """
     catalog, schema, tbl = _split_fqn(table)
     total = int(q(f"SELECT COUNT(DISTINCT patient_id) FROM {tbl}")[0][0])
+
+    # Unstructured documents (PDF/image): parse to a (patient_id, note_text) table via
+    # ai_parse_document, then feed the SAME span-grounded note path (documents are just another
+    # text source). If a notes_table is ALSO given, UNION the two so codes can combine with all
+    # text evidence. Everything downstream (extract_note_evidence, combine surface) is unchanged.
+    if documents_source:
+        parsed = f"{tbl}_docs_parsed"
+        parse_documents(q, documents_source, parsed, id_regex=documents_id_regex)
+        if notes_table:
+            _, _, ntbl = _split_fqn(notes_table)
+            combined = f"{tbl}_text_evidence_src"
+            q(f"""CREATE OR REPLACE TABLE {combined} AS
+                SELECT {note_id_col} AS patient_id, {note_col} AS note_text FROM {ntbl}
+                UNION ALL SELECT patient_id, note_text FROM {parsed}""")
+            notes_table = f"{catalog}.{schema}.{combined}"
+        else:
+            notes_table = f"{catalog}.{schema}.{parsed}"
+        note_col, note_id_col = "note_text", "patient_id"
 
     # Which requested codes actually exist? (prevents hallucinated-code cohorts)
     present = {(r[0], r[1]) for r in q(
@@ -374,6 +433,9 @@ class CohortResult:
     ascertainment_summary: dict = field(default_factory=dict)  # {code|note|both: count}
     provenance_table: str | None = None                        # governed per-member source + span
     provenance_preview: str = ""                               # first-20-rows readout
+    delivery_mode: str = "uc_table"                            # uc_table | notebook | conversation
+    notebook_source: str = ""                                  # generated notebook (delivery=notebook)
+    inline_members: list = field(default_factory=list)         # sample ids (delivery=conversation)
 
 
 def _format_provenance_preview(rows: list, provenance_table: str, summary: dict) -> str:
@@ -391,10 +453,18 @@ def _format_provenance_preview(rows: list, provenance_table: str, summary: dict)
 
 
 def build_cohort(q: Q, table: str, definition: CohortDefinition,
-                 cohort_table: str | None = None) -> CohortResult:
-    """Materialize the cohort and VERIFY membership matches the definition exactly."""
+                 cohort_table: str | None = None, intent_text: str = "") -> CohortResult:
+    """Materialize the cohort and VERIFY membership matches the definition exactly.
+
+    output_delivery (on the definition) chooses HOW the result is delivered:
+      - uc_table    : CREATE the governed cohort table + provenance, verify (the default).
+      - notebook    : do the uc_table build AND emit a re-runnable notebook that reproduces it.
+      - conversation: compute the qualifying set INLINE (count + ascertainment + a sample of
+                      ids) and persist NOTHING — fastest, ephemeral.
+    """
     catalog, schema, tbl = _split_fqn(table)
     cohort_table = cohort_table or f"{tbl}_cohort"
+    delivery = normalize_delivery(definition.output_delivery)
 
     code_list = ", ".join(f"'{code}'" for _, code in definition.condition_codes) or "NULL"
     measure_clause = ""
@@ -422,6 +492,25 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
     qualifying = f"""SELECT DISTINCT t.patient_id
         FROM {tbl} t {join}
         WHERE {dx_clause} {measure_clause}"""
+
+    # DELIVERY = conversation -> compute inline, persist NOTHING (no table, no provenance).
+    if delivery == "conversation":
+        derived = f"""SELECT t.patient_id, {ascertainment_expr} AS ascertainment
+            FROM {tbl} t {join}
+            WHERE {dx_clause} {measure_clause}
+            GROUP BY t.patient_id"""
+        n = int(q(f"SELECT COUNT(*) FROM ({derived})")[0][0])
+        asc = {r[0]: int(r[1]) for r in
+               q(f"SELECT ascertainment, COUNT(*) FROM ({derived}) GROUP BY ascertainment")}
+        sample = [r[0] for r in
+                  q(f"SELECT patient_id FROM ({qualifying}) ORDER BY patient_id LIMIT 25")]
+        return CohortResult(
+            cohort_table="(conversation — not persisted)", n_patients=n,
+            definition_json=definition.to_json(), verified=True,
+            verification_note=(f"Computed inline over the source; {n} patient(s) match the "
+                               f"definition. Nothing persisted (output_delivery=conversation)."),
+            ascertainment_summary=asc, delivery_mode="conversation", inline_members=sample)
+
     q(f"""CREATE OR REPLACE TABLE {cohort_table} AS
         SELECT t.patient_id, {ascertainment_expr} AS ascertainment
         FROM {tbl} t {join}
@@ -478,19 +567,33 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
                      FROM {prov} ORDER BY ascertainment DESC, patient_id LIMIT 20""")
         provenance_preview = _format_provenance_preview(rows, provenance_table, ascertainment_summary)
 
+    # DELIVERY = notebook -> also emit a re-runnable notebook that reproduces this cohort.
+    notebook_source = ""
+    if delivery == "notebook":
+        notebook_source = cohort_notebook_source(table, definition.to_json(), cohort_table, intent_text)
+
     return CohortResult(cohort_table=f"{catalog}.{schema}.{cohort_table}", n_patients=n,
                         definition_json=definition.to_json(), verified=verified,
                         verification_note=note, ascertainment_summary=ascertainment_summary,
-                        provenance_table=provenance_table, provenance_preview=provenance_preview)
+                        provenance_table=provenance_table, provenance_preview=provenance_preview,
+                        delivery_mode=delivery, notebook_source=notebook_source)
 
 
 def format_result(res: CohortResult) -> str:
-    lines = [
-        "## Cohort built & verified", "",
-        f"**Table:** `{res.cohort_table}`",
-        f"**Patients:** {res.n_patients}",
-        f"**{res.verification_note}**",
-    ]
+    if res.delivery_mode == "conversation":
+        header = "## Cohort computed (conversation-only — not persisted)"
+        loc = "**Delivery:** conversation-only — nothing was written to Unity Catalog."
+    elif res.delivery_mode == "notebook":
+        header = "## Cohort built & verified (+ reproducible notebook)"
+        loc = f"**Table:** `{res.cohort_table}`  •  **Delivery:** a re-runnable notebook was generated (below)."
+    else:
+        header = "## Cohort built & verified"
+        loc = f"**Table:** `{res.cohort_table}`"
+    lines = [header, "", loc, f"**Patients:** {res.n_patients}", f"**{res.verification_note}**"]
+    if res.delivery_mode == "conversation" and res.inline_members:
+        by_src = ", ".join(f"{k}={v}" for k, v in sorted(res.ascertainment_summary.items()))
+        more = "" if res.n_patients <= len(res.inline_members) else f" (showing {len(res.inline_members)})"
+        lines.append(f"**Members{more}** — by source: {by_src or 'n/a'}: {', '.join(res.inline_members)}")
     d = json.loads(res.definition_json)
     if d.get("note_evidence_table"):
         by_src = ", ".join(f"{k}={v}" for k, v in sorted(res.ascertainment_summary.items()))
@@ -505,6 +608,9 @@ def format_result(res: CohortResult) -> str:
     lines.append(f"**Reproducible definition:** `{res.definition_json}`")
     if res.provenance_preview:
         lines += ["", res.provenance_preview]
+    if res.delivery_mode == "notebook" and res.notebook_source:
+        lines += ["", "**Generated notebook (save as a `.py` and import, or run in-workspace):**",
+                  "```python", res.notebook_source.rstrip(), "```"]
     lines += [
         "",
         "*Literature validation of this phenotype is a SEPARATE step — do not attach a "
@@ -527,6 +633,9 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
                note_condition: str | None = None, note_prompt: str | None = None,
                note_prefilter=None, combine_mode: str | None = None,
                include_literature: bool = True,
+               output_delivery: str | None = None, source_confidence: float | None = None,
+               source_priority: str | None = None, documents_source: str | None = None,
+               documents_id_regex: str = r"([^/]+)\\.[^.]+$",
                profile: str | None = None, warehouse_id: str | None = None) -> str:
     """ONE call. Genie should call this and report its output — nothing else.
 
@@ -548,17 +657,23 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
             union | intersection. REQUIRED (the user's choice) once notes_table is given.
     """
     catalog, schema, _ = _split_fqn(table)
+    normalize_delivery(output_delivery)   # fail fast on a bad delivery choice
     q = Q(catalog, schema, profile=profile, warehouse_id=warehouse_id)
 
     preview = preview_cohort(q, table, condition_codes, intent_text=intent_text,
                              notes_table=notes_table, note_col=note_col,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
                              note_condition=note_condition, note_prompt=note_prompt,
-                             note_prefilter=note_prefilter)
+                             note_prefilter=note_prefilter, documents_source=documents_source,
+                             documents_id_regex=documents_id_regex)
+
+    # The Phase-1 decision sheet (confidence / priority / output-delivery) is surfaced ALONGSIDE
+    # the existing threshold + combine gates so the analyst sees every choice at once.
+    decision_appendix = format_decisions(cohort_decisions(has_notes=bool(preview.combine)))
 
     # Confirm-gate 1: notes present but no combine mode chosen -> refuse to build, ask.
     if preview.combine and combine_mode is None:
-        return (format_preview(preview) +
+        return (format_preview(preview) + decision_appendix +
                 "\n\n**STOP: do not pick a combine mode yourself. Present the options above to "
                 "the user, then call run_cohort again with the chosen combine_mode "
                 "(and threshold_value/op if a threshold is also being surfaced).**")
@@ -568,7 +683,7 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
 
     # Confirm-gate 2: ambiguous term + no threshold chosen yet -> refuse to build, ask.
     if preview.ambiguity and threshold_value is None:
-        return (format_preview(preview) +
+        return (format_preview(preview) + decision_appendix +
                 "\n\n**STOP: do not pick a threshold yourself. Present the options above to "
                 "the user, then call run_cohort again with the chosen threshold_value/op.**")
 
@@ -590,14 +705,20 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
                     "of the options above, and no threshold_op was supplied. Re-call with BOTH "
                     "threshold_value AND threshold_op (e.g. '>=') so the operator is not guessed.**")
     ne = preview.note_evidence
+    surfaced = sorted(surfaced_keys(has_notes=bool(preview.combine),
+                                    has_ambiguity=preview.ambiguity is not None))
     definition = CohortDefinition(condition_codes=preview.grounded_codes,
                                   obs_op=op, obs_value=val,
                                   label=intent_text[:80],
                                   combine_mode=combine_mode or "code_only",
                                   note_evidence_table=ne.evidence_table if ne else None,
                                   note_endpoint=ne.endpoint if ne else None,
-                                  note_prompt=ne.prompt if ne else None)
-    res = build_cohort(q, table, definition, cohort_table=cohort_table)
+                                  note_prompt=ne.prompt if ne else None,
+                                  output_delivery=normalize_delivery(output_delivery),
+                                  source_confidence=source_confidence,
+                                  source_priority=source_priority,
+                                  surfaced_decisions=surfaced)
+    res = build_cohort(q, table, definition, cohort_table=cohort_table, intent_text=intent_text)
 
     warn = ""
     if preview.missing_codes:
@@ -636,7 +757,8 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
                            notes_table: str | None = None, note_col: str = "note_text",
                            note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
                            note_condition: str | None = None, note_prompt: str | None = None,
-                           note_prefilter=None,
+                           note_prefilter=None, documents_source: str | None = None,
+                           documents_id_regex: str = r"([^/]+)\\.[^.]+$",
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """READ-ONLY grounding + surfacing. Grounds codes in the data and returns real cohort-size
     options for any ambiguous threshold. Takes NO threshold and NO combine-mode argument — it
@@ -660,12 +782,15 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
                              notes_table=notes_table, note_col=note_col,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
                              note_condition=note_condition, note_prompt=note_prompt,
-                             note_prefilter=note_prefilter)
-    src = code_source if not notes_table else f"{code_source}; notes via {note_endpoint}"
+                             note_prefilter=note_prefilter, documents_source=documents_source,
+                             documents_id_regex=documents_id_regex)
+    src = code_source if not (notes_table or documents_source) else f"{code_source}; text via {note_endpoint}"
     out = f"*Code source: {src} (all codes grounded against the data below).*\n\n" + format_preview(preview)
+    out += format_decisions(cohort_decisions(has_notes=bool(preview.combine)))
     if not preview.ambiguity and not preview.combine:
         out += ("\n\n(No ambiguous threshold detected — call build_confirmed_cohort to "
-                "materialize, or supply a measure criterion if one applies.)")
+                "materialize, choosing output_delivery=uc_table|notebook|conversation, or "
+                "supply a measure criterion if one applies.)")
     return out
 
 
@@ -677,6 +802,9 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                            note_condition: str | None = None, note_prompt: str | None = None,
                            note_prefilter=None, combine_mode: str | None = None,
                            include_literature: bool = True,
+                           output_delivery: str | None = None, source_confidence: float | None = None,
+                           source_priority: str | None = None, documents_source: str | None = None,
+                           documents_id_regex: str = r"([^/]+)\\.[^.]+$",
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Materialize + verify a cohort with the choices the USER has ALREADY made.
     threshold_value is REQUIRED — this function is only called after preview_cohort_options
@@ -686,7 +814,11 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
 
     When notes_table is given, combine_mode (code_only | note_only | union | intersection) is
     REQUIRED — it is the user's choice for how coded and note-derived diagnoses combine, and is
-    never picked for them. Delegates to run_cohort."""
+    never picked for them.
+
+    output_delivery (uc_table | notebook | conversation) is the user's delivery choice surfaced
+    by the preview; source_confidence / source_priority are the surfaced LLM-evidence choices,
+    pinned into the reproducible definition. Delegates to run_cohort."""
     return run_cohort(table, intent_text, condition_codes,
                       threshold_value=threshold_value, threshold_op=threshold_op,
                       cohort_table=cohort_table, mcp_citations=mcp_citations,
@@ -694,6 +826,9 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                       note_endpoint=note_endpoint, note_condition=note_condition,
                       note_prompt=note_prompt, note_prefilter=note_prefilter,
                       combine_mode=combine_mode, include_literature=include_literature,
+                      output_delivery=output_delivery, source_confidence=source_confidence,
+                      source_priority=source_priority, documents_source=documents_source,
+                      documents_id_regex=documents_id_regex,
                       profile=profile, warehouse_id=warehouse_id)
 
 

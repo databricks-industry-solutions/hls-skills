@@ -9,8 +9,9 @@ description: >-
   quasi-identifiers (age, ZIP, sex, length-of-stay) so the result is not silently
   re-identifiable, applies the result as a Unity Catalog view over the raw table (no second
   copy of PHI), and returns a readout of what was removed, generalized, and still analyzable.
-  Structured/tabular data only. Run by calling the vetted entrypoint scripts/run_deid.py — do
-  not hand-write de-identification SQL. For building patient cohorts use hls-cohort-builder.
+  Handles structured/tabular tables (scripts/run_deid.py) AND unstructured clinical documents
+  (PDF/image via scripts/deid_docs.py + ai_parse_document). Run by calling the vetted entrypoints —
+  do not hand-write de-identification SQL. For building patient cohorts use hls-cohort-builder.
 version: 1.0.0
 author: Databricks HLS Field Engineering
 license: Databricks License
@@ -43,6 +44,11 @@ re-identifiable). The entrypoint treats every quasi-identifier as in-scope and v
 - "Anonymize this member table before we share it with a vendor."
 - "Is this table safe to export? Make it re-identification-resistant, not just name-stripped."
 - "Mask PHI but keep length-of-stay so we can still do longitudinal analysis."
+- "De-identify these clinical PDFs / scanned documents before we share them" — unstructured
+  documents are handled by the document entrypoints (`preview_document_deid_options` /
+  `apply_document_deid` in `scripts/deid_docs.py`): `ai_parse_document` → detect PHI in the
+  extracted text → redact ALL identifier classes → a governed redacted derivative + a separately-
+  governed, reversible surrogate→raw crosswalk → residual-leak scan.
 
 ## Prerequisites
 
@@ -51,7 +57,9 @@ re-identifiable). The entrypoint treats every quasi-identifier as in-scope and v
 - **Consumer role**: the group/role that should read the de-identified view (governance is role-driven).
 - **Environment (optional)**: a Databricks secret scope for the tokenization salt (never a literal);
   a separately-governed schema if a re-identification key map is required.
-- **Scope**: structured/tabular data only — free-text notes, scanned PDFs, and images are out of scope.
+- **Scope**: structured/tabular tables (the `run_deid` path) AND unstructured clinical documents
+  (PDF/image, the `deid_docs` path via `ai_parse_document`). For DICOM imaging, integrate the Pixels
+  accelerator (not built into this skill).
 
 ## Quick Start
 
@@ -191,6 +199,11 @@ row suppression is capped (`max_suppression_frac`, default 0.10); passthrough is
 - `scripts/run_deid.py` — the entrypoints: `preview_deid_options` (read-only privacy/utility
   frontier), `apply_deid` (apply at the chosen k), and `run_deid` (one-call default). Pipeline:
   profile → detect → k-anon generalization → view-over-raw → residual leak scan → readout + UC audit log.
+- `scripts/deid_docs.py` — document/image de-id entrypoints (`preview_document_deid_options`,
+  `apply_document_deid`): parse (ai_parse_document) → redact all PHI classes → governed redacted
+  derivative + reversible locked crosswalk → residual-leak scan. Shares its PHI patterns with the SQL redactor.
+- `scripts/deid_interactions.py` — the surface-and-choose decision sheet (per-column strategy, date
+  handling, utility priority, output delivery) + the notebook artifact.
 - `scripts/kanon.py` — utility-weighted k-anonymity generalization engine (generic, any-table).
 - `scripts/apply_uc_governance.py` — builds the schema-driven dynamic view over the raw table.
 - `scripts/detect_phi.py` — PHI classifier (UC tags → validators → name heuristics → ai_classify).
@@ -199,7 +212,7 @@ row suppression is capped (`max_suppression_frac`, default 0.10); passthrough is
 - `references/safe_harbor_classes.md` — the 18 classes + default treatment.
 - `references/deid_strategies.md` — strategy definitions and when to use each.
 - `references/restricted_zip3.md` — ZIP3 prefixes that must be zeroed.
-- `tests/scorers.py`, `tests/objective.py`, `tests/test_scorers.py` — the objective function,
+- `tests/scorers.py`, `tests/objective.py`, `tests/test_deid_scorers.py`, `tests/test_deid_multimodal.py` — the objective function,
   component scorers (detection recall/F2, residual-leak gate, utility retention, k-anonymity,
   governance), and their pure-Python unit tests.
 
