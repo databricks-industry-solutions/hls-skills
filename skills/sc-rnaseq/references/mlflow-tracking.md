@@ -114,7 +114,8 @@ mlflow.log_params(analysis_params)
 ```python
 import mlflow
 import scanpy as sc
-import tempfile, time
+import matplotlib.pyplot as plt
+import os, tempfile, time
 
 tmpdir = tempfile.TemporaryDirectory()
 sc.settings.figdir = tmpdir.name        # scanpy saves plots here
@@ -144,9 +145,14 @@ with mlflow.start_run(run_name="sample_A_scanpy"):
     mlflow.log_params(analysis_params)    # same object used in analysis
     mlflow.log_metrics(metrics)
 
-    # Save plots — scanpy `save=` param writes to figdir
-    sc.pl.umap(adata, color="leiden", save="umap_leiden.png")
-    sc.pl.rank_genes_groups(adata, n_genes=20, save="markers.png")
+    # Save plots into tmpdir: show=False keeps the figure open for savefig,
+    # then plt.show() renders it inline
+    sc.pl.umap(adata, color="leiden", show=False)
+    plt.savefig(os.path.join(tmpdir.name, "umap_leiden.png"), bbox_inches="tight")
+    plt.show()
+    sc.pl.rank_genes_groups(adata, n_genes=20, show=False)
+    plt.savefig(os.path.join(tmpdir.name, "markers.png"), bbox_inches="tight")
+    plt.show()
 
     # Save processed h5ad
     adata.write_h5ad(tmpdir.name + "/processed.h5ad")
@@ -170,9 +176,24 @@ with mlflow.start_run(run_name="sample_A_scanpy"):
 
 * **One run per sample or parameter sweep.** For parameter sweeps, use nested
   runs: `mlflow.start_run(nested=True)`.
-* **Save plots via scanpy's `save=` kwarg** (writes to `sc.settings.figdir`)
-  then batch-log with `mlflow.log_artifacts(figdir)`. Alternatively use
-  `return_fig=True` + `fig.savefig()`.
+* **Write every artifact to `tmpdir.name`, then log once with
+  `mlflow.log_artifacts(tmpdir.name)`.** Anything saved elsewhere is
+  silently missed. For plots, call `sc.pl.*(..., show=False)`, then
+  `plt.savefig(os.path.join(tmpdir.name, "name.png"), bbox_inches="tight")`,
+  then `plt.show()`.
+  **Do not rely on scanpy's `save=` kwarg:** it writes to
+  `sc.settings.figdir` (default `./figures/`), adds the plot type to the
+  front of the filename (`save="_leiden.png"` becomes `umap_leiden.png`),
+  and closes the figure, so a later `plt.show()` renders nothing.
+  Always render inline: without `plt.show()`, Databricks notebooks may
+  show no output.
+* **Tables and JSON go to tmpdir too.** Use `os.path.join(tmpdir.name, ...)`
+  for CSV/parquet/JSON outputs (e.g. `markers_df.to_csv(...)`).
+* **`log_artifacts` uploads everything in the directory.** For nested
+  runs, use a fresh subdirectory per child run (e.g.
+  `step_dir = os.path.join(tmpdir.name, "iter_1")`, created with
+  `os.makedirs(step_dir, exist_ok=True)`), save that run's files there, and
+  log that subdirectory, so each run only holds its own files.
 * **h5ad artifact storage:** Default to **not** logging the processed h5ad
   as an MLflow artifact (it can be GBs). The code + logged params are
   sufficient for reproducibility. If the user opts in (`store_h5ad=True`)
@@ -237,6 +258,7 @@ experiment = mlflow.set_experiment(notebook_path + "_experiment")
 | **Child run: final** | Confirmed params, final cell types, processed h5ad (optional), all plots | When user accepts results |
 
 ```python
+# Assumes `tmpdir` from the Full Example above
 # Start parent run at beginning of analysis
 # Guard: end any active run from a prior cell execution
 if mlflow.active_run():
@@ -252,10 +274,16 @@ mlflow.set_tags({
 # --- Gate G2: user confirmed QC thresholds ---
 # qc_params dict was defined when user confirmed (see "Parameter Variables")
 with mlflow.start_run(run_name="gate_g2_qc", nested=True):
+    step_dir = os.path.join(tmpdir.name, "gate_g2_qc")
+    os.makedirs(step_dir, exist_ok=True)
     mlflow.log_params(qc_params)          # SAME dict used in pipeline
     mlflow.set_tag("param_source", "data_driven")  # or "user_adjusted"
     mlflow.log_metrics({"n_cells_pre_qc": 67333, "n_cells_post_qc": 64200})
-    mlflow.log_artifacts(tmpdir.name)     # QC violin plots
+    sc.pl.violin(adata, ["n_genes_by_counts", "total_counts", "pct_counts_mt"],
+                 multi_panel=True, show=False)
+    plt.savefig(os.path.join(step_dir, "qc_violin.png"), bbox_inches="tight")
+    plt.show()
+    mlflow.log_artifacts(step_dir)
 
 # --- Gate G1: user confirmed batch key ---
 with mlflow.start_run(run_name="gate_g1_batch", nested=True):
@@ -264,17 +292,27 @@ with mlflow.start_run(run_name="gate_g1_batch", nested=True):
 
 # --- Post-clustering (may iterate if user adjusts resolution) ---
 with mlflow.start_run(run_name="iter_1_clustering", nested=True):
+    step_dir = os.path.join(tmpdir.name, "iter_1_clustering")
+    os.makedirs(step_dir, exist_ok=True)
     mlflow.log_params({"cluster_resolution": analysis_params["cluster_resolution"]})
     mlflow.log_metrics({"n_clusters": 15})
-    mlflow.log_artifacts(tmpdir.name)     # UMAP plot
+    sc.pl.umap(adata, color="leiden", show=False)
+    plt.savefig(os.path.join(step_dir, "umap_leiden.png"), bbox_inches="tight")
+    plt.show()
+    mlflow.log_artifacts(step_dir)
 
 # --- User adjusts resolution → update the variable, re-run, log again ---
 analysis_params["cluster_resolution"] = 0.5  # user requested change
 with mlflow.start_run(run_name="iter_2_resolution_adjusted", nested=True):
+    step_dir = os.path.join(tmpdir.name, "iter_2_resolution_adjusted")
+    os.makedirs(step_dir, exist_ok=True)
     mlflow.log_params({"cluster_resolution": analysis_params["cluster_resolution"]})
     mlflow.set_tag("param_source", "user_adjusted")
     mlflow.log_metrics({"n_clusters": 8})
-    mlflow.log_artifacts(tmpdir.name)
+    sc.pl.umap(adata, color="leiden", show=False)
+    plt.savefig(os.path.join(step_dir, "umap_leiden.png"), bbox_inches="tight")
+    plt.show()
+    mlflow.log_artifacts(step_dir)
 
 # --- Gate G4: user confirmed cell types ---
 with mlflow.start_run(run_name="gate_g4_cell_types", nested=True):
@@ -291,9 +329,14 @@ with mlflow.start_run(run_name="gate_g4_cell_types", nested=True):
          "llm_suggestion": "Fibroblasts", "confidence": "medium",
          "user_decision": "corrected", "final_label": "Myofibroblasts"},
     ]
-    with open(tmpdir.name + "/cell_type_annotations.json", "w") as f:
+    step_dir = os.path.join(tmpdir.name, "gate_g4_cell_types")
+    os.makedirs(step_dir, exist_ok=True)
+    with open(os.path.join(step_dir, "cell_type_annotations.json"), "w") as f:
         json.dump(annotations, f, indent=2)
-    mlflow.log_artifacts(tmpdir.name)
+    sc.pl.umap(adata, color="cell_type", show=False)
+    plt.savefig(os.path.join(step_dir, "umap_cell_type.png"), bbox_inches="tight")
+    plt.show()
+    mlflow.log_artifacts(step_dir)
 
     mlflow.set_tag("status", "complete")
 
