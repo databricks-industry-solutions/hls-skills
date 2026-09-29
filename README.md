@@ -8,8 +8,17 @@ Agent skills for Health & Life Sciences workflows. Each skill is a `SKILL.md` fo
 Git clone this repo onto Databricks. Then open Genie Code and click on Customizations to add the cloned folder. It should point to the `skills` subfolder
 
 #### Optional: Register and sync the skills to [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/)
-On Databricks, run [`sync_skills_git2unity.py`](sync_skills_git2unity.py). It should sync the latest skills from the repo to Unity Catalog. So specify the catalog and schema in the notebook. They also show up on Unity Gateway under Skills
+Run [`sync_skills_git2unity.py`](sync_skills_git2unity.py) to sync the latest skills from the repo to Unity Catalog. They also show up on Unity Gateway under Skills.
 
+On Databricks, start Serverless or a cluster (>= 15.0 runtime) for compute. Then open the terminal ([how-to-guide](https://docs.databricks.com/aws/en/compute/web-terminal#launch-the-web-terminal)). It should already have the [Databricks CLI](https://docs.databricks.com/aws/en/compute/web-terminal#run-databricks-cli-commands) installed.
+```
+### To list skills
+uv run sync_skills_git2unity.py --dry-run
+
+### To publish/update skills to/on Unity Gateway
+uv run sync_skills_git2unity.py --catalog <your_catalog> --schema <your_schema> --warehouse-id <your_sql_wh>
+```
+You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehouses > select warehouse > Name. It should list the warehouse ID. More details [here](https://www.getorchestra.io/guides/how-to-retrieve-your-databricks-warehouse-id).
 
 
 ## Available Skills
