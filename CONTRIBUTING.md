@@ -31,11 +31,12 @@ If you are contributing on behalf of an organization, you confirm that you have 
 Several levels of testing is advised.
 
 #### 1. Repo-level tests: formatting
-./tests/test_skill_quality.py tests skill's formatting
-./tests/test_sync_bundle.py tests that unnecessary skill folders are not synced to Unity Catalog/Gateway
+* ./tests/test_skill_quality.py tests skill's formatting
+* ./tests/test_sync_bundle.py tests that unnecessary skill folders are not synced to Unity Catalog/Gateway
 
 Both these tests can be invoked on all skills with 
-```uv run --isolated --with pytest python -m pytest -q tests
+```
+uv run --isolated --with pytest python -m pytest -q tests
 ```
 
 #### 2.Skill-level unit tests
