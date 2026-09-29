@@ -24,13 +24,34 @@ class PhiSpan:
     raw_value: str
 
 
+@dataclass(frozen=True)
+class PhiRegion:
+    """One injected identifier in an UNSTRUCTURED artifact (parsed PDF / image).
+
+    The multimodal analogue of PhiSpan: instead of (row_id, column) it is located by
+    (doc_id, page, bbox). bbox is a 4-tuple (x0, y0, x1, y1) so the region is hashable and
+    comparable. Populated by the document/image gold generators; used by the region-aware
+    detection + residual-leak scorers so a de-id run over parsed docs is measured exactly.
+    """
+    doc_id: str
+    page: int
+    bbox: tuple                 # (x0, y0, x1, y1)
+    phi_class: str
+    raw_value: str
+
+
 @dataclass
 class DeidGold:
-    injected: list[PhiSpan]                 # every PHI value we planted
+    injected: list[PhiSpan]                 # every PHI value we planted (structured cells)
     analytic_columns: list[str]             # non-PHI columns that SHOULD survive
     intervals: list[tuple] = field(default_factory=list)
     # each interval: (patient_id, col_a, col_b, days) -- the true gap between two of a
     # patient's dates, used to check that date-shifting preserved intervals.
+    # --- multimodal ground truth (optional; populated for PDF/image runs) ---
+    phi_regions: list = field(default_factory=list)          # [PhiRegion] planted in parsed docs/images
+    modalities_present: set = field(default_factory=set)     # {"structured","pdf","image"} the task actually contains
+    documents: dict = field(default_factory=dict)            # doc_id -> {page:int -> page_text} (for residual grounding)
+    should_surface: set = field(default_factory=set)         # decision keys the skill SHOULD surface (interaction_fidelity)
 
 
 @dataclass
@@ -50,6 +71,13 @@ class DeidOutput:
     is_view_over_raw: bool = False        # output is a VIEW over the raw table (no 2nd PHI copy)
     raw_phi_still_exposed: bool = True    # does the source table still expose direct identifiers to consumers?
     interval_generalized: bool = False    # interval kept in coarsened form (bucketed LOS) rather than exact
+    # --- multimodal + v2 governance/interaction (optional; default empty = v1 behavior) ---
+    redacted_regions: set = field(default_factory=set)       # {(doc_id, page, bbox)} the run masked/inpainted
+    residual_phi_regions: set = field(default_factory=set)   # {(doc_id, page, bbox)} PHI still visible in OUTPUT
+    modalities_handled: set = field(default_factory=set)     # {"structured","pdf","image"} the run actually processed
+    surfaced_decisions: set = field(default_factory=set)     # decision keys the run surfaced to the user
+    surrogate_key_present: bool = False   # every output row/artifact carries a NON-PHI surrogate key
+    crosswalk_locked: bool = False        # reversible surrogate->raw crosswalk exists in a separately-governed locked schema
 
 
 # --- Component scorers --------------------------------------------------------
@@ -65,8 +93,14 @@ def detection_recall(gold: DeidGold, out: DeidOutput) -> dict:
 
     TP = injected cell that was transformed. FN = injected cell left untouched (LEAK RISK).
     FP = a cell transformed that was not injected PHI (over-redaction; hurts utility only).
+
+    Region-aware: injected PHI in parsed docs/images (gold.phi_regions, located by
+    (doc_id, page, bbox)) is scored alongside structured cells against out.redacted_regions.
+    When there are no regions (a purely structured run) this reduces EXACTLY to the v1
+    per-cell computation, so the pinned v1 numbers are unchanged.
     """
     injected_cells = {(s.row_id, s.column): s.phi_class for s in gold.injected}
+    injected_regions = {(r.doc_id, r.page, tuple(r.bbox)): r.phi_class for r in gold.phi_regions}
     tp = fn = fp = 0
     per_class: dict = {}
     for cell, klass in injected_cells.items():
@@ -76,8 +110,18 @@ def detection_recall(gold: DeidGold, out: DeidOutput) -> dict:
             tp += 1; c["tp"] += 1
         else:
             fn += 1; c["fn"] += 1
+    for region, klass in injected_regions.items():
+        hit = region in out.redacted_regions
+        c = per_class.setdefault(klass, {"tp": 0, "fn": 0})
+        if hit:
+            tp += 1; c["tp"] += 1
+        else:
+            fn += 1; c["fn"] += 1
     for cell in out.transformed_cells:
         if cell not in injected_cells:
+            fp += 1
+    for region in out.redacted_regions:
+        if region not in injected_regions:
             fp += 1
     precision, recall = _prf(tp, fp, fn)
     per_class_recall = {
@@ -89,8 +133,13 @@ def detection_recall(gold: DeidGold, out: DeidOutput) -> dict:
 
 
 def residual_leaks(out: DeidOutput) -> int:
-    """PHI still present in the OUTPUT view. Any value > 0 is a hard failure."""
-    return len(out.residual_phi_cells)
+    """PHI still present in the OUTPUT (any modality). Any value > 0 is a hard failure.
+
+    Sums structured residual cells AND unstructured residual regions (burned-in pixel text
+    or unredacted parsed-doc spans). Empty regions -> identical to v1, so the pinned v1
+    leak-gate behavior is preserved.
+    """
+    return len(out.residual_phi_cells) + len(out.residual_phi_regions)
 
 
 # Credit per analytic column by how faithfully it survived.
@@ -143,6 +192,58 @@ def governance_score(out: DeidOutput) -> float:
     return score
 
 
+def governance_score_v2(out: DeidOutput) -> float:
+    """v2 governance -- a THREE-part check (each worth 1/3), adding the locked, reversible
+    re-identification crosswalk required by the plan (Safe Harbor 164.514(c)-compatible).
+
+    1. view-over-raw       : de-id enforced as a view, no second physical PHI copy.
+    2. raw-not-exposed     : the source no longer exposes direct identifiers to consumers.
+    3. reversible crosswalk: every output carries a NON-PHI surrogate key AND a
+                             surrogate->raw crosswalk lives in a separately-governed LOCKED
+                             schema -- preserving a governed path back to the original
+                             regardless of tokenization or k-anonymity.
+    Kept separate from v1 governance_score (0.5/0.5) so the pinned v1 objective is unchanged.
+    """
+    parts = [out.is_view_over_raw,
+             (not out.raw_phi_still_exposed),
+             (out.surrogate_key_present and out.crosswalk_locked)]
+    return sum(1 for p in parts if p) / 3.0
+
+
+def interaction_fidelity(gold: DeidGold, out: DeidOutput) -> dict:
+    """Did the skill SURFACE the decisions it should (per-column strategy, date handling, QI
+    set, utility priority, pixel aggressiveness, output delivery) instead of silently deciding?
+
+    surfaced / should-surface. This is the core value prop of the surface-and-choose design:
+    a run that silently picks defaults scores low even if the de-id itself is competent.
+    No decisions were expected (empty should_surface) -> 1.0 (nothing to surface).
+    """
+    should = set(gold.should_surface)
+    if not should:
+        return {"fidelity": 1.0, "surfaced": len(out.surfaced_decisions), "expected": 0, "missed": []}
+    surfaced = set(out.surfaced_decisions) & should
+    missed = sorted(should - surfaced)
+    return {"fidelity": len(surfaced) / len(should),
+            "surfaced": len(surfaced), "expected": len(should), "missed": missed}
+
+
+def modality_coverage(gold: DeidGold, out: DeidOutput) -> dict:
+    """Did the run handle EVERY modality present, or silently skip one (e.g., leave the images
+    untouched while de-identifying the table)? handled / present.
+
+    A skipped modality is dangerous: its PHI survives unaddressed. This is scored separately
+    from the leak gate because a run can 'skip' a modality without a residual-scan hit if it
+    simply never looked at it. present is empty (single-modality legacy) -> 1.0.
+    """
+    present = set(gold.modalities_present)
+    if not present:
+        return {"coverage": 1.0, "handled": sorted(out.modalities_handled), "present": [], "skipped": []}
+    handled = set(out.modalities_handled) & present
+    skipped = sorted(present - handled)
+    return {"coverage": len(handled) / len(present),
+            "handled": sorted(handled), "present": sorted(present), "skipped": skipped}
+
+
 def f_beta(precision: float, recall: float, beta: float = 2.0) -> float:
     """F-beta; beta=2 weights recall 4x precision -- the de-id default."""
     b2 = beta * beta
@@ -156,14 +257,24 @@ def outputs_to_gold_and_output(expectations: dict, outputs: dict) -> tuple[DeidG
     """Rehydrate DeidGold (from an eval row's expectations) and DeidOutput (from the
     skill's returned artifact) into the dataclasses the component scorers consume.
 
-    `expectations` is the gold half of an eval dataset row (injected PHI cells + analytic
-    columns + intervals, serialized). `outputs` is whatever the de-id skill returns for a
-    task -- adapt the keys here to the real return shape.
+    `expectations` is the gold half of an MLflow eval dataset row (produced by
+    synthetic_gold.generate_deid_dataset and serialized). `outputs` is whatever the
+    de-id skill returns for a task -- adapt the keys here to the real return shape.
     """
+    def _region(x):
+        # normalize [doc_id, page, [x0,y0,x1,y1]] (JSON) -> (doc_id, page, (x0,y0,x1,y1))
+        return (x[0], x[1], tuple(x[2]))
+
     gold = DeidGold(
         injected=[PhiSpan(**s) for s in expectations["injected"]],
         analytic_columns=expectations.get("analytic_columns", []),
         intervals=[tuple(t) for t in expectations.get("intervals", [])],
+        phi_regions=[PhiRegion(doc_id=r["doc_id"], page=r["page"], bbox=tuple(r["bbox"]),
+                               phi_class=r["phi_class"], raw_value=r["raw_value"])
+                     for r in expectations.get("phi_regions", [])],
+        modalities_present=set(expectations.get("modalities_present", [])),
+        documents=expectations.get("documents", {}),
+        should_surface=set(expectations.get("should_surface", [])),
     )
     out = DeidOutput(
         transformed_cells={tuple(c) for c in outputs.get("transformed_cells", [])},
@@ -171,6 +282,12 @@ def outputs_to_gold_and_output(expectations: dict, outputs: dict) -> tuple[DeidG
         surviving_analytic_columns=outputs.get("surviving_analytic_columns", []),
         preserved_intervals=[tuple(t) for t in outputs.get("preserved_intervals", [])],
         k_anonymity=outputs.get("k_anonymity", 0),
+        redacted_regions={_region(x) for x in outputs.get("redacted_regions", [])},
+        residual_phi_regions={_region(x) for x in outputs.get("residual_phi_regions", [])},
+        modalities_handled=set(outputs.get("modalities_handled", [])),
+        surfaced_decisions=set(outputs.get("surfaced_decisions", [])),
+        surrogate_key_present=outputs.get("surrogate_key_present", False),
+        crosswalk_locked=outputs.get("crosswalk_locked", False),
     )
     return gold, out
 

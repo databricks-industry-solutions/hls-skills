@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -26,7 +26,12 @@ from profile_table import profile_table                     # noqa: E402
 from detect_phi import detect_phi                            # noqa: E402
 from deid_report import build_readout                        # noqa: E402
 from kanon import (DEFAULT_QIS, build_qis, find_minimal_generalization,  # noqa: E402
-                   generalization_summary)
+                   generalization_summary, make_generic_qi)
+# Pure interaction layer (no SDK) — the surface-and-choose override sheet + notebook artifact.
+from deid_interactions import (normalize_delivery, normalize_date_handling,  # noqa: E402
+                               initial_role_map, apply_column_overrides, roles_to_lists,
+                               utility_weights, deid_decisions, format_decisions,
+                               surfaced_keys, deid_notebook_source)
 
 
 # Column-role vocabulary (shared by the planner). Direct identifiers with no analytic value
@@ -98,6 +103,50 @@ def _plan_columns(q: Q, table: str) -> DeidPlan:
                     passthrough=passthrough, suppressed_unsafe=suppressed_unsafe,
                     dropped_direct=sorted(dropped_direct), phi_cols=phi_cols,
                     profiles=profiles, classifications=classifications)
+
+
+def _plan_role_map(plan: DeidPlan) -> dict:
+    """Column -> current strategy, for the interaction decision sheet + override application."""
+    return initial_role_map(plan.dropped_direct, plan.id_columns, plan.date_year_columns,
+                            [qi.column for qi in plan.qis], plan.passthrough, plan.suppressed_unsafe)
+
+
+def _apply_overrides_to_plan(plan: DeidPlan, column_overrides: dict | None,
+                             utility_priority: list | None) -> DeidPlan:
+    """Apply the analyst's per-column strategy overrides + utility priority to a DeidPlan.
+
+    Pure routing logic lives in deid_interactions (unit-tested); here we reconstruct the plan's
+    lists and rebuild QuasiIdentifier objects for any column newly forced to 'generalize'. QIs
+    are COPIED (dataclasses.replace) before their utility is changed, so the shared DEFAULT_QIS
+    singletons are never mutated across calls.
+    """
+    if not column_overrides and not utility_priority:
+        return plan
+    qi_by_col = {qi.column: qi for qi in plan.qis}
+    new_map = apply_column_overrides(_plan_role_map(plan), column_overrides)
+    lists = roles_to_lists(new_map)
+    prof_by_col = {p.column: p for p in plan.profiles}
+
+    new_qis = []
+    for col in lists["qi_columns"]:
+        if col in qi_by_col:
+            new_qis.append(qi_by_col[col])
+        elif col in prof_by_col:
+            gq = make_generic_qi(prof_by_col[col])
+            if gq:
+                new_qis.append(gq)
+    if utility_priority:
+        weights = utility_weights([qi.label for qi in new_qis], utility_priority)
+        new_qis = [replace(qi, utility=weights[qi.label]) if qi.label in weights else qi
+                   for qi in new_qis]
+
+    plan.qis = new_qis
+    plan.dropped_direct = lists["dropped_direct"]
+    plan.id_columns = lists["id_columns"]
+    plan.date_year_columns = lists["date_year_columns"]
+    plan.passthrough = lists["passthrough"]
+    plan.suppressed_unsafe = lists["suppressed_unsafe"]
+    return plan
 
 
 def _persist_audit(q: Q, table_fqn: str, view_fqn: str, k_actual: int | None,
@@ -176,6 +225,8 @@ def _measure_actual_k(q: Q, view: str, generalization) -> tuple[int | None, int]
 
 
 def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
+             column_overrides: dict | None = None, date_handling: str | None = None,
+             utility_priority: list | None = None, output_delivery: str | None = None,
              profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Run the full vetted de-identification pipeline and return the DS readout.
 
@@ -186,18 +237,40 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
          columns (length-of-stay) as quasi-identifiers.
       4. Measure ACTUAL k over all surviving QIs and fail loudly if below target.
       5. Return the analyst-facing readout.
+
+    Surface-and-choose overrides (all optional; surfaced by preview_deid_options): per-column
+    strategy overrides (column_overrides={col: drop|tokenize|date_year|generalize|keep|suppress}),
+    utility_priority (QI labels most-valuable-first -> preserved), date_handling
+    (year|interval|shift), and output_delivery (uc_view | notebook | conversation).
     """
     catalog, schema, table = _split_fqn(raw_fqn)
     view_name = view_name or f"{table}_deid"
+    delivery = normalize_delivery(output_delivery)
+    date_mode = normalize_date_handling(date_handling)
     q = Q(catalog, schema, profile=profile, warehouse_id=warehouse_id)
 
     # 1-2: profile + detect + route columns (shared planner; surfaced for transparency)
     plan = _plan_columns(q, table)
+    plan = _apply_overrides_to_plan(plan, column_overrides, utility_priority)
     phi_cols = plan.phi_cols
     cls_by_col = {c.column: c.detected_class for c in plan.classifications}
     qis, id_columns = plan.qis, plan.id_columns
     date_year_columns, passthrough = plan.date_year_columns, plan.passthrough
     suppressed_unsafe = plan.suppressed_unsafe
+
+    # DELIVERY = conversation -> compute the frontier only (count-only search), persist NOTHING
+    # (no view, no audit table). Fastest, ephemeral; the analyst just wants to see the plan + k.
+    if delivery == "conversation":
+        gen = find_minimal_generalization(q, table, qis=qis, k_target=k_target)
+        summ = generalization_summary(qis, gen)
+        detail = "; ".join(f"{s['quasi_identifier']} L{s['level']}/{s['of']}" for s in summ) or "none"
+        detected = "\n".join(f"  - {c} -> {klass}" for c, klass in phi_cols) or "  (none)"
+        return ("### De-identification (conversation-only — nothing persisted)\n"
+                f"**PHI detected (auto):**\n{detected}\n\n"
+                f"At k_target={k_target}: **k_achieved={gen.k_achieved}**, "
+                f"rows_suppressed={gen.suppressed_rows}. Generalization: {detail}.\n"
+                f"Date handling: {date_mode}. No view or audit table was created "
+                f"(output_delivery=conversation).")
 
     # 3: build the governed view (schema-driven)
     gov = build_deid_view(q, table, view_name, k_target=k_target, qis=qis,
@@ -245,7 +318,16 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
     # not Genie's chat paraphrase (which can editorialize beyond what the tool did).
     audit_ref = _persist_audit(q, table_fqn=raw_fqn, view_fqn=gov.view_fqn,
                                k_actual=k_actual, passed=passed, readout=full)
-    return full + f"\n\n*Authoritative record: {audit_ref} — cite THIS, not chat text.*"
+    out = full + f"\n\n*Authoritative record: {audit_ref} — cite THIS, not chat text.*"
+    if column_overrides or utility_priority or (date_handling and date_mode != "year"):
+        out += (f"\n\n*Applied overrides — columns: {column_overrides or 'none'}; "
+                f"utility_priority: {utility_priority or 'default'}; date_handling: {date_mode}.*")
+    if delivery == "notebook":
+        nb = deid_notebook_source(raw_fqn, k_target, view_name, column_overrides,
+                                  date_handling, utility_priority)
+        out += "\n\n**Generated notebook (save as `.py`/import, or run in-workspace):**\n```python\n" \
+               + nb.rstrip() + "\n```"
+    return out
 
 
 # --- SURFACE-AND-CHOOSE (privacy/utility tradeoff is the USER'S call) -----------
@@ -298,19 +380,30 @@ def preview_deid_options(raw_fqn: str, k_candidates=(2, 5, 10, 20),
         detail = "; ".join(coarsened + [f"{d} (value-suppressed)" for d in dropped]) or "none"
         lines.append(f"| {k} | {gen.k_achieved} | {supp} ({100 * supp / total:.1f}%) | "
                      f"{len(full)} | {len(coarsened)} | {len(dropped)} | {detail} |")
-    lines += ["", "Reply with the k you want, then call `apply_deid(<table>, k_target=<k>)`. "
-              "The per-column redaction/tokenize/generalize plan above is applied at that k."]
+    # Surface the FULL choice set, not just k: per-column strategy, date handling, utility
+    # priority, and output delivery. The analyst controls the whole privacy/utility tradeoff.
+    lines.append(format_decisions(deid_decisions(_plan_role_map(plan))))
+    lines += ["", "Reply with the k you want (and any overrides above), then call "
+              "`apply_deid(<table>, k_target=<k>, column_overrides=..., utility_priority=..., "
+              "date_handling=..., output_delivery=...)`."]
     return "\n".join(lines)
 
 
 def apply_deid(raw_fqn: str, k_target: int, view_name: str | None = None,
+               column_overrides: dict | None = None, date_handling: str | None = None,
+               utility_priority: list | None = None, output_delivery: str | None = None,
                profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Apply de-identification at the k the USER chose after preview_deid_options.
 
     k_target is REQUIRED — it is the user's privacy/utility choice, surfaced by the preview and
-    never picked for them. Delegates to the vetted run_deid pipeline (which builds the governed
-    view, verifies actual k over ALL surviving quasi-identifiers, and scans for residual leaks)."""
+    never picked for them. The other surfaced choices are optional overrides: column_overrides
+    (per-column strategy), utility_priority (which QIs to preserve), date_handling, and
+    output_delivery (uc_view | notebook | conversation). Delegates to the vetted run_deid
+    pipeline (which builds the governed view, verifies actual k over ALL surviving
+    quasi-identifiers, and scans for residual leaks)."""
     return run_deid(raw_fqn, view_name=view_name, k_target=k_target,
+                    column_overrides=column_overrides, date_handling=date_handling,
+                    utility_priority=utility_priority, output_delivery=output_delivery,
                     profile=profile, warehouse_id=warehouse_id)
 
 

@@ -43,6 +43,8 @@ surfaced by a read-only preview.
 - "How many patients would qualify for a heart-failure readmission study?" (feasibility N).
 - "Define a sepsis cohort and check it against the literature."
 - "Build the diabetes cohort using both the coded records and the clinical notes" (free-text).
+- "Build the cohort from the coded records AND the clinical documents (PDFs/scans) in this Volume" — unstructured documents are parsed with `ai_parse_document` and ascertained via the same span-grounded path (`documents_source`).
+- "Give me the result as a notebook / just show it here / as a table" — the delivery choice (`output_delivery`) is surfaced.
 - "Is this cohort feasible, or is N too small?" (attrition + minimum-N heuristics).
 - "Refine the phenotype — the codes miss patients documented only in notes" (note recovery).
 
@@ -181,8 +183,11 @@ network round-trip; the step already fails closed either way).
 | `note_condition` | `None` (→ `intent_text`) | e.g. `"type 2 diabetes"` | What the note extractor looks for — the diagnosis, not the whole phenotype. |
 | `note_endpoint` | `databricks-meta-llama-3-3-70b-instruct` | any serving endpoint | The model `ai_query` calls to read the notes. Override to point at a provisioned-throughput or fine-tuned clinical model. |
 | `note_prompt` | `None` (built-in template) | a prompt string | Override the extraction prompt. If it contains `{condition}` it's formatted with the condition, else used verbatim. Must still reply `YES:<verbatim span>` / `NO` for span-grounding. The resolved prompt is pinned in the definition. |
-| `note_prefilter` | `None` (scan all notes) | list of keywords, or a raw SQL predicate | **Scale lever.** Restricts which notes get `ai_query`'d — only notes matching the keywords (case-insensitive LIKE-ANY) are scanned. Recall-safe: a note that mentions none of the concept's terms/synonyms cannot assert it, so excluding it loses no true positives (include abbreviations). Cuts LLM calls 10–100× on a large corpus; leave off for small/demo tables. |
-| `combine_mode` | `None` | `code_only`/`note_only`/`union`/`intersection` | The user's choice for combining coded + note-derived diagnoses. REQUIRED for build once `notes_table` is given; never guessed. |
+| `documents_source` | `None` | a Volume glob, e.g. `/Volumes/cat/sch/docs/*.pdf` | **Unstructured documents (PDF/image).** Parsed with `ai_parse_document` (GA); the diagnosis is ascertained from the extracted text via the SAME negation-/subject-aware, span-grounded path as notes. Source-grounding holds (the cited quote must be a substring of the parsed document). If `notes_table` is also given, the two text sources are UNIONed. `patient_id` is recovered from the filename by default (`documents_id_regex`). |
+| `output_delivery` | `uc_table` | `uc_table`/`notebook`/`conversation` | How the result is delivered — a materialized governed UC table, a generated re-runnable notebook, or shown in the conversation only (nothing persisted). Surfaced for the user to choose; never assumed. |
+| `source_confidence` | `None` | 0.0–1.0 | Min confidence to accept an LLM-ascertained (note/document) diagnosis. Surfaced; pinned in the definition. |
+| `source_priority` | `None` | `code`/`note` | Which source wins when a coded dx and a note/document dx disagree. Surfaced; pinned in the definition. |
+| `combine_mode` | `None` | `code_only`/`note_only`/`union`/`intersection` | The user's choice for combining coded + note/document-derived diagnoses. REQUIRED for build once `notes_table` or `documents_source` is given; never guessed. |
 | `include_literature` | `True` | `True`/`False` | Set `False` to skip the PubMed/MCP citation step (air-gapped workspaces). |
 | `mcp_citations` | `None` | `[PMID, ...]` | Candidate PMIDs retrieved from a literature MCP; verified (kept only if they resolve). |
 
@@ -272,7 +277,7 @@ repo for the full A/B protocol and the live Genie-Code capture.
 - `references/mcp_literature_servers.md` — discovering & calling literature/terminology MCP servers.
 - `references/freetext_notes.md` — the ai_query note-extraction prompt, negation/subject rules,
   span-grounding, combine modes, and cost notes.
-- `tests/scorers.py`, `tests/objective.py`, `tests/test_scorers.py` — the objective function,
+- `tests/scorers.py`, `tests/objective.py`, `tests/test_cohort_scorers.py`, `tests/test_cohort_multimodal.py` — the objective function,
   component scorers (membership F1, concept-set F1, feasibility, citation validity, note-trap
   specificity), and their pure-Python unit tests.
 
