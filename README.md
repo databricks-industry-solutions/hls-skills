@@ -1,6 +1,6 @@
-# HLS Skills
-
-Agent skills for Health & Life Sciences workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
+# <img src="vitalskills.png" alt="Vital Skills" width="40" height="40"> Vital Skills
+## Agent skills for Health & Life Sciences workflows. 
+Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
 
 
 ## Setup
@@ -19,6 +19,7 @@ uv run sync_skills_git2unity.py --dry-run
 uv run sync_skills_git2unity.py --catalog <your_catalog> --schema <your_schema> --warehouse-id <your_sql_wh>
 ```
 You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehouses > select warehouse > Name. It should list the warehouse ID. More details [here](https://www.getorchestra.io/guides/how-to-retrieve-your-databricks-warehouse-id).
+
 
 
 ## Available Skills
