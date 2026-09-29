@@ -1,0 +1,6 @@
+# Test-only dependencies for CI (.github/workflows/ci.yml). Versions verified together.
+gseapy==1.3.1
+networkx==3.6.1
+numpy==2.5.3
+pandas==3.0.5
+seaborn==0.13.2

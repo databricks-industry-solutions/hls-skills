@@ -1,0 +1,43 @@
+name: Skill request
+description: Propose a new HLS skill or a major change to an existing one.
+labels: ["skill-request"]
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: User task
+      description: What should an agent be able to do with this skill? Describe it from the user's point of view.
+      placeholder: "Run differential expression on bulk RNA-seq counts and explain the top genes."
+    validations:
+      required: true
+  - type: textarea
+    id: tools
+    attributes:
+      label: Tools, data, and methods
+      description: Libraries, APIs, Databricks features, and data sources the skill would use.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Example sources
+      description: Papers, docs, notebooks, repos, or public datasets that show how the task is done today. Links are best.
+      placeholder: |
+        - https://doi.org/10.1186/s13059-014-0550-8 (DESeq2)
+        - https://bioconductor.org/packages/DESeq2
+  - type: dropdown
+    id: type
+    attributes:
+      label: Skill type
+      description: See AGENTS.md, Step 1.
+      options:
+        - Pipeline (run this analysis)
+        - Guide (decide how to approach this)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Benchmark tasks
+      description: 1-3 tasks with a checkable answer that would show the skill works (see skills/skill-eval).

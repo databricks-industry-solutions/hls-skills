@@ -37,7 +37,7 @@ Inference controls are passed as `extra_params` (Databricks Python SDK) or the `
 
 ### Output
 
-```json
+```text
 {"predictions": [{"embedding": [<float>, ...]}, ...]}
 ```
 
