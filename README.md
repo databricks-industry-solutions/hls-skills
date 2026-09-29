@@ -4,7 +4,7 @@ Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent S
 
 
 ## Setup
-#### Option 1: git clone this repo to Databricks
+#### git clone this repo to Databricks
 Git clone this repo onto Databricks. Then open Genie Code and click on Customizations to add the cloned folder. It should point to the `skills` subfolder
 
 #### Optional: Register and sync the skills to [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/)
@@ -61,17 +61,6 @@ skills/<skill-name>/
 
 ## Creating a Skill
 See [CONTRIBUTING.md](CONTRIBUTING.md).
-1. Follow [AGENTS.md](AGENTS.md).
-2. Start from the matching file in `templates/`.
-3. Put the skill at `skills/<skill-name>/SKILL.md`.
-4. Folder name must match frontmatter `name`. 
-5. Update the skill table in `README.md` (Table to be created).
-6. Open a PR and request a second-party review.
-
-| Template | Use when |
-|----------|----------|
-| `SKILL_TEMPLATE.md` | Linear pipeline |
-| `SKILL_TEMPLATE_GUIDE.md` | Decision guide |
 
 Repo layout and skill templates are inspired by the patterns in [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills)
 
