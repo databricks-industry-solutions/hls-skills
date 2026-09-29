@@ -1,320 +1,94 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # Sync a plugin-marketplace Git repo to a Unity Catalog schema
-# MAGIC
-# MAGIC Publishes the skills from every plugin in a plugin-marketplace Git repository
-# MAGIC into a single Unity Catalog schema, so the schema tracks a branch of your repo.
-# MAGIC Run it on a schedule to keep the two in sync.
-# MAGIC
-# MAGIC A marketplace repository holds many plugins, each with its own `skills/`
-# MAGIC directory. Each run finds them by looking for `.claude-plugin/marketplace.json`
-# MAGIC files, resolves the `source` path of every plugin they declare, and publishes all
-# MAGIC of their skills into your target schema.
-# MAGIC
-# MAGIC A skill name has to be unique within a schema. If two plugins ship a skill with
-# MAGIC the same name, the first one wins and the other is recorded as skipped rather
-# MAGIC than published, so you can find and rename it.
-# MAGIC
-# MAGIC Every run appends one row per skill — published and skipped alike — to
-# MAGIC `{catalog}.{schema}.skill_sync_audit`. That table is both the history of what the
-# MAGIC notebook did and how it detects changes on the next run.
-# MAGIC
-# MAGIC **What you need before running**
-# MAGIC - Unity Catalog skills enabled in your workspace.
-# MAGIC - `USE CATALOG` on the target catalog, `USE SCHEMA` and `CREATE SCHEMA` on the
-# MAGIC   target schema, and `CREATE VOLUME` on that schema.
-# MAGIC - For a private repo, a Git credential configured for the identity that runs
-# MAGIC   this notebook (**Settings > Linked accounts**), and its ID in the
-# MAGIC   `git_credential_id` widget.
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["databricks-sdk>=0.40"]
+# ///
+"""Publish this repo's skills to a Unity Catalog schema from a local checkout.
 
-# COMMAND ----------
+Reads every skills/<name>/SKILL.md folder, publishes the skills whose content
+changed since their last publish, and appends one row per skill (published and
+skipped alike) to {catalog}.{schema}.skill_sync_audit. That table is both the
+history of what each run did and how the next run detects changes.
 
-# MAGIC %md
-# MAGIC ## Configuration
+    # List what would ship; no Databricks calls
+    uv run sync_skills_git2unity.py --dry-run
 
-# COMMAND ----------
+    # Publish
+    uv run sync_skills_git2unity.py --catalog hls_amer_catalog --schema vital_skills \\
+        --warehouse-id <id> [--profile <databrickscfg-profile>]
 
-dbutils.widgets.text("git_url", "https://github.com/databricks-industry-solutions/hls-skills.git", "Skills repo HTTPS clone URL")
-dbutils.widgets.text("catalog", "hls_amer_catalog", "Target UC catalog (must exist)")
-dbutils.widgets.text("schema", "vital_skills", "Target UC schema (created if absent)")
-dbutils.widgets.text("branch", "dev", "Branch to track")
-dbutils.widgets.text("git_credential_id", "", "Git credential ID (blank for public repos)")
+Auth follows the Databricks SDK's default chain: --profile, DATABRICKS_* env
+vars, or ~/.databrickscfg. The identity needs Unity Catalog skills enabled in the
+workspace, USE CATALOG on the catalog, USE SCHEMA, CREATE SCHEMA, CREATE TABLE and
+CREATE VOLUME on the schema, and CAN USE on the SQL warehouse.
 
-# COMMAND ----------
+Only files git knows about are published (tracked, or untracked but not ignored),
+so local caches and results never ship. A dirty skills/ tree is refused unless
+--allow-dirty, so commit_sha in the audit table is the content that shipped.
 
-GIT_URL = dbutils.widgets.get("git_url").strip()
-CATALOG = dbutils.widgets.get("catalog").strip()
-SCHEMA = dbutils.widgets.get("schema").strip()
-BRANCH = dbutils.widgets.get("branch").strip()
-GIT_CREDENTIAL_ID = dbutils.widgets.get("git_credential_id").strip()
-CATALOG, SCHEMA, BRANCH
+Nothing is ever deleted: a skill removed from the repo stays in the schema until
+you drop it yourself.
+"""
 
-# COMMAND ----------
+from __future__ import annotations
 
-for widget, value in [("git_url", GIT_URL), ("catalog", CATALOG), ("schema", SCHEMA), ("branch", BRANCH)]:
-    if not value:
-        raise ValueError(f"Widget '{widget}' is required")
-
-AUDIT_TABLE = f"{CATALOG}.{SCHEMA}.skill_sync_audit"
-# Backtick-quoted for the SQL parser: a catalog or schema name may legally contain
-# characters like '-' that would otherwise be read as operators (e.g. das-0806 -> das - 0806).
-AUDIT_TABLE_SQL = f"`{CATALOG}`.`{SCHEMA}`.`skill_sync_audit`"
-
-# COMMAND ----------
-
+import argparse
 import hashlib
 import json
+import os
 import re
+import subprocess
+import sys
+import time
 import uuid
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from databricks.sdk import WorkspaceClient
-from databricks.sdk.errors import AlreadyExists, NotFound
-from pyspark.sql.functions import current_timestamp, lit
-
-w = WorkspaceClient()
-api = w.api_client
-
+REPO_ROOT = Path(__file__).resolve().parent
+DEFAULT_REPO_URL = "https://github.com/databricks-industry-solutions/hls-skills"
 SKILLS_API = "/api/2.1/unity-catalog/skills"
 FILES_API = "/api/2.0/fs/files"
 
 # Skill names are lowercase alphanumerics and inner hyphens, up to 64 characters.
 SKILL_LEAF_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?$")
 
-SYNC_RUN_ID = str(uuid.uuid4())
-RUN_BY = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
-REPO_NAME = GIT_URL.rstrip("/").split("/")[-1].removesuffix(".git")
-REPO_PATH = f"/Workspace/Users/{RUN_BY}/skills-sync/{REPO_NAME}"
-
-print(f"run_id  {SYNC_RUN_ID}")
-print(f"repo    {GIT_URL} @ {BRANCH} -> {REPO_PATH}")
-print(f"target  {CATALOG}.{SCHEMA}")
-print(f"audit   {AUDIT_TABLE}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 1. Check out the repo as a Workspace Git folder
-# MAGIC
-# MAGIC A Git folder never updates on its own, so every run pulls the branch explicitly.
-# MAGIC The Repos REST API is called directly here because it accepts a Git credential ID
-# MAGIC and returns the checked-out commit, which the SDK's typed helpers do not.
-# MAGIC
-# MAGIC This notebook only reads from the folder, never writes to it. If a pull ever
-# MAGIC conflicts with local edits, the run fails rather than discarding them: the API's
-# MAGIC force-discard option deletes uncommitted work permanently.
-# MAGIC
-# MAGIC The pull is not immediately consistent with your push. A run that starts seconds
-# MAGIC after a commit may still check out the previous one, skip everything as unchanged,
-# MAGIC and pick the change up on the next run. `commit_sha` in the audit table is
-# MAGIC therefore the commit the run actually synced, not necessarily the branch tip at
-# MAGIC the time it started.
-
-# COMMAND ----------
-
-# git helper functions
-import subprocess
-
-def _has_git_cli(repo_dir) -> bool:
-    try:
-        subprocess.run(
-            ["git", "-C", str(repo_dir), "rev-parse", "--git-dir"],
-            capture_output=True, text=True, check=True,
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
-def _git(repo_dir, *args: str) -> str:
-    r = subprocess.run(
-        ["git", "-C", str(repo_dir), *args],
-        capture_output=True, text=True, check=True,
-    )
-    return r.stdout.strip()
-
-# COMMAND ----------
-
-def checkout_repo() -> str:
-    """Clones or pulls the repo at REPO_PATH and returns its HEAD commit SHA."""
-    repo_dir = Path(REPO_PATH)
-
-    if not repo_dir.exists():
-        # Creating a Git folder fails unless its parent directory already exists.
-        w.workspace.mkdirs(str(repo_dir.parent))
-        body = {"url": GIT_URL, "provider": "gitHub", "path": REPO_PATH, "branch": BRANCH}
-        if GIT_CREDENTIAL_ID:
-            body["git_credential_id"] = int(GIT_CREDENTIAL_ID)
-        created = api.do("POST", "/api/2.0/repos", body=body)
-        print(f"cloned {REPO_PATH} @ {BRANCH}")
-        return created.get("head_commit_id", "")
-
-    # --- Auto-detect: Git CLI or Repos PATCH API ---
-    # CLI-enabled Git folders (common on serverless) are invisible to the
-    # Repos API, so we probe for a .git directory first and pick the
-    # matching strategy.
-    if _has_git_cli(repo_dir):
-        _git(repo_dir, "fetch", "origin")
-        _git(repo_dir, "checkout", BRANCH)
-        _git(repo_dir, "reset", "--hard", f"origin/{BRANCH}")
-        sha = _git(repo_dir, "rev-parse", "HEAD")
-        print(f"pulled {REPO_PATH} @ {BRANCH}  (git cli)")
-        return sha
-
-    # Repos PATCH API: works for standard (non-CLI) Git folders.
-    existing = next(
-        (r for r in w.repos.list(path_prefix=REPO_PATH) if r.path == REPO_PATH),
-        None,
-    )
-    if existing is None:
-        raise RuntimeError(
-            f"Repo at {REPO_PATH} is invisible to both Git CLI and the "
-            "Repos API \u2014 cannot switch branch."
-        )
-    updated = api.do("PATCH", f"/api/2.0/repos/{existing.id}", body={"branch": BRANCH})
-    print(f"pulled {REPO_PATH} @ {BRANCH}  (repos api)")
-    return updated.get("head_commit_id", "")
-
-
-COMMIT_SHA = checkout_repo()
-print(f"head   {COMMIT_SHA}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 2. Ensure the target schema exists
-# MAGIC
-# MAGIC A missing catalog is an operator error, not something to fix silently — it
-# MAGIC binds a storage root and carries governance decisions. Schemas we create.
-
-# COMMAND ----------
-
-w.catalogs.get(CATALOG)  # raises NotFound if the operator hasn't created/granted it
-
-try:
-    w.schemas.get(f"{CATALOG}.{SCHEMA}")
-    print(f"schema {CATALOG}.{SCHEMA} exists")
-except NotFound:
-    w.schemas.create(name=SCHEMA, catalog_name=CATALOG)
-    w.schemas.get(f"{CATALOG}.{SCHEMA}")  # re-read: create can be silently denied
-    print(f"schema {CATALOG}.{SCHEMA} created")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 3. Discover plugins, then their skills
-# MAGIC
-# MAGIC A plugin's `source` is relative to the **marketplace root** — the parent of
-# MAGIC `.claude-plugin/`, not `.claude-plugin/` itself. So
-# MAGIC `team-a/.claude-plugin/marketplace.json` with `source: "./analytics/.claude"`
-# MAGIC resolves to `team-a/analytics/.claude`, whose skills are at
-# MAGIC `.../.claude/skills/<skill>/SKILL.md`.
-# MAGIC
-# MAGIC `source` comes in two forms. A plain string is a marketplace-relative path. An
-# MAGIC object (`{"source": "git-subdir"|"github", "path": ...}`) points at a subdirectory
-# MAGIC of a repo; when that repo is the one already checked out, its `path` is relative to
-# MAGIC the repo root and resolves locally. An object naming a *different* repo would need
-# MAGIC a second clone, which this notebook does not do, so those are skipped.
-# MAGIC
-# MAGIC Skill files are read with ordinary `pathlib` calls against the `/Workspace` path,
-# MAGIC which works the same on classic and serverless compute.
-
-# COMMAND ----------
-
-@dataclass(frozen=True)
-class DiscoveredSkill:
-    leaf: str
-    dir: Path
+# A skill's eval/ folder holds its benchmark answer key (expectations, arm outputs):
+# an agent that loads the published skill must not be able to read the ground truth
+# it is graded on. tests/ is dev-only (unit tests, test deps). Both stay in git.
+EXCLUDED_DIRS = frozenset({"eval", "tests"})
 
 
 @dataclass
 class AuditRow:
-    full_name: str
     leaf_name: str
     action: str
-    bundle_hash: str = ""
     skill_dir: str = ""
+    bundle_hash: str = ""
     error: str = ""
 
 
-audit_rows: list[AuditRow] = []
+# --- Bundle: what a skill publishes -------------------------------------------------
 
 
-def record(action: str, leaf: str, skill_dir: str = "", bundle_hash: str = "", error: str = "") -> None:
-    audit_rows.append(
-        AuditRow(
-            full_name=f"{CATALOG}.{SCHEMA}.{leaf}" if leaf else "",
-            leaf_name=leaf,
-            action=action,
-            bundle_hash=bundle_hash,
-            skill_dir=skill_dir,
-            error=error,
-        )
-    )
+def _git(repo_dir: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo_dir), *args], capture_output=True, text=True, check=True
+    ).stdout
 
 
-def discover_skills_from_repo() -> dict[str, DiscoveredSkill]:
-    """Discovers skills from a flat `skills/` folder at the repo root.
-
-    Expects the layout:
-        <repo>/skills/<skill-name>/SKILL.md
-
-    Returns a dict mapping each publishable skill leaf name to its DiscoveredSkill.
-    """
-    skills_root = Path(REPO_PATH) / "skills"
-    winners: dict[str, DiscoveredSkill] = {}
-
-    if not skills_root.is_dir():
-        print(f"WARNING: no skills/ directory found at {skills_root}")
-        return winners
-
-    for skill_dir in sorted(d for d in skills_root.iterdir() if d.is_dir()):
-        leaf = skill_dir.name
-        context = {"skill_dir": str(skill_dir)}
-        if not (skill_dir / "SKILL.md").is_file():
-            record("skipped_no_skill_md", leaf, **context)
-        elif not SKILL_LEAF_PATTERN.match(leaf):
-            record("skipped_invalid_name", leaf, **context, error=f"'{leaf}' fails {SKILL_LEAF_PATTERN.pattern}")
-        elif leaf in winners:
-            record("skipped_name_collision", leaf, **context, error=f"already published from {winners[leaf].dir}")
-        else:
-            winners[leaf] = DiscoveredSkill(leaf, skill_dir)
-
-    return winners
-
-
-skills = discover_skills_from_repo()
-
-print(f"Found {len(skills)} publishable skill(s).")
-for leaf in sorted(skills):
-    print(f"  skill  {leaf}  ({skills[leaf].dir})")
-for row in audit_rows:
-    print(f"  {row.action}  {row.leaf_name or row.skill_dir}: {row.error}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 4. Compare against the last published bundle hash
-# MAGIC
-# MAGIC A published skill does not carry a content hash you can compare against, so this
-# MAGIC notebook tracks changes itself: hash each bundle locally and compare it with the
-# MAGIC most recent audit row for that skill. Skills whose hash is unchanged are skipped,
-# MAGIC so a scheduled run re-uploads only what actually changed in the repo.
-
-# COMMAND ----------
-
-# A skill's eval/ folder holds its benchmark answer key (expectations, arm outputs).
-# It stays in git next to the skill but never ships: an agent that loads the
-# published skill must not be able to read the ground truth it is graded on.
-EXCLUDED_DIRS = {"eval"}
+def is_published(rel_path: str | Path) -> bool:
+    """True if a path relative to the skill folder ships in the published bundle."""
+    return Path(rel_path).parts[0] not in EXCLUDED_DIRS
 
 
 def read_bundle(skill_dir: Path) -> dict[str, bytes]:
+    """Maps each published path (relative to skill_dir) to its bytes."""
+    listed = _git(skill_dir, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ".")
     return {
-        str(f.relative_to(skill_dir)): f.read_bytes()
-        for f in sorted(skill_dir.rglob("*"))
-        if f.is_file() and f.relative_to(skill_dir).parts[0] not in EXCLUDED_DIRS
+        rel: (skill_dir / rel).read_bytes()
+        for rel in sorted(set(listed.split("\0")))
+        if rel and is_published(rel) and (skill_dir / rel).is_file()
     }
 
 
@@ -326,153 +100,220 @@ def bundle_hash(bundle: dict[str, bytes]) -> str:
     return digest.hexdigest()
 
 
-def last_published_hashes() -> dict[str, str]:
-    if not spark.catalog.tableExists(AUDIT_TABLE_SQL):
-        return {}
-    rows = spark.sql(
-        f"""
-        SELECT full_name, bundle_hash FROM {AUDIT_TABLE_SQL}
-        WHERE action IN ('created', 'updated')
-        QUALIFY row_number() OVER (PARTITION BY full_name ORDER BY event_time DESC) = 1
-        """
-    ).collect()
-    return {r.full_name: r.bundle_hash for r in rows}
+def discover_skills(repo_root: Path) -> tuple[dict[str, Path], list[AuditRow]]:
+    """Finds publishable skills under <repo_root>/skills/<name>/SKILL.md.
+
+    Returns the publishable skills by leaf name, plus a skipped row for every
+    folder that is not one.
+    """
+    skills_root = repo_root / "skills"
+    skills: dict[str, Path] = {}
+    skipped: list[AuditRow] = []
+    if not skills_root.is_dir():
+        print(f"WARNING: no skills/ directory at {skills_root}")
+        return skills, skipped
+
+    for skill_dir in sorted(d for d in skills_root.iterdir() if d.is_dir()):
+        leaf, rel_dir = skill_dir.name, str(skill_dir.relative_to(repo_root))
+        if not (skill_dir / "SKILL.md").is_file():
+            skipped.append(AuditRow(leaf, "skipped_no_skill_md", rel_dir))
+        elif not SKILL_LEAF_PATTERN.match(leaf):
+            skipped.append(AuditRow(leaf, "skipped_invalid_name", rel_dir, error=f"fails {SKILL_LEAF_PATTERN.pattern}"))
+        else:
+            skills[leaf] = skill_dir
+    return skills, skipped
 
 
-published_hashes = last_published_hashes()
-bundles = {leaf: read_bundle(s.dir) for leaf, s in skills.items()}
-hashes = {leaf: bundle_hash(b) for leaf, b in bundles.items()}
+# --- Databricks: SQL warehouse, schema, skills API -----------------------------------
 
-changed = sorted(leaf for leaf, h in hashes.items() if published_hashes.get(f"{CATALOG}.{SCHEMA}.{leaf}") != h)
-for leaf in sorted(set(hashes) - set(changed)):
-    skill = skills[leaf]
-    record("skipped_unchanged", leaf, leaf, str(skill.dir), hashes[leaf])
 
-print(f"{len(changed)} changed, {len(hashes) - len(changed)} unchanged")
+def _quote(*parts: str) -> str:
+    # A catalog or schema name may contain '-', which SQL would read as minus.
+    return ".".join("`" + p.replace("`", "``") + "`" for p in parts)
 
-# COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## 5. Publish the changed skills
-# MAGIC
-# MAGIC Each changed skill takes three steps: create the skill (an "already exists" error
-# MAGIC just means this is a re-publish), upload every file in its bundle, then finalize.
-# MAGIC Finalizing is what reads the uploaded `SKILL.md` and records its frontmatter, so
-# MAGIC `name:` must match the skill's directory name and `description:` must be at most
-# MAGIC 1024 bytes.
-# MAGIC
-# MAGIC Failures are contained per skill: a skill that fails is recorded and the run moves
-# MAGIC on, so one malformed bundle cannot block the rest of the repo.
+def run_sql(w, warehouse_id: str, statement: str, **params: str) -> list[list[str]]:
+    from databricks.sdk.service.sql import StatementParameterListItem, StatementState
 
-# COMMAND ----------
+    resp = w.statement_execution.execute_statement(
+        statement=statement,
+        warehouse_id=warehouse_id,
+        parameters=[StatementParameterListItem(name=k, value=v) for k, v in params.items()],
+        wait_timeout="50s",
+    )
+    while resp.status.state in (StatementState.PENDING, StatementState.RUNNING):
+        time.sleep(2)
+        resp = w.statement_execution.get_statement(resp.statement_id)
+    if resp.status.state != StatementState.SUCCEEDED:
+        detail = resp.status.error.message if resp.status.error else resp.status.state
+        raise RuntimeError(f"SQL failed: {detail}\n{statement}")
+    return (resp.result.data_array or []) if resp.result else []
 
-def create_skill(leaf: str) -> str:
-    """Creates the skill entity, returning the audit action. Re-publishes are expected."""
+
+def ensure_schema(w, catalog: str, schema: str) -> None:
+    from databricks.sdk.errors import NotFound
+
+    # A missing catalog is an operator error: it binds a storage root and carries
+    # governance decisions, so it is never created here. Schemas are.
+    w.catalogs.get(catalog)
     try:
-        api.do("POST", SKILLS_API, query={"parent": f"schemas/{CATALOG}.{SCHEMA}", "skill_id": leaf}, body={})
-        return "created"
+        w.schemas.get(f"{catalog}.{schema}")
+    except NotFound:
+        w.schemas.create(name=schema, catalog_name=catalog)
+        w.schemas.get(f"{catalog}.{schema}")  # re-read: create can be silently denied
+        print(f"schema {catalog}.{schema} created")
+
+
+def ensure_audit_table(w, warehouse_id: str, audit_table: str) -> None:
+    run_sql(
+        w,
+        warehouse_id,
+        f"""CREATE TABLE IF NOT EXISTS {audit_table} (
+            sync_run_id STRING, event_time TIMESTAMP, repo_url STRING, commit_sha STRING,
+            full_name STRING, leaf_name STRING, skill_dir STRING, action STRING,
+            bundle_hash STRING, error STRING, run_by STRING)""",
+    )
+
+
+def last_published_hashes(w, warehouse_id: str, audit_table: str) -> dict[str, str]:
+    rows = run_sql(
+        w,
+        warehouse_id,
+        f"""SELECT full_name, bundle_hash FROM {audit_table}
+            WHERE action IN ('created', 'updated')
+            QUALIFY row_number() OVER (PARTITION BY full_name ORDER BY event_time DESC) = 1""",
+    )
+    return {full_name: h for full_name, h in rows}
+
+
+def append_audit(w, warehouse_id: str, audit_table: str, rows: list[AuditRow], full_prefix: str, **run: str) -> None:
+    # Rows travel as one JSON parameter so no value is ever spliced into the SQL text.
+    payload = json.dumps([{"full_name": f"{full_prefix}.{r.leaf_name}", **asdict(r)} for r in rows])
+    run_sql(
+        w,
+        warehouse_id,
+        f"""INSERT INTO {audit_table}
+            (sync_run_id, event_time, repo_url, commit_sha, full_name, leaf_name,
+             skill_dir, action, bundle_hash, error, run_by)
+            SELECT :sync_run_id, current_timestamp(), :repo_url, :commit_sha, full_name, leaf_name,
+                   skill_dir, action, bundle_hash, error, :run_by
+            FROM (SELECT inline(from_json(:rows,
+                'ARRAY<STRUCT<full_name: STRING, leaf_name: STRING, action: STRING,
+                              skill_dir: STRING, bundle_hash: STRING, error: STRING>>')))""",
+        rows=payload,
+        **run,
+    )
+
+
+def publish_skill(w, catalog: str, schema: str, leaf: str, bundle: dict[str, bytes]) -> str:
+    """Creates (or re-publishes), uploads every file, and finalizes. Returns the audit action.
+
+    Finalizing reads the uploaded SKILL.md, so its `name:` must match the folder
+    and its `description:` must be at most 1024 bytes.
+    """
+    from databricks.sdk.errors import AlreadyExists
+
+    api = w.api_client
+    try:
+        api.do("POST", SKILLS_API, query={"parent": f"schemas/{catalog}.{schema}", "skill_id": leaf}, body={})
+        action = "created"
     except AlreadyExists:
-        return "updated"
-
-
-def upload_bundle(leaf: str, bundle: dict[str, bytes]) -> None:
+        action = "updated"
     for rel_path, content in bundle.items():
         api.do(
             "PUT",
-            f"{FILES_API}/Skills/{CATALOG}/{SCHEMA}/{leaf}/{rel_path}",
+            f"{FILES_API}/Skills/{catalog}/{schema}/{leaf}/{rel_path}",
             headers={"Content-Type": "application/octet-stream"},
             data=content,
         )
+    api.do("POST", f"{SKILLS_API}/{catalog}.{schema}.{leaf}/finalize")
+    return action
 
 
-def finalize_skill(leaf: str) -> None:
-    api.do("POST", f"{SKILLS_API}/{CATALOG}.{SCHEMA}.{leaf}/finalize")
+# --- CLI -----------------------------------------------------------------------------
 
 
-for leaf in changed:
-    skill = skills[leaf]
-    try:
-        action = create_skill(leaf)
-        upload_bundle(leaf, bundles[leaf])
-        finalize_skill(leaf)
-        record(action, leaf, leaf, str(skill.dir), hashes[leaf])
-        print(f"  {action:8} {leaf}  ({skill.dir})")
-    # Deliberately broad: any failure across create/upload/finalize must stay contained to
-    # this skill, so one malformed bundle can't abort the rest of the repo's sync.
-    except Exception as e:
-        record("error", leaf, leaf, str(skill.dir), hashes[leaf], error=str(e))
-        print(f"  {'error':8} {leaf}  ({skill.dir}): {e}")
+def parse_args(argv: list[str] | None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("--catalog", default="hls_amer_catalog", help="Target UC catalog (must exist)")
+    p.add_argument("--schema", default="vital_skills", help="Target UC schema (created if absent)")
+    p.add_argument("--warehouse-id", default=os.environ.get("DATABRICKS_WAREHOUSE_ID", ""),
+                   help="SQL warehouse for the audit table (default: $DATABRICKS_WAREHOUSE_ID)")
+    p.add_argument("--profile", default=None, help="~/.databrickscfg profile")
+    p.add_argument("--repo-root", type=Path, default=REPO_ROOT, help="Local checkout to publish from")
+    p.add_argument("--repo-url", default=DEFAULT_REPO_URL, help="Repo URL recorded in the audit table")
+    p.add_argument("--dry-run", action="store_true", help="List what would ship; make no Databricks calls")
+    p.add_argument("--allow-dirty", action="store_true", help="Publish uncommitted changes under skills/")
+    return p.parse_args(argv)
 
-# COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## 6. Append to the audit table
-# MAGIC
-# MAGIC Rows are only ever appended, so the table keeps the full history of what each run
-# MAGIC did. The newest row per skill is what the next run compares against.
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    repo_root = args.repo_root.resolve()
 
-# COMMAND ----------
+    skills, audit_rows = discover_skills(repo_root)
+    bundles = {leaf: read_bundle(d) for leaf, d in skills.items()}
+    hashes = {leaf: bundle_hash(b) for leaf, b in bundles.items()}
+    rel_dirs = {leaf: str(d.relative_to(repo_root)) for leaf, d in skills.items()}
+    for row in audit_rows:
+        print(f"  {row.action:24} {row.skill_dir} {row.error}")
 
-audit_df = (
-    spark.createDataFrame([vars(r) for r in audit_rows])
-    .withColumn("sync_run_id", lit(SYNC_RUN_ID))
-    .withColumn("event_time", current_timestamp())
-    .withColumn("repo_url", lit(GIT_URL))
-    .withColumn("commit_sha", lit(COMMIT_SHA))
-    .withColumn("run_by", lit(RUN_BY))
-    .select(
-        "sync_run_id",
-        "event_time",
-        "repo_url",
-        "commit_sha",
-        "full_name",
-        "leaf_name",
-        "skill_dir",
-        "action",
-        "bundle_hash",
-        "error",
-        "run_by",
-    )
-)
-audit_df.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(AUDIT_TABLE_SQL)
+    if args.dry_run:
+        for leaf in sorted(bundles):
+            print(f"{leaf}  {hashes[leaf][:12]}  {len(bundles[leaf])} file(s)")
+            for rel in bundles[leaf]:
+                print(f"    {rel}")
+        return 0
 
-# COMMAND ----------
+    if not args.warehouse_id:
+        sys.exit("--warehouse-id (or DATABRICKS_WAREHOUSE_ID) is required unless --dry-run")
+    commit_sha = _git(repo_root, "rev-parse", "HEAD").strip()
+    if _git(repo_root, "status", "--porcelain", "--", "skills").strip():
+        if not args.allow_dirty:
+            sys.exit("skills/ has uncommitted changes; commit them or pass --allow-dirty")
+        commit_sha += "-dirty"
 
-display(spark.table(AUDIT_TABLE_SQL))
+    from databricks.sdk import WorkspaceClient
 
-# COMMAND ----------
+    w = WorkspaceClient(profile=args.profile)
+    catalog, schema, wh = args.catalog, args.schema, args.warehouse_id
+    audit_table = _quote(catalog, schema, "skill_sync_audit")
+    run = {
+        "sync_run_id": str(uuid.uuid4()),
+        "repo_url": args.repo_url,
+        "commit_sha": commit_sha,
+        "run_by": w.current_user.me().user_name,
+    }
+    print(f"run_id  {run['sync_run_id']}")
+    print(f"source  {repo_root} @ {commit_sha}")
+    print(f"target  {catalog}.{schema}")
 
-# MAGIC %md
-# MAGIC ## Summary
-# MAGIC
-# MAGIC The run fails if any skill failed to publish, so a scheduled job shows up as
-# MAGIC failed even when the other skills went through. Skipped skills are the normal
-# MAGIC steady state, not failures.
+    ensure_schema(w, catalog, schema)
+    ensure_audit_table(w, wh, audit_table)
+    published = last_published_hashes(w, wh, audit_table)
 
-# COMMAND ----------
+    for leaf in sorted(skills):
+        row = AuditRow(leaf, "skipped_unchanged", rel_dirs[leaf], hashes[leaf])
+        if published.get(f"{catalog}.{schema}.{leaf}") != hashes[leaf]:
+            # Deliberately broad: one malformed bundle must not abort the rest of the sync.
+            try:
+                row.action = publish_skill(w, catalog, schema, leaf, bundles[leaf])
+            except Exception as e:
+                row.action, row.error = "error", str(e)
+        audit_rows.append(row)
+        print(f"  {row.action:24} {leaf} {row.error}")
 
-counts = Counter(r.action for r in audit_rows)
-for action, count in sorted(counts.items()):
-    print(f"  {action:24} {count}")
+    append_audit(w, wh, audit_table, audit_rows, f"{catalog}.{schema}", **run)
 
-errors = [r for r in audit_rows if r.action == "error"]
-if errors:
-    raise RuntimeError(f"{len(errors)} skill(s) failed to publish: {', '.join(r.leaf_name for r in errors)}")
+    for action, count in sorted(Counter(r.action for r in audit_rows).items()):
+        print(f"  {action:24} {count}")
+    errors = [r.leaf_name for r in audit_rows if r.action == "error"]
+    if errors:
+        print(f"{len(errors)} skill(s) failed to publish: {', '.join(errors)}", file=sys.stderr)
+        return 1
+    print(f"Synced {catalog}.{schema} to {args.repo_url} @ {commit_sha[:8]}")
+    return 0
 
-print(f"\nSynced {CATALOG}.{SCHEMA} to {GIT_URL} @ {COMMIT_SHA[:8]}")
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Schedule it
-# MAGIC
-# MAGIC To keep the schema tracking your repo, add this notebook as a single task in a
-# MAGIC job, pass the widget values as job parameters, and give the job a schedule.
-# MAGIC
-# MAGIC Two things to keep in mind:
-# MAGIC
-# MAGIC - Because a run can start before your push is visible to the Git folder, a run
-# MAGIC   triggered directly by a push may not include that commit. The following run
-# MAGIC   picks it up.
-# MAGIC - Nothing is ever deleted. A skill removed from the repo stays in the schema
-# MAGIC   until you drop it yourself.
+if __name__ == "__main__":
+    sys.exit(main())

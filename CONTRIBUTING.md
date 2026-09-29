@@ -40,5 +40,5 @@ uv run --isolated --with pytest --with-requirements skills/<name>/tests/requirem
 ```
 
 - Put a skill's test-only dependencies in `skills/<name>/tests/requirements.txt`, pinned to versions you ran. CI finds every `skills/*/tests/` folder automatically.
-- A skill's `eval/` folder is never published by `sync_skills_git2unity.py`; `tests/test_sync_bundle.py` fails if that filter is removed.
+- A skill's `eval/` or `tests/` folder is never published by `sync_skills_git2unity.py`; `tests/test_sync_bundle.py` fails if that filter is removed.
 - CI also scans the full git history for secrets with gitleaks.

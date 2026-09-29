@@ -17,6 +17,14 @@ body:
       description: Libraries, APIs, Databricks features, and data sources the skill would use.
     validations:
       required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Example sources
+      description: Papers, docs, notebooks, repos, or public datasets that show how the task is done today. Links are best.
+      placeholder: |
+        - https://doi.org/10.1186/s13059-014-0550-8 (DESeq2)
+        - https://bioconductor.org/packages/DESeq2
   - type: dropdown
     id: type
     attributes:

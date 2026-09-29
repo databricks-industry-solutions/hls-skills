@@ -3,10 +3,10 @@ name: CI
 # Runs on every non-draft PR (any base, so stacked PRs are checked too) and on
 # pushes to dev and main. ready_for_review refires the workflow when a draft is
 # promoted. Three independent jobs:
-#   repo-checks  tests/: SKILL.md quality gate for every skill + sync bundle filter
-#   skill-tests  one matrix entry per skills/<name>/tests/, discovered at run time,
-#                so a new skill's tests run without editing this file
-#   secret-scan  gitleaks over the full history
+#   repo-tests-check  tests/: SKILL.md quality gate for every skill + sync bundle filter
+#   skill-tests       one matrix entry per skills/<name>/tests/, discovered at run time,
+#                     so a new skill's tests run without editing this file
+#   secret-scan       gitleaks over the full history
 # Run the same commands locally: see "Checks" in CONTRIBUTING.md.
 
 on:
@@ -28,8 +28,8 @@ env:
   GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
 
 jobs:
-  repo-checks:
-    name: Repo checks
+  repo-tests-check:
+    name: Repo tests check
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

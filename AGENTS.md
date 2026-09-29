@@ -25,7 +25,7 @@ Each skill lives at:
 skills/{skill-name}/SKILL.md
 ```
 
-Optional siblings next to `SKILL.md`: `references/`, `assets/`, `scripts/`, and `eval/` (benchmark evidence from `skills/skill-eval`; kept in git but excluded from the published bundle because it holds the answer key).
+Optional siblings next to `SKILL.md`: `references/`, `assets/`, `scripts/`, `tests/` (unit tests; kept in git but excluded from the published bundle), and `eval/` (benchmark evidence from `skills/skill-eval`; kept in git but excluded from the published bundle because it holds the answer key).
 
 ---
 
