@@ -1,0 +1,50 @@
+{
+  "se-001": {
+    "results_csv_check": true,
+    "padj_check": true,
+    "batch_check": true,
+    "pca_done_check": true,
+    "pca_plot_check": true,
+    "volcano_plot_check": true,
+    "sig_csv_check": true,
+    "fit_check": true,
+    "planted_check": true,
+    "task_completion": false
+  },
+  "se-002": {
+    "results_csv_check": true,
+    "padj_check": true,
+    "batch_check": true,
+    "pca_done_check": true,
+    "pca_plot_check": true,
+    "volcano_plot_check": true,
+    "sig_csv_check": true,
+    "fit_check": true,
+    "planted_check": true,
+    "task_completion": true
+  },
+  "se-003": {
+    "results_csv_check": true,
+    "padj_check": true,
+    "batch_check": true,
+    "pca_done_check": true,
+    "pca_plot_check": true,
+    "volcano_plot_check": true,
+    "sig_csv_check": true,
+    "fit_check": true,
+    "planted_check": true,
+    "task_completion": false
+  },
+  "se-004": {
+    "results_csv_check": true,
+    "padj_check": true,
+    "batch_check": true,
+    "pca_done_check": true,
+    "pca_plot_check": true,
+    "volcano_plot_check": true,
+    "sig_csv_check": true,
+    "fit_check": true,
+    "planted_check": true,
+    "task_completion": false
+  }
+}
