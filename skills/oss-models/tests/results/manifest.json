@@ -1,0 +1,324 @@
+{
+  "runs": [
+    {
+      "timestamp": "2026-10-01T07:36:08.621020+00:00",
+      "evalset_version": "3.0.0",
+      "task_id": "oss-001",
+      "pair_prefix": "oss-001_TEDDY-70M_Deploy",
+      "baseline_notebook": "oss-001_TEDDY-70M_Deploy_Baseline",
+      "skill_notebook": "oss-001_TEDDY-70M_Deploy_withSkills",
+      "report_path": "results/reports/oss-001_report.md",
+      "task_meta": {
+        "model_family": "teddy",
+        "variant": "70M",
+        "difficulty": "hard",
+        "vs": false
+      },
+      "phases": {
+        "download_staging": {
+          "baseline": false,
+          "skill": true
+        },
+        "pyfunc_quality": {
+          "baseline": false,
+          "skill": true
+        },
+        "model_registration": {
+          "baseline": false,
+          "skill": true
+        },
+        "endpoint_deployment": {
+          "baseline": false,
+          "skill": true
+        },
+        "smoke_tests": {
+          "baseline": false,
+          "skill": true
+        },
+        "ai_search": {
+          "baseline": true,
+          "skill": true
+        },
+        "edge_handling": {
+          "baseline": true,
+          "skill": true
+        },
+        "forbidden_patterns": {
+          "baseline": true,
+          "skill": true
+        }
+      },
+      "categories": {
+        "code_quality": {
+          "baseline": false,
+          "skill": true,
+          "baseline_score": 0.0,
+          "skill_score": 1.0
+        },
+        "model_lifecycle": {
+          "baseline": false,
+          "skill": true,
+          "baseline_score": 0.0,
+          "skill_score": 1.0
+        },
+        "validation": {
+          "baseline": false,
+          "skill": true,
+          "baseline_score": 0.0,
+          "skill_score": 1.0
+        },
+        "completeness": {
+          "baseline": true,
+          "skill": true,
+          "baseline_score": null,
+          "skill_score": null
+        },
+        "safety": {
+          "baseline": true,
+          "skill": true,
+          "baseline_score": 1.0,
+          "skill_score": 1.0
+        }
+      },
+      "sub_check_summary": {
+        "total_checks": 27,
+        "skill_wins": 8,
+        "baseline_wins": 0,
+        "both_pass": 19,
+        "both_fail": 0
+      },
+      "ship_gate": {
+        "verdict": "PASS",
+        "win_rate": 0.5,
+        "regression_rate": 0.0
+      },
+      "dev_log": {
+        "baseline": null,
+        "skill": null,
+        "found": false
+      }
+    },
+    {
+      "timestamp": "2026-10-01T17:17:49.902052+00:00",
+      "evalset_version": "3.0.0",
+      "task_id": "oss-002",
+      "pair_prefix": "oss-002_TEDDY-70M+VS_Deploy",
+      "baseline_notebook": "oss-002_TEDDY-70M+VS_Deploy_Baseline",
+      "skill_notebook": "oss-002_TEDDY-70M+VS_Deploy_withSkills",
+      "report_path": "results/reports/oss-002_report.md",
+      "task_meta": {
+        "model_family": "teddy",
+        "variant": "70M",
+        "difficulty": "hard",
+        "vs": true
+      },
+      "phases": {
+        "download_staging": {
+          "baseline": true,
+          "skill": true
+        },
+        "pyfunc_quality": {
+          "baseline": true,
+          "skill": false
+        },
+        "model_registration": {
+          "baseline": false,
+          "skill": false
+        },
+        "endpoint_deployment": {
+          "baseline": false,
+          "skill": false
+        },
+        "smoke_tests": {
+          "baseline": false,
+          "skill": true
+        },
+        "ai_search": {
+          "baseline": true,
+          "skill": true
+        },
+        "edge_handling": {
+          "baseline": true,
+          "skill": true
+        },
+        "forbidden_patterns": {
+          "baseline": true,
+          "skill": true
+        }
+      },
+      "categories": {
+        "code_quality": {
+          "baseline": true,
+          "skill": false,
+          "baseline_score": 1.0,
+          "skill_score": 0.5
+        },
+        "model_lifecycle": {
+          "baseline": false,
+          "skill": false,
+          "baseline_score": 0.0,
+          "skill_score": 0.0
+        },
+        "validation": {
+          "baseline": false,
+          "skill": true,
+          "baseline_score": 0.0,
+          "skill_score": 1.0
+        },
+        "completeness": {
+          "baseline": true,
+          "skill": true,
+          "baseline_score": 1.0,
+          "skill_score": 1.0
+        },
+        "safety": {
+          "baseline": true,
+          "skill": true,
+          "baseline_score": 1.0,
+          "skill_score": 1.0
+        }
+      },
+      "sub_check_summary": {
+        "total_checks": 30,
+        "skill_wins": 2,
+        "baseline_wins": 1,
+        "both_pass": 25,
+        "both_fail": 2
+      },
+      "ship_gate": {
+        "verdict": "PASS",
+        "win_rate": 0.5,
+        "regression_rate": 0.0
+      },
+      "dev_log": {
+        "baseline": {
+          "unique_bugs": 12,
+          "fix_iterations": 15,
+          "cells_fixed": 6,
+          "model_versions": 5,
+          "fix_entries_found": 12
+        },
+        "skill": {
+          "unique_bugs": 7,
+          "fix_iterations": 8,
+          "cells_fixed": 5,
+          "model_versions": 1,
+          "fix_entries_found": 7,
+          "known_limitations": "Census corpus is 1 000 cells (configurable via widget); embedding via endpoint adds \\~2 min latency vs local GPU; GPU_SMALL = T4 (16 GB), use GPU_MEDIUM for A10G (24 GB)"
+        },
+        "found": true
+      }
+    },
+    {
+      "timestamp": "2026-10-01T17:19:47.219234+00:00",
+      "evalset_version": "3.0.0",
+      "task_id": "oss-002",
+      "pair_prefix": "oss-002_TEDDY-70M+VS_Deploy_v2",
+      "baseline_notebook": "oss-002_TEDDY-70M+VS_Deploy_Baseline",
+      "skill_notebook": "oss-002_TEDDY-70M+VS_Deploy_withSkills_v2",
+      "report_path": "results/reports/oss-002_report.md",
+      "task_meta": {
+        "model_family": "teddy",
+        "variant": "70M",
+        "difficulty": "hard",
+        "vs": true
+      },
+      "phases": {
+        "download_staging": {
+          "baseline": true,
+          "skill": true
+        },
+        "pyfunc_quality": {
+          "baseline": true,
+          "skill": true
+        },
+        "model_registration": {
+          "baseline": false,
+          "skill": true
+        },
+        "endpoint_deployment": {
+          "baseline": false,
+          "skill": true
+        },
+        "smoke_tests": {
+          "baseline": false,
+          "skill": true
+        },
+        "ai_search": {
+          "baseline": true,
+          "skill": true
+        },
+        "edge_handling": {
+          "baseline": true,
+          "skill": true
+        },
+        "forbidden_patterns": {
+          "baseline": true,
+          "skill": true
+        }
+      },
+      "categories": {
+        "code_quality": {
+          "baseline": true,
+          "skill": true,
+          "baseline_score": 1.0,
+          "skill_score": 1.0
+        },
+        "model_lifecycle": {
+          "baseline": false,
+          "skill": true,
+          "baseline_score": 0.0,
+          "skill_score": 1.0
+        },
+        "validation": {
+          "baseline": false,
+          "skill": true,
+          "baseline_score": 0.0,
+          "skill_score": 1.0
+        },
+        "completeness": {
+          "baseline": true,
+          "skill": true,
+          "baseline_score": 1.0,
+          "skill_score": 1.0
+        },
+        "safety": {
+          "baseline": true,
+          "skill": true,
+          "baseline_score": 1.0,
+          "skill_score": 1.0
+        }
+      },
+      "sub_check_summary": {
+        "total_checks": 30,
+        "skill_wins": 4,
+        "baseline_wins": 0,
+        "both_pass": 26,
+        "both_fail": 0
+      },
+      "ship_gate": {
+        "verdict": "PASS",
+        "win_rate": 1.0,
+        "regression_rate": 0.0
+      },
+      "dev_log": {
+        "baseline": {
+          "unique_bugs": 12,
+          "fix_iterations": 15,
+          "cells_fixed": 6,
+          "model_versions": 5,
+          "fix_entries_found": 12
+        },
+        "skill": {
+          "unique_bugs": 7,
+          "fix_iterations": 7,
+          "cells_fixed": 5,
+          "model_versions": 3,
+          "fix_entries_found": 7,
+          "known_limitations": "Census data is from real CELLxGENE (not synthetic); cell_emb output key discovered via runtime diagnostic (skill reference listed all_embs/last_hidden_state which were wrong for this model version)"
+        },
+        "found": true
+      }
+    }
+  ]
+}

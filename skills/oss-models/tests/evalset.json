@@ -1,0 +1,422 @@
+{
+  "skill": "oss-models",
+  "version": "3.0.0",
+  "catalog": "<catalog>",
+  "schema": "skills",
+  "volume": "models",
+  "notes": [
+    "Full task catalog for oss-models skill. Tasks grouped by model_family.",
+    "Evaluate TEDDY tasks first; other models as skill coverage grows.",
+    "Use the model_family widget in 02_skill_eval_runner to select which family to score.",
+    "Baseline arm: rename SKILL.md \u2192 SKILL.md.off in .assistant/skills/oss-models/",
+    "Skill arm: rename SKILL.md.off back to SKILL.md."
+  ],
+  "tasks": [
+    {
+      "task_id": "oss-001",
+      "difficulty": "hard",
+      "model_family": "teddy",
+      "variant": "70M",
+      "vs": false,
+      "repos": [
+        "https://huggingface.co/Merck/TEDDY",
+        "https://arxiv.org/abs/2503.03485"
+      ],
+      "query": "Deploy TEDDY-70M as a Model Serving endpoint on Databricks. The model is at https://huggingface.co/Merck/TEDDY (Apache-2.0, paper: arxiv 2503.03485). Use catalog <catalog>, schema skills. Write the code and explain your decisions.",
+      "expectations": {
+        "expected_facts": [
+          "Sets HF_HUB_DISABLE_XET=1 before importing huggingface_hub",
+          "Downloads to /tmp, not /local_disk0",
+          "Pins transformers to exact version 4.41.0",
+          "PyFunc class imports all symbols inside the class cell",
+          "Builds test payload using real Ensembl gene IDs from vocab.txt",
+          "Uses extra_params with string values, not params",
+          "Wraps pd.read_json with io.StringIO",
+          "Purges teddy.* from sys.modules before load_context",
+          "Uses infer_signature with input_example",
+          "Deploys with AiGatewayInferenceTableConfig",
+          "Uses ServingModelWorkloadType enum",
+          "Includes registration smoke test",
+          "embedding_dimension=512 for 70M variant"
+        ],
+        "guidelines": [
+          "Single notebook with restartPython() boundaries is acceptable (CPU download + GPU register/deploy phases)",
+          "Must not download weights at request time",
+          "Must not invent gene IDs or tensor shapes",
+          "Must use GPU_SMALL (A10G) for 70M",
+          "Must include endpoint teardown cell",
+          "Must use AI Gateway for inference table logging",
+          "Must register model with signature + input_example",
+          "Must include post-registration smoke test"
+        ]
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "HF_HUB_DISABLE_XET",
+          "transformers==4.41.0",
+          "/tmp",
+          "extra_params",
+          "io.StringIO",
+          "sys.modules",
+          "vocab.txt",
+          "GPU_SMALL",
+          "infer_signature",
+          "input_example",
+          "AiGatewayInferenceTableConfig",
+          "ServingModelWorkloadType",
+          "70M",
+          "serving_endpoints.delete"
+        ],
+        "forbidden_patterns": [
+          "/local_disk0",
+          "transformers>=",
+          "ENSG00000FAKE",
+          "AutoCaptureConfigInput",
+          "workload_type=\"GPU"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-002",
+      "difficulty": "hard",
+      "model_family": "teddy",
+      "variant": "70M",
+      "vs": true,
+      "repos": [
+        "https://huggingface.co/Merck/TEDDY",
+        "https://arxiv.org/abs/2503.03485"
+      ],
+      "query": "Deploy TEDDY-70M as a Model Serving endpoint and enable nearest-neighbor cell-type search on Databricks. The model is at https://huggingface.co/Merck/TEDDY (Apache-2.0, paper: arxiv 2503.03485). Use catalog <catalog>, schema skills. Write the code.",
+      "expectations": {
+        "expected_facts": [
+          "Sets HF_HUB_DISABLE_XET=1 before importing huggingface_hub",
+          "Downloads to /tmp, not /local_disk0",
+          "Pins transformers to exact version 4.41.0",
+          "PyFunc class imports all symbols inside the class cell",
+          "Uses infer_signature with input_example",
+          "Deploys with AiGatewayInferenceTableConfig",
+          "Uses ServingModelWorkloadType enum",
+          "embedding_dimension=512 for 70M variant",
+          "AI Search index: DeltaSyncVectorIndexSpecRequest with TRIGGERED pipeline",
+          "teddy_cell_index with embedding_dimension=512",
+          "Handles missing teddy_cells table gracefully"
+        ],
+        "guidelines": [
+          "Single notebook with restartPython() boundaries is acceptable (CPU download + GPU register/deploy phases)",
+          "Must use GPU_SMALL (A10G) for 70M",
+          "Must create Delta Sync AI Search index over teddy_cells",
+          "Must handle missing source table gracefully (skip, not crash)",
+          "Must set embedding_dimension=512 for 70M"
+        ]
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "HF_HUB_DISABLE_XET",
+          "transformers==4.41.0",
+          "/tmp",
+          "extra_params",
+          "io.StringIO",
+          "sys.modules",
+          "vocab.txt",
+          "GPU_SMALL",
+          "infer_signature",
+          "input_example",
+          "AiGatewayInferenceTableConfig",
+          "ServingModelWorkloadType",
+          "512",
+          "70M",
+          "serving_endpoints.delete",
+          "vector_search",
+          "teddy_cell_index",
+          "DeltaSyncVectorIndexSpecRequest",
+          "embedding_dimension"
+        ],
+        "forbidden_patterns": [
+          "/local_disk0",
+          "transformers>=",
+          "ENSG00000FAKE",
+          "AutoCaptureConfigInput",
+          "workload_type=\"GPU"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-003",
+      "difficulty": "hard",
+      "model_family": "teddy",
+      "variant": "400M",
+      "vs": true,
+      "repos": [
+        "https://huggingface.co/Merck/TEDDY",
+        "https://arxiv.org/abs/2503.03485"
+      ],
+      "query": "Deploy TEDDY-400M as a Model Serving endpoint and enable nearest-neighbor cell-type search on Databricks. The model is at https://huggingface.co/Merck/TEDDY (Apache-2.0, paper: arxiv 2503.03485). There may already be a production reference table (genesis_workbench.teddy_cells) in the workspace — use it if available. Use catalog <catalog>, schema skills. Write the code.",
+      "expectations": {
+        "expected_facts": [
+          "Sets HF_HUB_DISABLE_XET=1 before importing huggingface_hub",
+          "Downloads to /tmp, not /local_disk0",
+          "Pins transformers to exact version 4.41.0",
+          "Uses infer_signature with input_example",
+          "Deploys with AiGatewayInferenceTableConfig",
+          "Uses ServingModelWorkloadType enum",
+          "embedding_dimension=1024 for 400M variant",
+          "AI Search index: DeltaSyncVectorIndexSpecRequest with TRIGGERED pipeline",
+          "teddy_cell_index with embedding_dimension=1024",
+          "Checks for existing genesis_workbench.teddy_cells before generating new table",
+          "Handles missing source table gracefully (skip, not crash)"
+        ],
+        "guidelines": [
+          "Single notebook with restartPython() boundaries is acceptable (CPU download + GPU register/deploy phases)",
+          "Must use GPU_SMALL (A10G sufficient for 400M with bf16)",
+          "Must create Delta Sync AI Search index over teddy_cells",
+          "Must check for existing GWB production table before Census generation",
+          "Must handle missing source table gracefully (skip, not crash)",
+          "Must set embedding_dimension=1024 for 400M"
+        ]
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "HF_HUB_DISABLE_XET",
+          "transformers==4.41.0",
+          "/tmp",
+          "extra_params",
+          "io.StringIO",
+          "sys.modules",
+          "vocab.txt",
+          "GPU_SMALL",
+          "infer_signature",
+          "input_example",
+          "AiGatewayInferenceTableConfig",
+          "ServingModelWorkloadType",
+          "1024",
+          "400M",
+          "serving_endpoints.delete",
+          "vector_search",
+          "teddy_cell_index",
+          "DeltaSyncVectorIndexSpecRequest",
+          "embedding_dimension",
+          "genesis_workbench"
+        ],
+        "forbidden_patterns": [
+          "/local_disk0",
+          "transformers>=",
+          "ENSG00000FAKE",
+          "AutoCaptureConfigInput",
+          "workload_type=\"GPU"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-004",
+      "difficulty": "hard",
+      "model_family": "scimilarity",
+      "vs": false,
+      "repos": [
+        "https://github.com/Genentech/scimilarity",
+        "https://zenodo.org/records/10685499",
+        "https://huggingface.co/Genentech/scimilarity"
+      ],
+      "query": "Deploy Scimilarity v1.1 as a Model Serving endpoint on Databricks. The model repo is https://github.com/Genentech/scimilarity and pre-trained weights are at https://zenodo.org/records/10685499. Use catalog <catalog>, schema skills. Write the code.",
+      "expectations": {
+        "expected_facts": [],
+        "guidelines": []
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "zenodo.org",
+          "curl",
+          "scimilarity",
+          "CellAnnotation",
+          "infer_signature",
+          "AiGatewayInferenceTableConfig"
+        ],
+        "forbidden_patterns": [
+          "AutoCaptureConfigInput",
+          "workload_type=\"GPU"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-005",
+      "difficulty": "hard",
+      "model_family": "geneformer",
+      "vs": false,
+      "repos": [
+        "https://huggingface.co/ctheodoris/Geneformer",
+        "https://github.com/jkobject/geneformer"
+      ],
+      "query": "Deploy Geneformer (Geneformer-V1-10M) as a Model Serving endpoint on Databricks for single-cell embedding. The model is at https://huggingface.co/ctheodoris/Geneformer. Use catalog <catalog>, schema skills. Write the code and explain your decisions.",
+      "expectations": {
+        "expected_facts": [
+          "Downloads via snapshot_download to /tmp",
+          "Discovers token dictionary (token_dictionary_gc30M.pkl, pickle format) at runtime",
+          "Uses real Ensembl gene IDs from token dictionary for input_example",
+          "PyFunc wrapper (GeneformerEmbedder) with load_context + predict",
+          "AutoModel.from_pretrained for model loading",
+          "Uses infer_signature with input_example",
+          "Deploys with AiGatewayInferenceTableConfig",
+          "Uses ServingModelWorkloadType.GPU_SMALL",
+          "Includes dry-load test before log_model",
+          "embedding_dimension=256 for Geneformer-V1-10M"
+        ],
+        "guidelines": [
+          "Single notebook with restartPython() boundaries is acceptable",
+          "Must use GPU_SMALL (A10G) — T4 is insufficient",
+          "Must not invent gene IDs — use real Ensembl IDs from token dictionary",
+          "Must include endpoint teardown cell",
+          "Must include dry-load test before log_model",
+          "Must register model with signature + input_example"
+        ]
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "geneformer",
+          "snapshot_download",
+          "/tmp",
+          "GPU_SMALL",
+          "infer_signature",
+          "input_example",
+          "AiGatewayInferenceTableConfig",
+          "ServingModelWorkloadType",
+          "AutoModel",
+          "ENSG",
+          "serving_endpoints.delete",
+          "load_context",
+          "token_dictionary"
+        ],
+        "forbidden_patterns": [
+          "/local_disk0",
+          "ENSG00000FAKE",
+          "AutoCaptureConfigInput",
+          "workload_type=\"GPU"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-006",
+      "difficulty": "hard",
+      "model_family": "geneformer",
+      "vs": false,
+      "repos": [
+        "https://huggingface.co/nvidia/geneformer_V2_316M",
+        "https://huggingface.co/ctheodoris/Geneformer"
+      ],
+      "query": "Deploy Geneformer using the NVIDIA BioNeMo checkpoint (nvidia/geneformer_V2_316M) as a Model Serving endpoint on Databricks. Use the TransformerEngine-aware checkpoint directly via AutoModel — no Docker or BioNeMo container needed. Use catalog <catalog>, schema skills. Write the code.",
+      "expectations": {
+        "expected_facts": [
+          "Uses nvidia/geneformer_V2_316M HuggingFace checkpoint",
+          "trust_remote_code=True required for BioNeMo custom modules",
+          "TransformerEngine (transformer_engine[pytorch]) as pip dependency",
+          "No Docker container needed — loads via AutoModel.from_pretrained",
+          "GPU_SMALL (A10G) for BF16 inference — T4 insufficient",
+          "FP8 needs Ada/Hopper (compute capability >= 8.9) — not A100",
+          "Uses AiGatewayInferenceTableConfig",
+          "Includes dry-load test before log_model",
+          "Includes endpoint teardown cell"
+        ],
+        "guidelines": [
+          "Single notebook with restartPython() boundaries is acceptable",
+          "Must use GPU_SMALL (A10G minimum, Ampere+)",
+          "Must set trust_remote_code=True",
+          "Must include transformer_engine[pytorch] in pip_requirements",
+          "Must NOT require Docker or BioNeMo container",
+          "Must include endpoint teardown cell",
+          "Must include dry-load test before log_model"
+        ]
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "geneformer_V2_316M",
+          "nvidia",
+          "trust_remote_code",
+          "transformer_engine",
+          "GPU_SMALL",
+          "AutoModel",
+          "AiGatewayInferenceTableConfig",
+          "ServingModelWorkloadType",
+          "serving_endpoints.delete",
+          "infer_signature"
+        ],
+        "forbidden_patterns": [
+          "Docker",
+          "docker",
+          "/local_disk0",
+          "AutoCaptureConfigInput",
+          "workload_type=\"GPU"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-007",
+      "difficulty": "hard",
+      "model_family": "midnight",
+      "vs": false,
+      "repos": [
+        "https://huggingface.co/kaiko-ai/midnight",
+        "https://github.com/kaiko-ai/midnight"
+      ],
+      "query": "Deploy kaiko-ai/midnight (pathology tile-embedding model, MIT license) as a Model Serving endpoint on Databricks. The model is at https://huggingface.co/kaiko-ai/midnight (code: https://github.com/kaiko-ai/midnight). It takes histopathology image tiles as input and produces embedding vectors. Use catalog <catalog>, schema skills. Write the code.",
+      "expectations": {
+        "expected_facts": [],
+        "guidelines": []
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "midnight",
+          "kaiko-ai",
+          "base64",
+          "/tmp",
+          "PIL"
+        ],
+        "forbidden_patterns": [
+          "/local_disk0"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-008",
+      "difficulty": "edge",
+      "model_family": "generic",
+      "vs": false,
+      "repos": [
+        "https://huggingface.co/facebook/esm2_t6_8M_UR50D"
+      ],
+      "query": "I have a HuggingFace protein language model at https://huggingface.co/facebook/esm2_t6_8M_UR50D that I want to deploy on Databricks Model Serving. Use catalog <catalog>, schema skills. Write the code.",
+      "expectations": {
+        "expected_facts": [],
+        "guidelines": []
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "model-template"
+        ],
+        "forbidden_patterns": [
+          "references/models/esm2.md"
+        ]
+      }
+    },
+    {
+      "task_id": "oss-009",
+      "difficulty": "compute",
+      "model_family": "generic",
+      "vs": false,
+      "repos": [],
+      "query": "I want to deploy a single-cell embedding model on Databricks but I only have a Classic CPU cluster (no GPU). What are my options?",
+      "expectations": {
+        "expected_facts": [],
+        "guidelines": []
+      },
+      "deterministic_checks": {
+        "required_patterns": [
+          "/local_disk0",
+          "download",
+          "GPU"
+        ],
+        "forbidden_patterns": [
+          "serving_endpoints.create",
+          "EndpointCoreConfigInput"
+        ]
+      }
+    }
+  ]
+}
