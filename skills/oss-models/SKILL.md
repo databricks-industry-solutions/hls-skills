@@ -1,6 +1,6 @@
 ---
 name: oss-models
-description: Package, register, validate, and deploy open-source health and life-sciences models on Databricks. Use for Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz, or similar models whose code, checkpoints, databases, tokenizers, or scientific inputs come from Hugging Face, Git, Zenodo, or other external sources. Use this skill when a request involves custom PyFunc wrappers, Unity Catalog registration, Model Serving, Jobs, GPU/runtime selection, complex biological inputs, provenance, or AI Gateway inference tables.
+description: Package, register, validate, and deploy open-source health and life-sciences models on Databricks. Use for Geneformer, scGPT, Scimilarity, TEDDY, AlphaFold/OpenFold, Boltz, or similar models whose code, checkpoints, databases, tokenizers, or scientific inputs come from Hugging Face, Git, Zenodo, or other external sources. Use this skill when a request involves custom PyFunc wrappers, Unity Catalog registration, Model Serving, Jobs, GPU/runtime selection, complex biological inputs, provenance, or AI Gateway inference tables.
 version: 0.0.1
 author: hengrumay
 license: Databricks License
@@ -12,11 +12,11 @@ license: Databricks License
 
 This guide is a Health & Life Sciences (HLS) extension layer for packaging, registering, validating, and deploying open-source scientific models on Databricks. It does not reproduce generic MLflow or custom PyFunc mechanics — it supplies the model-family decisions that generic guidance cannot know: scientific preprocessing, checkpoint and database requirements, GPU and runtime constraints, serving-versus-Jobs suitability, provenance, and biological sanity checks. When the request needs standard logging, signatures, dependency packaging, Unity Catalog registration, Model Serving, or MLflow evaluation, use the existing Databricks ML training and Model Serving skills as the implementation foundation and layer this guide on top.
 
-These five model families (single-cell; protein/biomolecular structure) are an initial, representative set. The skill is designed to extend — see `references/models/index.md` and `references/model-template.md` to add a family. Coverage grows as demand and validated models arrive.
+These six model families (single-cell; protein/biomolecular structure) are an initial, representative set. The skill is designed to extend — see `references/models/index.md` and `references/model-template.md` to add a family. Coverage grows as demand and validated models arrive.
 
 ## When to Use
 
-- The request names an HLS model (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz, or similar) whose code or weights come from an external source.
+- The request names an HLS model (Geneformer, scGPT, Scimilarity, TEDDY, AlphaFold/OpenFold, Boltz, or similar) whose code or weights come from an external source.
 - The task involves biological sequences or structures, single-cell data, molecular design, or other complex scientific inputs that need a deliberate serving contract.
 - Model code, checkpoints, tokenizers, or reference databases must be pinned and packaged for offline, reproducible startup.
 - You must decide between Model Serving, Jobs, an interactive app, or a multi-step workflow for a scientific model.
