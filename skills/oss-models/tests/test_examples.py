@@ -46,6 +46,7 @@ MODEL_FILES = [
     MODELS_DIR / "scimilarity.md",
     MODELS_DIR / "alphafold-openfold.md",
     MODELS_DIR / "boltz.md",
+    MODELS_DIR / "teddy.md",
 ]
 
 # Markdown files whose fenced code blocks and links we scan.

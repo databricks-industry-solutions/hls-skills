@@ -4,11 +4,12 @@ The core skill loads these references on demand. Add a row when a new model fami
 
 | Family | Primary modality | Default deployment bias | Reference |
 | --- | --- | --- | --- |
-| Geneformer | single-cell transcriptomics | batch or bounded serving after preprocessing | [geneformer.md](geneformer.md) |
-| scGPT | single-cell transcriptomics | batch or bounded serving with explicit schema | [scgpt.md](scgpt.md) |
-| Scimilarity | single-cell embedding and similarity | serving for bounded queries; Jobs for large catalogs | [scimilarity.md](scimilarity.md) |
+| Geneformer | single-cell transcriptomics | bounded serving (A10G); two validated paths: V1-10M (dim=256) and BioNeMo V2-316M (dim=1152) | [geneformer.md](geneformer.md) |
+| scGPT | single-cell transcriptomics | batch or bounded serving with explicit schema | [scgpt.md](scgpt.md) — WIP, needs further testing |
+| Scimilarity | single-cell embedding and similarity | serving for bounded queries; Jobs for large catalogs | [scimilarity.md](scimilarity.md) — WIP, needs further testing |
 | AlphaFold/OpenFold | protein structure prediction | Jobs or hybrid | [alphafold-openfold.md](alphafold-openfold.md) |
 | Boltz | biomolecular structure and interaction prediction | Jobs or hybrid | [boltz.md](boltz.md) |
+| TEDDY | single-cell transcriptomics (scRNA-seq embeddings) | serving for bounded per-cell queries; Jobs for full AnnData batch | [teddy.md](teddy.md) |
 
 To add a family:
 
