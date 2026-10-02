@@ -49,6 +49,12 @@ python3 scripts/generate_semantic_layer.py --mapping <customer>_mapping.yaml --o
 
 ## Workflow
 
+**Check for a mapping first.** If the working directory already has a `<customer>_mapping.yaml`, use it
+and skip to Step 3. If there is **no mapping file, profile the source to draft one** — run
+`scripts/profile_source.py --catalog <c> --schema <s> --warehouse-id <id>` (or follow
+`references/profiling.md` to profile agent-driven when the script can't reach the workspace). Profiling
+writes `<schema>_mapping.draft.yaml` full of `# REVIEW` flags; confirm those (Steps 1–2), then generate.
+
 ### Step 1: Assess
 
 Introspect the customer's source catalog/schema (`information_schema` / workspace files). Identify
@@ -61,9 +67,10 @@ SELECT table_name, column_name FROM <catalog>.information_schema.columns WHERE t
 
 ### Step 2: Map
 
-Draft `<customer>_mapping.yaml` in the working dir (start from an adapter via `extends:`). Auto-map
-physical columns to canonical fields; flag low-confidence bindings with `# REVIEW` and confirm them
-with the user. See `references/mapping_spec.md`.
+Draft `<customer>_mapping.yaml` in the working dir — from the profiler's `<schema>_mapping.draft.yaml`
+(above) or from an adapter via `extends:`. Auto-map physical columns to canonical fields; flag
+low-confidence bindings with `# REVIEW` and confirm them with the user. See `references/mapping_spec.md`
+and `references/profiling.md`.
 
 ```yaml
 entities:
@@ -150,6 +157,6 @@ FROM <catalog>.<schema>.mv_care_delivery__encounter;
 - `references/catalog.md` — human-readable rendering of all measures (generated).
 - `references/adapters/*.yaml` — starter source mappings: Epic Clarity/Caboodle, X12 837/835/834,
   OMOP CDM, FHIR.
-- `references/workflow.md` · `mapping_spec.md` · `mv_generation.md` · `consumption.md` — the workflow.
-- `scripts/validate_catalog.py` · `render_catalog.py` · `generate_semantic_layer.py` — the tooling.
+- `references/workflow.md` · `mapping_spec.md` · `profiling.md` · `mv_generation.md` · `consumption.md` — the workflow.
+- `scripts/profile_source.py` (draft a mapping when none exists) · `validate_catalog.py` · `render_catalog.py` · `generate_semantic_layer.py` — the tooling.
 - `tests/` — functional tests that run the validator and generator.

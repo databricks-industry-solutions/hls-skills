@@ -3,6 +3,10 @@
 The full procedure for standing up the HLS semantic layer for one customer. Read alongside
 `mapping_spec.md`, `mv_generation.md`, and `consumption.md`.
 
+> **Mapping check (do this first).** If the working dir already has a `<customer>_mapping.yaml`, skip to
+> Phase 3. If not, **profile the source** to draft one — `scripts/profile_source.py` automates Phase 1–2
+> (inventory → sample enums → match to canonical → emit a `# REVIEW`-flagged draft). See `profiling.md`.
+
 ## Phase 1 — Assess
 
 1. Confirm auth + target: `databricks current-user me -p <profile>`; agree on target
