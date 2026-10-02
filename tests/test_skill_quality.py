@@ -4,6 +4,8 @@
 Simpler fork of SciAgent-Skills tests/test_skill_quality.py — no registry.
 Checks frontmatter constraints and required H2 sections against
 templates/SKILL_TEMPLATE.md (pipeline) or SKILL_TEMPLATE_GUIDE.md (guide).
+Optional sections such as Evaluation are never required; if present they
+must have non-empty content.
 
 Usage:
   python tests/test_skill_quality.py skills/my-skill/SKILL.md
@@ -68,6 +70,12 @@ RECOMMENDED_BY_TYPE = {
     "guide": GUIDE_RECOMMENDED,
 }
 
+# Optional H2 sections: never required and never warned if missing.
+# If present, the section body must be non-empty.
+OPTIONAL_SECTIONS = {
+    "## Evaluation",
+}
+
 
 # ---------------------------------------------------------------------------
 # Parsing helpers
@@ -112,6 +120,13 @@ def extract_sections(text: str) -> set[str]:
 def extract_section_order(text: str) -> list[str]:
     """Return H2 section headings in document order."""
     return re.findall(r"^## .+", text, re.MULTILINE)
+
+
+def extract_section_body(text: str, heading: str) -> str:
+    """Return the markdown body under an H2 heading, up to the next H2."""
+    pattern = rf"^{re.escape(heading)}\s*\n(.*?)(?=^## |\Z)"
+    match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
+    return match.group(1) if match else ""
 
 
 def discover_skills(skills_dir: Path = SKILLS_DIR) -> list[Path]:
@@ -259,6 +274,14 @@ def validate_skill(path: Path, skill_type: str | None = None) -> ValidationResul
             f"{sorted(soft_missing)}"
         )
 
+    for heading in OPTIONAL_SECTIONS:
+        if heading not in sections:
+            continue
+        if not extract_section_body(text, heading).strip():
+            result.errors.append(
+                f"[{label}] Optional section '{heading}' is present but empty"
+            )
+
     return result
 
 
@@ -403,6 +426,17 @@ if pytest is not None and ALL_SKILLS:
         fm = parse_frontmatter(skill_path.read_text(encoding="utf-8"))
         assert "license" in fm, (
             f"[{skill_path.parent.name}] Missing 'license' field in frontmatter"
+        )
+
+    @pytest.mark.parametrize("skill_path", ALL_SKILLS, ids=_skill_id)
+    def test_optional_evaluation_section(skill_path: Path):
+        text = skill_path.read_text(encoding="utf-8")
+        sections = extract_sections(text)
+        if "## Evaluation" not in sections:
+            return
+        body = extract_section_body(text, "## Evaluation").strip()
+        assert body, (
+            f"[{skill_path.parent.name}] Optional Evaluation section is present but empty"
         )
 
 
