@@ -1,0 +1,45 @@
+# Tiny synthetic mapping used only by the skill's functional tests.
+# Maps two entities (encounter + claim) onto fictional source tables, and
+# deliberately omits enrollment/care_gap so the tests can assert scope inference
+# (payer_economics + gap_in_care must be skipped) and measure-level skipping
+# (no allowed_amount / index-admission -> those measures drop).
+
+name: test_fixture
+description: "synthetic fixture for generator unit tests"
+
+target:
+  catalog:      test_cat
+  schema:       test_schema
+  warehouse_id: test_wh
+
+entities:
+
+  encounter:
+    source: raw.enc
+    grain_keys: [enc_id]
+    fields:
+      encounter_id:   enc_id
+      patient_id:     pat_id
+      encounter_date: admit_date
+      los_days:       los
+      is_readmission_30day: "CAST(readmit_flag AS BOOLEAN)"
+    enums:
+      encounter_class:
+        source_column: enc_type
+        map: { "I": inpatient, "E": emergency }
+        default: other
+
+  claim:
+    source: raw.clm
+    grain_keys: [clm_id]
+    fields:
+      claim_id:      clm_id
+      member_id:     mbr_id
+      service_month: "date_trunc('month', svc_dt)"
+      billed_amount: billed
+      paid_amount:   paid
+    enums:
+      claim_status:
+        source_column: status
+        map: { "P": paid, "D": denied }
+        default: other

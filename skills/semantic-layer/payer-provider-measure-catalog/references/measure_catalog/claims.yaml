@@ -1,0 +1,153 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DOMAIN: claims   (lens: both — two metric views over the SAME claim grain)
+#   mv_claims__revenue_cycle  — provider AR lens: billed/paid/allowed, collection, yield
+#   mv_claims__adjudication   — payer lens: claim status mix, denial rates
+#
+# Measure names are scoped to their metric view, so both views legitimately expose
+# claim_count and total_billed_amount over the shared `claim` entity — in Unity
+# Catalog these are distinct objects (mv_claims__revenue_cycle.claim_count etc.).
+# ─────────────────────────────────────────────────────────────────────────────
+
+domain: claims
+lens: both
+
+metric_views:
+  - name: mv_claims__revenue_cycle
+    entity: claim
+    grain: claim
+  - name: mv_claims__adjudication
+    entity: claim
+    grain: claim
+
+measures:
+
+  # ═══ REVENUE CYCLE (provider AR) ═════════════════════════════════════════════
+  - name: claim_count
+    type: atomic
+    metric_view: mv_claims__revenue_cycle
+    entity: claim
+    expr: "COUNT(DISTINCT claim_id)"
+    definition: "Distinct claims — the per-claim average denominator for this view."
+
+  - name: total_billed_amount
+    type: atomic
+    metric_view: mv_claims__revenue_cycle
+    entity: claim
+    expr: "SUM(billed_amount)"
+    definition: "Total charges billed."
+
+  - name: total_paid_amount
+    type: atomic
+    metric_view: mv_claims__revenue_cycle
+    entity: claim
+    expr: "SUM(paid_amount)"
+    definition: "Total amount paid by the payer."
+
+  - name: total_allowed_amount
+    type: atomic
+    metric_view: mv_claims__revenue_cycle
+    entity: claim
+    expr: "SUM(allowed_amount)"
+    definition: "Total allowed amount (contracted rate) across claims."
+
+  - name: total_patient_responsibility
+    type: atomic
+    metric_view: mv_claims__revenue_cycle
+    entity: claim
+    expr: "SUM(patient_responsibility)"
+    definition: "Total member cost-share (deductible + coinsurance + copay)."
+
+  - name: net_collection_rate
+    type: composite
+    metric_view: mv_claims__revenue_cycle
+    expr: "MEASURE(total_paid_amount) / MEASURE(total_allowed_amount)"
+    depends_on: [total_paid_amount, total_allowed_amount]
+    definition: "Payments collected as a share of the allowed (contracted) amount."
+    anti_pattern: "Paid / billed — that is gross yield, not net collection. Net collection uses ALLOWED as the denominator."
+
+  - name: payer_yield_rate
+    type: composite
+    metric_view: mv_claims__revenue_cycle
+    expr: "MEASURE(total_paid_amount) / MEASURE(total_billed_amount)"
+    depends_on: [total_paid_amount, total_billed_amount]
+    definition: "Paid as a share of billed charges (gross yield)."
+
+  - name: avg_billed_per_claim
+    type: composite
+    metric_view: mv_claims__revenue_cycle
+    expr: "MEASURE(total_billed_amount) / MEASURE(claim_count)"
+    depends_on: [total_billed_amount, claim_count]
+    definition: "Average billed charge per claim."
+
+  - name: avg_paid_per_claim
+    type: composite
+    metric_view: mv_claims__revenue_cycle
+    expr: "MEASURE(total_paid_amount) / MEASURE(claim_count)"
+    depends_on: [total_paid_amount, claim_count]
+    definition: "Average paid amount per claim."
+
+  # ═══ ADJUDICATION (payer) ════════════════════════════════════════════════════
+  - name: claim_count
+    type: atomic
+    metric_view: mv_claims__adjudication
+    entity: claim
+    expr: "COUNT(DISTINCT claim_id)"
+    definition: "Distinct claims — the count-based denial-rate denominator."
+
+  - name: paid_claim_count
+    type: atomic
+    metric_view: mv_claims__adjudication
+    entity: claim
+    expr: "COUNT(DISTINCT CASE WHEN claim_status = 'paid' THEN claim_id END)"
+    definition: "Claims adjudicated as paid."
+
+  - name: denied_claim_count
+    type: atomic
+    metric_view: mv_claims__adjudication
+    entity: claim
+    expr: "COUNT(DISTINCT CASE WHEN claim_status = 'denied' THEN claim_id END)"
+    definition: "Claims denied."
+
+  - name: pending_claim_count
+    type: atomic
+    metric_view: mv_claims__adjudication
+    entity: claim
+    expr: "COUNT(DISTINCT CASE WHEN claim_status = 'pending' THEN claim_id END)"
+    definition: "Claims pending adjudication."
+
+  - name: appealed_claim_count
+    type: atomic
+    metric_view: mv_claims__adjudication
+    entity: claim
+    expr: "COUNT(DISTINCT CASE WHEN claim_status = 'appealed' THEN claim_id END)"
+    definition: "Claims under appeal."
+
+  - name: total_billed_amount
+    type: atomic
+    metric_view: mv_claims__adjudication
+    entity: claim
+    expr: "SUM(billed_amount)"
+    definition: "Total billed charges — the dollar-denial-rate denominator for this view."
+
+  - name: denied_billed_amount
+    type: atomic
+    metric_view: mv_claims__adjudication
+    entity: claim
+    expr: "SUM(CASE WHEN claim_status = 'denied' THEN billed_amount ELSE 0 END)"
+    definition: "Billed charges on denied claims."
+
+  - name: denial_rate_count
+    type: composite
+    metric_view: mv_claims__adjudication
+    expr: "MEASURE(denied_claim_count) / MEASURE(claim_count)"
+    depends_on: [denied_claim_count, claim_count]
+    definition: "Share of claims denied (count basis)."
+    anti_pattern: "Averaging a per-batch denial percentage. Non-additive — use ratio-of-measures."
+
+  - name: denial_rate_dollar
+    type: composite
+    metric_view: mv_claims__adjudication
+    expr: "MEASURE(denied_billed_amount) / MEASURE(total_billed_amount)"
+    depends_on: [denied_billed_amount, total_billed_amount]
+    definition: "Share of billed dollars on denied claims (dollar basis)."
+    anti_pattern: "Denied dollars / paid dollars, or reusing the count-based rate. Dollar denial rate divides denied billed by TOTAL billed."

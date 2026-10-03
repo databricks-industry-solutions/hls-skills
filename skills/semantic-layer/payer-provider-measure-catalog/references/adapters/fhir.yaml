@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ADAPTER: HL7 FHIR R4 (starter template — provider / clinical entities)
+#
+# Assumes FHIR resources landed as tables (one per resource type) with fields
+# accessed via dotted/exploded paths. Adjust the path syntax to how the customer
+# flattened FHIR (e.g. explode of Encounter.period, Coverage for enrollment).
+# For payer economics (claims $, premium), compose with x12_837_835.yaml or the
+# FHIR ExplanationOfBenefit / Coverage resources.
+# ─────────────────────────────────────────────────────────────────────────────
+
+adapter: fhir
+provides: [encounter, appointment, patient, care_gap]
+
+entities:
+
+  encounter:
+    source: "{fhir}.Encounter"
+    grain_keys: [id]
+    fields:
+      encounter_id:   id
+      patient_id:     "subject.reference"
+      encounter_date: "CAST(period.start AS DATE)"
+      los_days:       "datediff(period.end, period.start)"
+    enums:
+      encounter_class:
+        source_column: "class.code"              # FHIR v3-ActCode: IMP, AMB, EMER, OBSENC
+        map: { "IMP": inpatient, "AMB": outpatient, "EMER": emergency, "OBSENC": observation }
+        default: other
+
+  appointment:
+    source: "{fhir}.Appointment"
+    grain_keys: [id]
+    fields:
+      appointment_id:   id
+      appointment_date: "CAST(start AS DATE)"
+    enums:
+      appointment_status:
+        source_column: status                    # FHIR appointmentstatus
+        map: { "fulfilled": completed, "noshow": no_show, "cancelled": late_cancel, "booked": scheduled }
+        default: other
+
+  patient:
+    source: "{fhir}.Patient"
+    grain_keys: [id]
+    fields:
+      patient_id: id
+      birth_date: birthDate
+      sex:        gender
+
+  care_gap:
+    source: "{fhir}.MeasureReport"               # quality measure reporting
+    grain_keys: [id]
+    fields:
+      care_gap_id: id
+      member_id:   "subject.reference"
+      measure_id:  measure
+      period_month: "CAST(period.start AS DATE)"
+    # is_eligible / is_compliant / gap_status derived from MeasureReport.group population codes.
