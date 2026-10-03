@@ -33,7 +33,7 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 | **rwe-cohortstudy** | Perform comparative effectiveness research (aka cohort study design) with appropriate propensity score adjustment, including matching and IPW |
 | **phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
 | **payer-provider-measure-catalog** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
-| **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
+| **oss-models** | Package, register, validate, and deploy open-source Hugging Face and scientific models on Databricks (custom PyFunc, Unity Catalog registration, Model Serving or Jobs). Workspace-validated first for the single-cell transformer models **TEDDY** and **Geneformer** (incl. an NVIDIA BioNeMo path that runs without Docker); designed to extend to other OSS families — scGPT, Scimilarity, AlphaFold/OpenFold, Boltz — with more to come |
 | **skill-eval** | Benchmark a skill: paired runs with and without it, MLflow `genai.evaluate` scoring, per-task win/loss comparison, failure taxonomy, standardized Evaluation report |
 
 ## Repository Layout
