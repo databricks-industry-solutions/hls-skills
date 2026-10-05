@@ -23,10 +23,10 @@ Not all model references have been tested end-to-end through the eval harness.
 | `teddy.md` | **Yes** | oss-001 (deploy), oss-002 (deploy + VS) | 70M variant. 160M/400M share ref but not yet tested. |
 | `geneformer.md` | No | oss-005, oss-006 planned | Path A + Path B. Includes NVIDIA TE stub pattern enabling PyFunc serving of BioNeMo models. |
 | `scgpt.md` | No | — | Reference provided; no eval task yet. |
-| `scimilarity.md` | No | oss-004 planned | Zenodo v1.1 and HF expanded. |
+| `scimilarity.md` | No | — | Zenodo v1.1 and HF expanded. |
 | `alphafold-openfold.md` | No | — | Reference provided; no eval task yet. |
 | `boltz.md` | No | — | Reference provided; no eval task yet. |
-| `midnight.md` | No | oss-007 planned | DINOv2 pathology tile embedder. Skeleton wrapper. |
+| `midnight.md` | No | — | DINOv2 pathology tile embedder. Skeleton wrapper. |
 
 **Validated** = used by Genie Code in a blind eval run producing a working deployment. Does not imply scientific/clinical validation.
 
