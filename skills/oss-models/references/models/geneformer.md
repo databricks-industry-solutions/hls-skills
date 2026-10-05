@@ -77,18 +77,28 @@ Both PyFunc wrappers accept per-cell inputs:
 
 ```json
 {
-  "cell_id": "cell-0001",
-  "genes": ["<ENSG-id-from-token-dict>", "<ENSG-id-from-token-dict>"],
-  "expression": [2.0, 1.0],
-  "vocab_version": "gc104M",
-  "config": "{\"truncation\": true, \"gene_count_limit\": \"4096\", \"pooling_mode\": \"mean\"}"
+  "dataframe_records": [
+    {
+      "cell_id": "cell-0001",
+      "genes": ["ENSG00000139618", "ENSG00000141510", "ENSG00000146648"],
+      "expression": [12.0, 5.0, 3.0],
+      "vocab_version": "gc104M",
+      "config": "{\"truncation\": true, \"gene_count_limit\": \"4096\", \"pooling_mode\": \"mean\"}"
+    }
+  ]
 }
 ```
+
+> Gene IDs above are real Ensembl IDs (BRCA2, TP53, EGFR) as examples; actual inputs should use genes from the model's token dictionary.
+
+**Critical**: always use real Ensembl IDs from the token dictionary. Synthetic gene names produce degenerate embeddings.
+
+Python construction (showing how to build the payload from the token dictionary):
 
 ```python
 import pickle
 
-# Token dictionaries are pickle, not JSON
+# token dictionaries are pickle, not JSON
 with open(dict_path, "rb") as f:
     token_dict = pickle.load(f)
 ensembl_genes = [g for g in token_dict.keys() if str(g).startswith("ENSG")][:10]
@@ -102,18 +112,18 @@ input_example = pd.DataFrame([{
 }])
 ```
 
-**Critical**: always use real Ensembl IDs from the token dictionary. Synthetic gene names produce degenerate embeddings.
-
 ### Output
 
 ```json
 {
   "cell_id": "cell-0001",
-  "embedding": [0.37, -1.56, 0.08],
+  "embedding": [0.37, -1.56, 0.82, -0.45, 1.23],
   "embedding_dim": 1152,
   "vocab_version": "gc104M"
 }
 ```
+
+> The `embedding` array is truncated for readability; the actual response contains `embedding_dim` floats.
 
 Embedding dimension equals the model's `hidden_size` (256 for Path A, 1152 for Path B).
 
