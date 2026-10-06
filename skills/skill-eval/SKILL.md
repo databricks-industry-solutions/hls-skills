@@ -1,8 +1,10 @@
 ---
 name: skill-eval
 description: Skill benchmarking for Genie Code agent skills. Benchmark tasks (3-5) -> paired runs with and without the skill -> MLflow 3 genai.evaluate scoring (deterministic scorers + binary LLM judges) -> per-task win/loss/flip comparison -> failure-taxonomy error analysis -> standardized Evaluation report. For authoring a skill itself, use templates/SKILL_TEMPLATE.md; for general MLflow scorer API depth, see the Databricks MLflow 3 GenAI docs.
-version: 1.0.0
-author: hls-skills contributors
+category: Others
+summary: "Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy."
+version: 0.5
+author: Praneeth Paikray
 license: Databricks License
 ---
 

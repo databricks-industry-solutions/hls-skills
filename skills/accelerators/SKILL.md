@@ -1,7 +1,9 @@
 ---
 name: accelerators
 description: HLS solution accelerator steerage for Databricks. Routes a task to an existing databricks-industry-solutions accelerator and gives the precise next step - Pixels (DICOM medical imaging, OHIF viewer, DICOMweb, MONAI segmentation) and Genesis Workbench (protein folding and design, docking, ADMET, single-cell foundation models, variant calling, NVIDIA BioNeMo). Consult before building an imaging pipeline or biology model stack from scratch. For notebook single-cell analysis use sc-rnaseq; for de-identifying tables use phi-deidentifier.
-version: 0.1.0
+category: Others
+summary: Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step.
+version: 0.5
 author: Rohan Parikh
 license: Databricks License
 ---

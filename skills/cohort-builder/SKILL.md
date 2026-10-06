@@ -13,8 +13,10 @@ description: >-
   reproducible phenotype definition, and never fabricates literature citations. Run by
   calling the vetted entrypoints in scripts/cohort_run.py — do not hand-write cohort SQL.
   For PHI de-identification of the result use phi-deidentifier.
-version: 1.0.0
-author: Databricks HLS Field Engineering
+category: Clinical RWE
+summary: Build a reproducible, feasibility-checked patient cohort from coded + free-text clinical data.
+version: 0.5
+author: Zachary Phillips
 license: Databricks License
 ---
 

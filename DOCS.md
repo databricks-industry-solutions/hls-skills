@@ -6,8 +6,9 @@ The [GitHub Pages site](https://databricks-industry-solutions.github.io/hls-skil
 
 | Page | Source | Edit |
 |------|--------|------|
-| Landing page | `docs/index.html` | The page itself, including the skill cards |
+| Landing page | `docs/index.html`; skill rows from each `skills/*/SKILL.md` (`category`, `summary`) | Layout and copy on the page; skill rows via frontmatter + `python docs/hooks/skill_catalog.py` |
 | Skill catalog and one page per skill | Each `skills/*/SKILL.md` (frontmatter and body) | The skill's `SKILL.md` |
+| README skill table | Same `category` / `summary` frontmatter | The skill's `SKILL.md`, then `python docs/hooks/skill_catalog.py` |
 | Setup | The `## Setup` section of [README.md](README.md) | `README.md` |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md), without the CLA section; section 3 of Test becomes a link to Evaluation | `CONTRIBUTING.md` |
 | Evaluation | The `#### 3. Evaluate with and without skill` section of [CONTRIBUTING.md](CONTRIBUTING.md) | `CONTRIBUTING.md` |
@@ -63,11 +64,11 @@ Copied text is shown in two places, so it has to render in both.
 - **Preview:** `uv run --isolated --with-requirements docs/requirements.txt mkdocs serve`. Edits to `docs/`, `README.md`, and `CONTRIBUTING.md` reload on save. After editing `docs/hooks/`, restart the server; it caches hook code.
 - **Check:** `uv run --isolated --with pytest python -m pytest -q tests` includes `tests/test_docs_sections.py`, which expands every include line.
 - **CI:** `.github/workflows/pages.yml` runs `mkdocs build --strict` on PRs that touch `docs/`, `skills/`, root Markdown files, or `mkdocs.yml`. It does not deploy: the organization's IP allow list blocks Pages deployments from GitHub-hosted runners.
-- **Publish** (maintainers, after docs or skill changes merge): from an up-to-date `dev` checkout on an allowed network, run
+- **Publish** (maintainers, after docs or skill changes merge): from an up-to-date `main` checkout on an allowed network, run
 
   ```
   uv run --isolated --with-requirements docs/requirements.txt \
-      mkdocs gh-deploy --strict --no-history -m "Deploy docs from dev @ $(git rev-parse --short HEAD)"
+      mkdocs gh-deploy --strict --no-history -m "Deploy docs from main @ $(git rev-parse --short HEAD)"
   ```
 
   This pushes the built site to the `gh-pages` branch, which Pages serves.

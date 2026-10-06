@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "docs" / "hooks"))
+from skill_catalog import CATEGORY_NAMES  # noqa: E402
 SKILLS_DIR = ROOT / "skills"
 
 # Lowercase kebab-case: a-z, 0-9, hyphens; no leading/trailing hyphen
@@ -242,6 +244,25 @@ def validate_skill(path: Path, skill_type: str | None = None) -> ValidationResul
     if "license" not in fm:
         result.errors.append(f"[{label}] Missing frontmatter field: license")
 
+    category = str(fm.get("category") or "").strip()
+    if not category:
+        result.errors.append(f"[{label}] Missing frontmatter field: category")
+    elif category not in CATEGORY_NAMES:
+        result.errors.append(
+            f"[{label}] category '{category}' must be one of: {', '.join(CATEGORY_NAMES)}"
+        )
+
+    summary = " ".join(str(fm.get("summary") or "").split())
+    if not summary:
+        result.errors.append(
+            f"[{label}] Missing frontmatter field: summary "
+            "(one-line blurb for README and the landing page)"
+        )
+    elif len(summary) > 200:
+        result.errors.append(
+            f"[{label}] summary is {len(summary)} chars, max is 200"
+        )
+
     # --- Sections ---
     inferred = detect_skill_type(sections)
     result.skill_type = skill_type or inferred
@@ -426,6 +447,20 @@ if pytest is not None and ALL_SKILLS:
         fm = parse_frontmatter(skill_path.read_text(encoding="utf-8"))
         assert "license" in fm, (
             f"[{skill_path.parent.name}] Missing 'license' field in frontmatter"
+        )
+
+    @pytest.mark.parametrize("skill_path", ALL_SKILLS, ids=_skill_id)
+    def test_frontmatter_category_and_summary(skill_path: Path):
+        fm = parse_frontmatter(skill_path.read_text(encoding="utf-8"))
+        label = skill_path.parent.name
+        category = str(fm.get("category") or "").strip()
+        assert category in CATEGORY_NAMES, (
+            f"[{label}] category must be one of: {', '.join(CATEGORY_NAMES)}"
+        )
+        summary = " ".join(str(fm.get("summary") or "").split())
+        assert summary, f"[{label}] Missing summary"
+        assert len(summary) <= 200, (
+            f"[{label}] summary is {len(summary)} chars, max is 200"
         )
 
     @pytest.mark.parametrize("skill_path", ALL_SKILLS, ids=_skill_id)

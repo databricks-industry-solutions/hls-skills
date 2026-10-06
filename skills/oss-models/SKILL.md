@@ -1,8 +1,10 @@
 ---
 name: oss-models
 description: Package, register, validate, and deploy open-source health and life-sciences models on Databricks. Use for Geneformer, scGPT, Scimilarity, TEDDY, AlphaFold/OpenFold, Boltz, or similar models whose code, checkpoints, databases, tokenizers, or scientific inputs come from Hugging Face, Git, Zenodo, or other external sources. Use this skill when a request involves custom PyFunc wrappers, Unity Catalog registration, Model Serving, Jobs, GPU/runtime selection, complex biological inputs, provenance, or AI Gateway inference tables.
-version: 0.0.1
-author: hengrumay
+category: Bioinformatics
+summary: Package, register, validate & deploy open-source HLS models on Databricks — e.g. TEDDY and Geneformer.
+version: 0.5
+author: May Merkle Tan
 license: Databricks License
 ---
 

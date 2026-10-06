@@ -7,7 +7,7 @@ folder. Those targets are not part of the site, so they must link to GitHub.
 import re
 
 REPO = "https://github.com/databricks-industry-solutions/hls-skills"
-BRANCH = "dev"
+BRANCH = "main"
 LINK = re.compile(r"(!?\[[^\]]*\]\()([^)\s]+)(\))")
 EXTERNAL = re.compile(r"^([a-z][a-z0-9+.-]*:|#|/)", re.IGNORECASE)
 

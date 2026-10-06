@@ -30,4 +30,4 @@ Each skill is benchmarked with and without the skill on the same tasks. See [Eva
 
 ## Why does a page under `docs/guide/` look empty on GitHub?
 
-Pages such as Setup, Contributing and Evaluation are copied from `README.md` and `CONTRIBUTING.md` when the site is built. Their source file holds only an include line, which GitHub hides. Edit the root file instead; see [DOCS.md](https://github.com/databricks-industry-solutions/hls-skills/blob/dev/DOCS.md).
+Pages such as Setup, Contributing and Evaluation are copied from `README.md` and `CONTRIBUTING.md` when the site is built. Their source file holds only an include line, which GitHub hides. Edit the root file instead; see [DOCS.md](https://github.com/databricks-industry-solutions/hls-skills/blob/main/DOCS.md).

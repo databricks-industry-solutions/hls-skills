@@ -121,8 +121,8 @@ def test_headings_shift_but_fenced_code_does_not():
 def test_relative_links_and_images_point_at_github():
     md = "[s](sync.py) [a](#x) [e](https://e.com) ![i](./img.png)\n```\n[c](code.py)\n```\n"
     out = absolute_links(md, "skills/foo")
-    assert f"[s]({REPO}/blob/dev/skills/foo/sync.py)" in out
-    assert f"![i]({REPO}/raw/dev/skills/foo/img.png)" in out
+    assert f"[s]({REPO}/blob/main/skills/foo/sync.py)" in out
+    assert f"![i]({REPO}/raw/main/skills/foo/img.png)" in out
     assert "[a](#x)" in out and "[e](https://e.com)" in out
     assert "[c](code.py)" in out
 
@@ -141,7 +141,7 @@ def test_marker_inside_fenced_code_is_left_alone():
 def test_readme_setup_expands_with_absolute_links():
     out, used = expand_includes("<!-- include: README.md#Setup -->\n")
     assert used == {REPO_ROOT / "README.md"}
-    assert f"]({REPO}/blob/dev/sync_skills_git2unity.py)" in out
+    assert f"]({REPO}/blob/main/sync_skills_git2unity.py)" in out
     assert "<!-- include:" not in out
 
 

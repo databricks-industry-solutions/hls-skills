@@ -16,6 +16,8 @@ site) are recorded here. Format follows
   section of CONTRIBUTING.md, which now points to it.
 - FAQ and Links guide pages.
 - README: Contributors and Acknowledgements sections.
+- Skill tables on README and the landing page are generated from each skill's
+  `category` and `summary` frontmatter (`docs/hooks/skill_catalog.py`).
 
 ### Changed
 - Getting started is renamed Setup (`/guide/setup/`) and now copies README.md's
