@@ -228,9 +228,11 @@
   .label { font-size: .78rem; padding: 2px 9px; border-radius: var(--r-pill); background: var(--page); border: 1px solid var(--rule); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   .label .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
   .links { white-space: nowrap; font-size: .88rem; }
-  .links a + a { margin-left: 16px; }
-  .links a { color: var(--ink-soft); text-decoration: none; }
-  .links a:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--lava); }
+  .links a + a { margin-left: 12px; }
+  /* Icon-only links: a lava bottom border stands in for the text underline on hover. */
+  .links a { color: var(--ink-soft); text-decoration: none; display: inline-flex; padding: 2px; border-bottom: 2px solid transparent; }
+  .links a:hover { color: var(--ink); border-bottom-color: var(--lava); }
+  .links svg { width: 17px; height: 17px; display: block; }
 
   .empty {
     border: 1.5px dashed var(--rule-strong); border-radius: var(--r-lg); padding: 40px 24px;
@@ -349,7 +351,7 @@
   <section id="explore" aria-labelledby="explore-h" tabindex="-1">
     <div class="wrap">
       <h2 id="explore-h">Explore</h2>
-      <p class="section-lede">Filter by the area you work in, or by the kind of material you want.</p>
+      <p class="section-lede">Filter by the area you work in.</p>
 
       <div class="filters">
         <fieldset class="facet" data-facet="topic">
@@ -364,13 +366,13 @@
 
       <div class="table-wrap" id="results">
         <table class="skills">
-          <caption class="sr-only">Skills matching the selected filters</caption>
+          <caption class="sr-only">Skills matching the selected category</caption>
           <thead>
             <tr>
               <th scope="col">Skill</th>
               <th scope="col">What it does</th>
               <th scope="col">Category</th>
-              <th scope="col"><span class="sr-only">Links</span></th>
+              <th scope="col">Links</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -440,7 +442,7 @@
   const count = document.getElementById("count");
   const resetTop = document.getElementById("resetTop");
 
-  // Build chips. Each facet is single-select; "All" is selected by default.
+  // Build chips. The facet is single-select; "All" is selected by default.
   function buildFacet(facet, options) {
     const box = document.querySelector(`[data-facet="${facet}"]`);
     ["All", ...options].forEach(opt => {
@@ -471,8 +473,8 @@
         <td class="what">${s.outcome}</td>
         <td><span class="label"><span class="dot" aria-hidden="true"></span>${s.topic}</span></td>
         <td class="links">
-          <a href="guide/${path}" title="guide/${path}" aria-label="See more about ${s.name}">See more →</a>
-          <a href="${REPO_TREE}${path}" target="_blank" rel="noopener noreferrer" title="${path}" aria-label="See code for ${s.name} (opens in new tab)">See code →</a>
+          <a href="guide/${path}" title="Docs" aria-label="Read the ${s.name} docs"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg></a>
+          <a href="${REPO_TREE}${path}" target="_blank" rel="noopener noreferrer" title="Skills folder" aria-label="${s.name} skills folder (opens in new tab)"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M0 2.75C0 1.784.784 1 1.75 1H5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H7.5c-.55 0-1.07-.26-1.4-.7l-.9-1.2a.25.25 0 0 0-.2-.1Z"/></svg></a>
         </td>`;
       rows.appendChild(tr);
     });
