@@ -1,0 +1,22 @@
+[
+  {
+    "task_id": "acc-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/accelerators/dicom/",
+    "query": "I have CT DICOM files in /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/dicom/. I want their metadata in a Delta table so my team can query studies and series with SQL, and later view the images in a browser. What is the best way to do this on Databricks? Give me the exact steps. Save your final answer as markdown to /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/outputs/acc-001.md"
+  },
+  {
+    "task_id": "acc-002",
+    "dataset": "",
+    "query": "Our scientists need 3D structure predictions for about 50 protein sequences, and they want a UI where they can run protein folding and protein design themselves. What should we use on Databricks, and exactly what do we need to do to get it running? Save your final answer as markdown to /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/outputs/acc-002.md"
+  },
+  {
+    "task_id": "acc-004",
+    "dataset": "",
+    "query": "I want to fine-tune Geneformer on our single-cell RNA-seq data on Databricks. Where should I start? Save your final answer as markdown to /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/outputs/acc-004.md"
+  },
+  {
+    "task_id": "acc-005",
+    "dataset": "",
+    "query": "I want to install the Pixels accelerator with the OHIF viewer and CT auto-segmentation on our Azure Databricks workspace. I am not a workspace admin. What do I need and what are the steps? Save your final answer as markdown to /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/outputs/acc-005.md"
+  }
+]

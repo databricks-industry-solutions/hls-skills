@@ -1,0 +1,22 @@
+[
+  {
+    "task_id": "rwe-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_cohort.csv",
+    "query": "Using the observational data at /Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_cohort.csv, compare the mortality between treated and untreated groups. Determine if you need confounder adjustment."
+  },
+  {
+    "task_id": "rwe-002",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_cohort.csv",
+    "query": "Using the cohort data at /Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_cohort.csv, estimate the causal effect of treatment on mortality."
+  },
+  {
+    "task_id": "rwe-003",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_survival.csv",
+    "query": "Using the observational data at /Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_survival.csv, compare time-to-event outcomes between treatment groups."
+  },
+  {
+    "task_id": "rwe-004",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_tte.csv",
+    "query": "Using the observational data at /Volumes/hls_amer_catalog/vital_skills/eval/rwe-cohortstudy/rwe_tte.csv, estimate the causal effect of initiating treatment on the outcome using a target trial emulation design"
+  }
+]

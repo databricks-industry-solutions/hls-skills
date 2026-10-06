@@ -1,0 +1,58 @@
+/* Databricks brand palette, matching the landing page (docs/index.html):
+   Navy #1B3139 / #0B2026, Lava #FF3621, Oat #F9F7F4. Link colors are darker or
+   lighter Lava shades chosen for WCAG-AA contrast on each background. */
+:root {
+  --md-primary-fg-color: #1B3139;
+  --md-primary-fg-color--light: #2C4751;
+  --md-primary-fg-color--dark: #0B2026;
+  --md-primary-bg-color: #FFFFFF;
+  --md-primary-bg-color--light: #D3DBDD;
+  --md-accent-fg-color: #FF3621;
+  --md-accent-fg-color--transparent: rgba(255, 54, 33, 0.1);
+}
+
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #F9F7F4;
+  --md-typeset-a-color: #BD1C08;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #0B2026;
+  --md-default-bg-color: #0B2026;
+  --md-code-bg-color: #1B3139;
+  --md-typeset-a-color: #FF6E57;
+}
+
+.md-header__button.md-logo img {
+  height: 1.6rem;
+}
+
+.md-typeset h1 {
+  color: var(--md-default-fg-color);
+  font-weight: 600;
+}
+
+/* "Skill details" box on generated skill pages: Navy rule on Oat instead of the default teal. */
+.md-typeset .admonition.abstract {
+  border-color: #1B3139;
+}
+
+.md-typeset .abstract > .admonition-title {
+  background-color: #EEEDE9;
+}
+
+.md-typeset .abstract > .admonition-title::before {
+  background-color: #1B3139;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .admonition.abstract {
+  border-color: #6E8A93;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .abstract > .admonition-title {
+  background-color: #1B3139;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .abstract > .admonition-title::before {
+  background-color: #D3DBDD;
+}

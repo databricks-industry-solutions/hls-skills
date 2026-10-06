@@ -1,0 +1,42 @@
+{
+  "rwe-001": {
+    "tool_use_quality": true,
+    "methodology_keywords": true,
+    "sensitivity_analysis_reported": false,
+    "balance_reported": true,
+    "estimate_deviation": false,
+    "task_completion": true,
+    "no_forbidden_content": true,
+    "artifact_produced": true
+  },
+  "rwe-002": {
+    "tool_use_quality": true,
+    "methodology_keywords": true,
+    "sensitivity_analysis_reported": true,
+    "balance_reported": true,
+    "estimate_deviation": false,
+    "task_completion": false,
+    "no_forbidden_content": true,
+    "artifact_produced": true
+  },
+  "rwe-003": {
+    "tool_use_quality": true,
+    "methodology_keywords": true,
+    "sensitivity_analysis_reported": false,
+    "balance_reported": true,
+    "estimate_deviation": true,
+    "task_completion": true,
+    "no_forbidden_content": true,
+    "artifact_produced": true
+  },
+  "rwe-004": {
+    "tool_use_quality": false,
+    "methodology_keywords": true,
+    "sensitivity_analysis_reported": true,
+    "balance_reported": false,
+    "estimate_deviation": false,
+    "task_completion": false,
+    "no_forbidden_content": false,
+    "artifact_produced": true
+  }
+}

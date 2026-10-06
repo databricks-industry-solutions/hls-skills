@@ -16,10 +16,17 @@ __pycache__/
 dist/
 build/
 
+# pytests results
+.pytest_cache/
+**/tests/results/
+
 # Local agent skill installs (project consumers)
 .claude/skills/
 .cursor/skills/
 .agents/skills/
+
+# Local Isaac tooling state
+.isaac/
 
 # Local reference clones
 .ref-*/
@@ -29,3 +36,6 @@ build/
 .env
 .env.local
 *.pem
+
+# MkDocs build output
+site/

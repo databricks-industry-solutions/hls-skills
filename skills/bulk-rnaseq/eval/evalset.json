@@ -1,0 +1,22 @@
+[
+  {
+    "task_id": "hls-rnaseq-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_001",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_001 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-001/."
+  },
+  {
+    "task_id": "hls-rnaseq-002",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_002",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_002 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-002/."
+  },
+  {
+    "task_id": "hls-rnaseq-003",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_003",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_003 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-003/."
+  },
+  {
+    "task_id": "hls-rnaseq-004",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_004",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_004 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-004/."
+  }
+]

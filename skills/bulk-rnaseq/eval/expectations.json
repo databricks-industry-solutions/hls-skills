@@ -1,0 +1,90 @@
+[
+  {
+    "task_id": "hls-rnaseq-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_001",
+    "difficulty": "easy",
+    "expectations": {
+      "expected_facts": [
+        "Raw integer counts are analyzed with PyDESeq2 using a young-versus-old contrast",
+        "The complete DE table contains log2FoldChange, pvalue, and padj",
+        "All tested genes are ranked for GSEA Prerank rather than thresholded before enrichment",
+        "GSEA significance is reported using FDR q-value below 0.25"
+      ],
+      "guidelines": [
+        "Use HGNC symbols for the supplied symbol-based GMT library",
+        "Do not substitute a t-test for count-based differential expression"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["deseq2_results.csv", "significant_genes.csv", "pca_plot.png", "volcano_plot.png", "gsea_prerank_all_terms.tsv", "gsea_nes_barplot.png", "gsea_network_map.png"],
+      "required_action_tokens": ["PyDESeq2", "padj", "GSEA Prerank", "all tested genes", "FDR"],
+      "forbidden_patterns": ["Welch", "TPM differential", "pooled up and down"]
+    }
+  },
+  {
+    "task_id": "hls-rnaseq-002",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_002",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "Non-count annotation columns are excluded before PyDESeq2 fitting",
+        "Sex is included before condition in the design",
+        "Ensembl identifiers are mapped to HGNC symbols before enrichment",
+        "GSEA Prerank uses the complete DE ranking with a fixed seed and 1000 permutations"
+      ],
+      "guidelines": [
+        "Do not pass annotation strings into DeseqDataSet",
+        "Do not interpret near-zero library overlap as absent biology"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["deseq2_results.csv", "pca_plot.png", "volcano_plot.png", "ma_plot.png", "gsea_prerank_all_terms.tsv", "gsea_prerank_significant_terms.tsv", "gsea_nes_barplot.png", "gsea_network_map.png"],
+      "required_action_tokens": ["annotation", "~sex + condition", "Ensembl", "HGNC", "prerank", "1000", "seed"],
+      "forbidden_patterns": ["design_factors", "gp\\.gsea\\(", "Ensembl IDs against symbol"]
+    }
+  },
+  {
+    "task_id": "hls-rnaseq-003",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_003",
+    "difficulty": "edge",
+    "expectations": {
+      "expected_facts": [
+        "The count matrix is recognized as samples by genes and is not transposed",
+        "The metadata column age group is renamed to age_group for the formula",
+        "Original young and old values are retained in the contrast",
+        "GSEA Prerank is run on a symbol-indexed complete ranking"
+      ],
+      "guidelines": [
+        "Do not use legacy design_factors",
+        "Do not produce a dot plot unless requested"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["deseq2_results.csv", "pca_plot.png", "volcano_plot.png", "gsea_prerank_all_terms.tsv", "gsea_nes_barplot.png", "gsea_network_map.png"],
+      "required_action_tokens": ["samples by genes", "age_group", "~age_group", "young", "old", "prerank"],
+      "forbidden_patterns": ["design_factors", "~age group", "dotplot"]
+    }
+  },
+  {
+    "task_id": "hls-rnaseq-004",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_004",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "Counts and metadata are aligned on their shared sample identifiers",
+        "The unmatched metadata-only sample is reported and excluded",
+        "Low-count genes are filtered before fitting",
+        "GSEA Prerank is preferred over ORA because a full ranked DE table is available"
+      ],
+      "guidelines": [
+        "Do not silently fabricate counts for the unmatched sample",
+        "Do not pool up- and down-regulated genes into one ORA list"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["deseq2_results.csv", "significant_genes.csv", "pca_plot.png", "volcano_plot.png", "gsea_prerank_all_terms.tsv", "gsea_nes_barplot.png", "gsea_network_map.png"],
+      "required_action_tokens": ["intersection", "unmatched", "low-count", "prerank", "FDR"],
+      "forbidden_patterns": ["fabricated sample", "pooled up and down", "Welch"]
+    }
+  }
+]

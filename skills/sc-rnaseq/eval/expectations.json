@@ -1,0 +1,74 @@
+[
+  {
+    "task_id": "scrna-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_symbols.h5ad",
+    "difficulty": "easy",
+    "expectations": {
+      "expected_facts": [
+        "UMAP colored by Leiden clusters was produced",
+        "QC metrics were computed (pct_counts_mt, n_genes_by_counts)",
+        "Normalization and log1p were applied before HVG selection",
+        "MLflow tracking was set up after install cell"
+      ],
+      "guidelines": [
+        "QC thresholds must be data-driven (MAD or percentile-based), not static textbook defaults like pct_mt < 20",
+        "%matplotlib inline must be present in the first code cell after restart",
+        "Markdown cells must explain QC threshold decisions and parameter choices",
+        "plt.show() must be called after every sc.pl.* call"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["umap_plot", "leiden_clusters", "mlflow_run"],
+      "forbidden_patterns": ["pct_counts_mt < 20", "n_genes_by_counts < 2500"]
+    }
+  },
+  {
+    "task_id": "scrna-002",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_ensembl.h5ad",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "Ensembl IDs (ENSG prefix) were detected in var_names",
+        "Gene symbols were swapped from var['feature_name'] before QC annotation",
+        "pct_counts_mt is non-zero after QC (MT- prefix matching works on gene symbols)",
+        "UMAP colored by Leiden clusters was produced"
+      ],
+      "guidelines": [
+        "var_names must be checked for ENSG prefix before calculate_qc_metrics",
+        "If var_names are Ensembl IDs, swap to gene symbols before QC — otherwise MT/ribo/hb annotations produce all zeros",
+        "QC thresholds must be data-driven, not static defaults"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["ensembl_swap", "umap_plot", "nonzero_pct_mt"],
+      "forbidden_patterns": ["pct_counts_mt.*=.*0"]
+    }
+  },
+  {
+    "task_id": "scrna-003",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/sc_rnaseq/sample_symbols.h5ad",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "rapids-singlecell was installed with RAPIDS CUDA packages (pinned versions)",
+        "RMM (RAPIDS Memory Manager) was initialized before any GPU work",
+        "Data was transferred to GPU via rsc.get.anndata_to_GPU",
+        "sc.pp.neighbors was used from scanpy (not rsc — there is no GPU equivalent)",
+        "rsc.tl.leiden and rsc.tl.umap were used for GPU-accelerated clustering",
+        "UMAP colored by Leiden clusters was produced"
+      ],
+      "guidelines": [
+        "Must install rapids-singlecell with pinned RAPIDS package versions (e.g., 25.10.00)",
+        "Must initialize RMM before any GPU operations to prevent fragmentation",
+        "Must use sc.pp.neighbors from scanpy, NOT rsc.pp.neighbors — this is the #1 mistake in GPU pipelines",
+        "Should filter aggressively before HVG to prevent CUDA OOM",
+        "Should check gene naming (Ensembl IDs) on CPU before GPU transfer",
+        "Must transfer back to CPU for plotting"
+      ]
+    },
+    "deterministic_checks": {
+      "required_artifacts": ["rmm_setup", "gpu_transfer", "umap_plot", "leiden_clusters"],
+      "forbidden_patterns": ["rsc\.pp\.neighbors"]
+    }
+  }
+]

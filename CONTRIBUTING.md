@@ -17,12 +17,75 @@ By submitting a contribution to this repository, you certify that:
 
 If you are contributing on behalf of an organization, you confirm that you have the authority to do so. You agree to confirm these terms in your pull request. Any request that does not explicitly accept the terms will be assumed to have accepted.
 
+## Reporting issues
+
+- [Bug report](https://github.com/databricks-industry-solutions/hls-skills/issues/new?template=bug_report.yml): a skill gives wrong guidance, its code fails, or repo tooling breaks.
+- [Skill request](https://github.com/databricks-industry-solutions/hls-skills/issues/new?template=skill_request.yml): propose a new skill or a major change. Open one before starting the work so others can weigh in and duplicates are caught early.
+- Security issues: follow [SECURITY.md](SECURITY.md), not a public issue.
+
 ## Adding or updating a skill
 
 1. Follow [AGENTS.md](AGENTS.md).
 2. Start from the matching file in `templates/`.
-3. Put the skill at `skills/<category>/<skill-name>/SKILL.md`.
-4. Folder name must match frontmatter `name`.
-5. If the skill is new, add it to the remote catalog in `install_skills.sh` (`remote_skill_catalog`).
-6. Update the skill table in `README.md`.
-7. Open a PR and request a second-party review.
+3. Put the skill at `skills/<skill-name>/SKILL.md`.
+4. Folder name must match frontmatter `name`. Check format with `test_skill_quality.py`
+5. Update the skill table in `README.md` (Table to be created).
+6. Open a PR and request a second-party review.
+
+## Test
+
+Several levels of testing is advised.
+
+#### 1. Repo-level tests: formatting
+* ./tests/test_skill_quality.py tests skill's formatting
+* ./tests/test_sync_bundle.py tests that unnecessary skill folders are not synced to Unity Catalog/Gateway
+
+Both these tests can be invoked on all skills with 
+```
+uv run --isolated --with pytest python -m pytest -q tests
+```
+
+#### 2.Skill-level unit tests
+Store your skill's unit tests here `./skills/<your_skill>/tests`
+```
+uv run --isolated --with pytest --with-requirements skills/<name>/tests/requirements.txt \
+    python -m pytest -q skills/<name>/tests
+```
+
+#### Automated CI
+Both overall formatting and unit tests can be automated with CI (`.github/workflows/ci.yml`) which runs on every non-draft PR.
+- Put a skill's test-only dependencies in `skills/<name>/tests/requirements.txt`, pinned to versions you ran. CI finds every `skills/*/tests/` folder automatically.
+- A skill's `eval/` or `tests/` folder is never published by `sync_skills_git2unity.py`; `tests/test_sync_bundle.py` fails if that filter is removed.
+- CI also scans the full git history for secrets with gitleaks.
+
+#### 3. Evaluate with and without skill
+Call the [skill-eval](skills/skill-eval/SKILL.md) skill to generate an evaluation harness for your skill. It will generate:
+```text
+skills/<skill-name>/
+├── SKILL.md               ← the skill itself (not modified during eval)
+└── eval/
+    ├── README.md            ← run protocol, scorer summary, ship gate
+    ├── evalset.json         ← 3-5 benchmark task definitions (task_id, dataset, query only)
+    ├── expectations.json    ← difficulty, expectations, deterministic_checks per task (keyed by task_id + dataset)
+    ├── generate_data.py     ← synthetic data generator (seeds the volume)
+    ├── scorers.py           ← deterministic + LLM judge definitions; exports the `scorers` list
+    ├── score_<skill>.py  ← (generated) scoring notebook: evaluate + compare + report
+    ├── eval_report.md       ← (after running) paired comparison report + failure taxonomy
+    ├── baseline_scores.json ← (after running) skill-OFF per-task scores
+    └── with_skill_scores.json ← (after running) skill-ON per-task scores
+```
+
+Call Genie Code to generate a notebook each with and without using your skill. Then use the skill-eval skill to reference the evaluation harness to score both notebooks. The scores will be logged to a MLflow experiment and an eval_report.md will be generated in the `eval` subfolder.
+
+## Docs site
+
+The [GitHub Pages site](https://databricks-industry-solutions.github.io/hls-skills/) is `docs/index.html` (landing page) plus an MkDocs guide under `/guide/`. Its skill pages are generated from each `SKILL.md`, so edit the skill, not the site.
+
+- Preview: `uv run --isolated --with-requirements docs/requirements.txt mkdocs serve`
+- CI (`.github/workflows/pages.yml`) runs `mkdocs build --strict` on PRs, but does not deploy: the organization's IP allow list blocks Pages deployments from GitHub-hosted runners.
+- Publish (maintainers, after docs or skill changes merge): from an up-to-date `dev` checkout on an allowed network, run
+  ```
+  uv run --isolated --with-requirements docs/requirements.txt \
+      mkdocs gh-deploy --strict --no-history -m "Deploy docs from dev @ $(git rev-parse --short HEAD)"
+  ```
+  This pushes the built site to the `gh-pages` branch, which Pages serves.

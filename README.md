@@ -1,16 +1,41 @@
-# HLS Skills
+# <img src="vitalskills.png" alt="Vital Skills" width="40" height="40"> Vital Skills
+## Agent skills for Health & Life Sciences workflows. 
+Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
 
-Agent skills for Health & Life Sciences  workflows. Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
+
+## Setup
+#### git clone this repo to Databricks
+Git clone this repo onto Databricks. Then open Genie Code and click on Customizations to add the cloned folder. It should point to the `skills` subfolder
+
+#### Optional: Register and sync the skills to [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/)
+Run [`sync_skills_git2unity.py`](sync_skills_git2unity.py) to sync the latest skills from the repo to Unity Catalog. They also show up on Unity Gateway under Skills.
+
+On Databricks, start Serverless or a cluster (>= 15.0 runtime) for compute. Then open the terminal ([how-to-guide](https://docs.databricks.com/aws/en/compute/web-terminal#launch-the-web-terminal)). It should already have the [Databricks CLI](https://docs.databricks.com/aws/en/compute/web-terminal#run-databricks-cli-commands) installed.
+```
+### To list skills
+uv run sync_skills_git2unity.py --dry-run
+
+### To publish/update skills to/on Unity Gateway
+uv run sync_skills_git2unity.py --catalog <your_catalog> --schema <your_schema> --warehouse-id <your_sql_wh>
+```
+You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehouses > select warehouse > Name. It should list the warehouse ID. More details [here](https://www.getorchestra.io/guides/how-to-retrieve-your-databricks-warehouse-id).
+
 
 
 ## Available Skills
 
 | Skill | Description |
 |-------|-------------|
-| **skill-1** | Prioritize druggable targets for a disease (Open Targets + PubMed) |
-| **skill-2** | Find small-molecule hits for a gene/protein (Open Targets + PubChem) |
+| **sc-rnaseq** | Analyze single-cell RNA-seq data from .h5ad files |
+| **bulk-rnaseq** | Analyze for top differentially expressed genes (DEG) from bulk RNA-seq count data |
+| **pathway-enrichment-analysis** | Pathway enrichment for RNA-seq. Choose from ORA or GSEA |
+| **cohort-builder** | Build a defensible, reproducible, feasibility-checked patient cohort from structured coded data and free-text clinical notes — grounds codes, surfaces threshold + code/note combine choices, never fabricates citations |
+| **rwe-cohortstudy** | Perform comparative effectiveness research (aka cohort study design) with appropriate propensity score adjustment, including matching and IPW |
+| **phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
+| **payer-provider-measure-catalog** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
 | **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
-| **[payer-provider-measure-catalog](skills/semantic-layer/payer-provider-measure-catalog/)** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
+| **accelerators** | Steer to HLS solution accelerators (Pixels, Genesis Workbench) with the smallest working path, install prerequisites and known pitfalls; others can add accelerators from a template |
+| **skill-eval** | Benchmark a skill: paired runs with and without it, MLflow `genai.evaluate` scoring, per-task win/loss comparison, failure taxonomy, standardized Evaluation report |
 
 ## Repository Layout
 
@@ -20,14 +45,15 @@ hls-skills/
 ├── CLAUDE.md                 # Compatibility shim → AGENTS.md
 ├── templates/                # Pipeline / toolkit / guide templates
 └── skills/
-    ├── skill-1/
-    ├── skill-2/
+    ├── bulk-rnaseq/
+    ├── cohort-builder/
+    └── …
 ```
 
 Each skill:
 
 ```
-skills/<category>/<skill-name>/
+skills/<skill-name>/
 ├── SKILL.md          # Required
 ├── references/       # Optional — loaded on demand
 ├── assets/           # Optional
@@ -36,17 +62,6 @@ skills/<category>/<skill-name>/
 
 ## Creating a Skill
 See [CONTRIBUTING.md](CONTRIBUTING.md).
-1. Follow [AGENTS.md](AGENTS.md).
-2. Start from the matching file in `templates/`.
-3. Put the skill at `skills/<category>/<skill-name>/SKILL.md`.
-4. Folder name must match frontmatter `name`. 
-5. Update the skill table in `README.md` (Table to be created).
-6. Open a PR and request a second-party review.
-
-| Template | Use when |
-|----------|----------|
-| `SKILL_TEMPLATE.md` | Linear pipeline |
-| `SKILL_TEMPLATE_GUIDE.md` | Decision guide |
 
 Repo layout and skill templates are inspired by the patterns in [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills)
 

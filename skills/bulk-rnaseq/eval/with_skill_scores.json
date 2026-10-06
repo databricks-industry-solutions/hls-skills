@@ -1,0 +1,30 @@
+{
+  "hls-rnaseq-001": {
+    "required_artifacts_present": true,
+    "expectations_guidelines": false,
+    "required_actions_present": true,
+    "scientific_method": true,
+    "notebook_source_valid": true
+  },
+  "hls-rnaseq-002": {
+    "required_artifacts_present": true,
+    "expectations_guidelines": false,
+    "required_actions_present": true,
+    "scientific_method": true,
+    "notebook_source_valid": true
+  },
+  "hls-rnaseq-003": {
+    "required_artifacts_present": true,
+    "expectations_guidelines": true,
+    "required_actions_present": true,
+    "scientific_method": true,
+    "notebook_source_valid": true
+  },
+  "hls-rnaseq-004": {
+    "required_artifacts_present": true,
+    "expectations_guidelines": true,
+    "required_actions_present": true,
+    "scientific_method": true,
+    "notebook_source_valid": true
+  }
+}
