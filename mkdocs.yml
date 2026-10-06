@@ -1,0 +1,84 @@
+# Docs site. docs/index.html is the hand-built landing page and is copied as-is;
+# MkDocs renders the guide under /guide/ and generates one page per skill from
+# skills/*/SKILL.md (see docs/hooks/skill_pages.py). Build: see docs/requirements.txt.
+strict: true
+site_name: Vital Skills
+site_description: Agent skills for Health & Life Sciences workflows on Databricks
+site_url: https://databricks-industry-solutions.github.io/hls-skills/
+repo_url: https://github.com/databricks-industry-solutions/hls-skills
+repo_name: hls-skills
+edit_uri: ""
+copyright: Licensed under the Databricks License
+
+exclude_docs: |
+  hooks/
+  requirements.txt
+
+hooks:
+  - docs/hooks/skill_pages.py
+
+extra_css:
+  - guide/stylesheets/extra.css
+
+extra:
+  homepage: https://databricks-industry-solutions.github.io/hls-skills/
+
+theme:
+  name: material
+  logo: guide/assets/databricks-logo.svg
+  favicon: guide/assets/databricks-logo.svg
+  font:
+    text: DM Sans
+    code: DM Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.indexes
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+# The Skills entry is expanded at build time into the catalog plus one page per skill.
+nav:
+  - Overview: guide/index.md
+  - Getting started: guide/getting-started.md
+  - Skills: guide/skills/index.md
+  - Evaluation: guide/evaluation.md
+  - Contributing: guide/contributing.md
+  - Changelog: CHANGELOG.md

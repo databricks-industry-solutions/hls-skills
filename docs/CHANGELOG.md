@@ -4,6 +4,27 @@ All notable changes to the `docs/` landing page (the Vital Skills GitHub Pages
 site) are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.1.0] — 2026-10-06
+
+Adds a documentation section under `/guide/`, built with MkDocs Material, and
+moves deployment to GitHub Actions.
+
+### Added
+- `/guide/`: overview, getting started, evaluation, and contributing pages.
+- Skill catalog and one page per skill, generated at build time from
+  `skills/*/SKILL.md` frontmatter and content (`docs/hooks/skill_pages.py`), with
+  an evaluation column linking each skill's `eval/` evidence.
+- Databricks logo and Navy/Lava/Oat palette in the guide, matching this page,
+  with a light/dark toggle.
+- "Docs" link in the landing page top bar.
+- `.github/workflows/pages.yml`: `mkdocs build --strict` on PRs, deploy on
+  pushes to `dev`.
+
+### Changed
+- Go-live: set Settings → Pages → Source to **GitHub Actions** instead of
+  flipping the publishing folder to `/docs`. The landing page is copied into the
+  build unchanged.
+
 ## [0.0.1] — 2026-10-06
 
 Initial landing page — a Databricks-branded static site for the Vital Skills
