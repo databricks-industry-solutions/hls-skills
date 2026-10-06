@@ -1,7 +1,27 @@
 name: Skill request
 description: Propose a new HLS skill or a major change to an existing one.
-labels: ["skill-request"]
+labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: This repository is public. Do not include PHI, patient-level rows, credentials, or confidential customer details. Link to public sources instead.
+  - type: dropdown
+    id: request
+    attributes:
+      label: Request type
+      options:
+        - New skill
+        - Change to an existing skill
+    validations:
+      required: true
+  - type: input
+    id: skill
+    attributes:
+      label: Skill name
+      description: For a change, the existing folder under `skills/`. For a new skill, a proposed `{tool-or-domain}-{purpose}` name (lowercase, hyphens, 64 characters or fewer; see AGENTS.md, Step 2).
+      placeholder: "bulk-rnaseq"
+    validations:
+      required: true
   - type: textarea
     id: task
     attributes:
@@ -14,14 +34,14 @@ body:
     id: tools
     attributes:
       label: Tools, data, and methods
-      description: Libraries, APIs, Databricks features, and data sources the skill would use.
+      description: Libraries, APIs, Databricks features, and data sources the skill would use. Describe data by schema or public dataset name, not sample rows.
     validations:
       required: true
   - type: textarea
     id: sources
     attributes:
       label: Example sources
-      description: Papers, docs, notebooks, repos, or public datasets that show how the task is done today. Links are best.
+      description: Papers, docs, notebooks, repos, or public datasets that show how the task is done today. Public links only.
       placeholder: |
         - https://doi.org/10.1186/s13059-014-0550-8 (DESeq2)
         - https://bioconductor.org/packages/DESeq2
@@ -31,7 +51,7 @@ body:
       label: Skill type
       description: See AGENTS.md, Step 1.
       options:
-        - Pipeline (run this analysis)
+        - Pipeline / Toolkit / Database (run this analysis)
         - Guide (decide how to approach this)
         - Not sure
     validations:
@@ -40,4 +60,4 @@ body:
     id: benchmark
     attributes:
       label: Benchmark tasks
-      description: 1-3 tasks with a checkable answer that would show the skill works (see skills/skill-eval).
+      description: 3-5 tasks with a checkable answer that would show the skill works (see AGENTS.md, Step 5 and skills/skill-eval).

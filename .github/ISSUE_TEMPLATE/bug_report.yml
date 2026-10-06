@@ -2,6 +2,9 @@ name: Bug report
 description: A skill gives wrong guidance, its code fails, or repo tooling breaks.
 labels: ["bug"]
 body:
+  - type: markdown
+    attributes:
+      value: This repository is public. Do not include PHI, patient-level rows, credentials, or confidential customer details.
   - type: input
     id: skill
     attributes:

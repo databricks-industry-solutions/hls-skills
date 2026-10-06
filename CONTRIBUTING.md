@@ -17,6 +17,12 @@ By submitting a contribution to this repository, you certify that:
 
 If you are contributing on behalf of an organization, you confirm that you have the authority to do so. You agree to confirm these terms in your pull request. Any request that does not explicitly accept the terms will be assumed to have accepted.
 
+## Reporting issues
+
+- [Bug report](https://github.com/databricks-industry-solutions/hls-skills/issues/new?template=bug_report.yml): a skill gives wrong guidance, its code fails, or repo tooling breaks.
+- [Skill request](https://github.com/databricks-industry-solutions/hls-skills/issues/new?template=skill_request.yml): propose a new skill or a major change. Open one before starting the work so others can weigh in and duplicates are caught early.
+- Security issues: follow [SECURITY.md](SECURITY.md), not a public issue.
+
 ## Adding or updating a skill
 
 1. Follow [AGENTS.md](AGENTS.md).
