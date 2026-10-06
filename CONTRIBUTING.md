@@ -76,3 +76,16 @@ skills/<skill-name>/
 ```
 
 Call Genie Code to generate a notebook each with and without using your skill. Then use the skill-eval skill to reference the evaluation harness to score both notebooks. The scores will be logged to a MLflow experiment and an eval_report.md will be generated in the `eval` subfolder.
+
+## Docs site
+
+The [GitHub Pages site](https://databricks-industry-solutions.github.io/hls-skills/) is `docs/index.html` (landing page) plus an MkDocs guide under `/guide/`. Its skill pages are generated from each `SKILL.md`, so edit the skill, not the site.
+
+- Preview: `uv run --isolated --with-requirements docs/requirements.txt mkdocs serve`
+- CI (`.github/workflows/pages.yml`) runs `mkdocs build --strict` on PRs, but does not deploy: the organization's IP allow list blocks Pages deployments from GitHub-hosted runners.
+- Publish (maintainers, after docs or skill changes merge): from an up-to-date `dev` checkout on an allowed network, run
+  ```
+  uv run --isolated --with-requirements docs/requirements.txt \
+      mkdocs gh-deploy --strict --no-history -m "Deploy docs from dev @ $(git rev-parse --short HEAD)"
+  ```
+  This pushes the built site to the `gh-pages` branch, which Pages serves.
