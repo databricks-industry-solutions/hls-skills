@@ -1,7 +1,5 @@
 # Scimilarity model reference
 
-> **Status: work in progress — needs further testing.** The serving / validation path for this model has not yet been workspace-validated; the input and output examples below are provisional and may change once tested.
-
 ## Identity
 
 * Model family: Scimilarity (single-cell representation + kNN cell-type annotation)

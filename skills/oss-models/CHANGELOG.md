@@ -15,7 +15,7 @@ Databricks (acquire weights → MLflow PyFunc → Unity Catalog → Model Servin
   Framework, Best Practices, Troubleshooting, Guardrails, and References.
 - Model references for six families (single-cell transcriptomics; protein /
   biomolecular structure):
-  - **Geneformer** — two workspace-validated deployment paths: V1-10M
+  - **Geneformer** — two deployment paths (serving exercised on workspace; end-to-end eval validation WIP): V1-10M
     (embedding dim 256) and NVIDIA BioNeMo / TransformerEngine V2-316M
     (embedding dim 1152). The TransformerEngine checkpoints load via pip (no
     Docker container required), keeping the standard PyFunc → Unity Catalog →
