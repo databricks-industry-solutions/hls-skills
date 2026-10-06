@@ -1,0 +1,30 @@
+{
+  "acc-001": {
+    "artifact_produced": true,
+    "factually_grounded": false,
+    "precise_next_step": true,
+    "no_forbidden_content": true,
+    "steers_to_accelerator": false
+  },
+  "acc-002": {
+    "artifact_produced": true,
+    "factually_grounded": true,
+    "precise_next_step": true,
+    "no_forbidden_content": true,
+    "steers_to_accelerator": true
+  },
+  "acc-004": {
+    "artifact_produced": true,
+    "factually_grounded": true,
+    "precise_next_step": true,
+    "no_forbidden_content": true,
+    "steers_to_accelerator": true
+  },
+  "acc-005": {
+    "artifact_produced": true,
+    "factually_grounded": true,
+    "precise_next_step": true,
+    "no_forbidden_content": true,
+    "steers_to_accelerator": true
+  }
+}

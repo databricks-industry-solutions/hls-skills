@@ -1,0 +1,140 @@
+[
+  {
+    "task_id": "acc-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/accelerators/dicom/",
+    "difficulty": "easy",
+    "expectations": {
+      "expected_facts": [
+        "Recommends the Pixels solution accelerator (databricks-industry-solutions/pixels)",
+        "Uses dbx.pixels Catalog and DicomMetaExtractor from a repo clone, or states that the library install may fail on serverless and gives the full install as the reliable route",
+        "Mentions the OHIF viewer from Pixels for browser viewing"
+      ],
+      "guidelines": [
+        "Ends with a concrete next step the user can run, not only a link",
+        "Does not present a hand-written pydicom pipeline as the main recommendation without mentioning Pixels"
+      ]
+    },
+    "deterministic_checks": {
+      "required_patterns": [
+        [
+          "\\bpixels\\b"
+        ],
+        [
+          "DicomMetaExtractor",
+          "dbx\\.pixels",
+          "Catalog\\(spark",
+          "make deploy",
+          "pixels_install"
+        ],
+        [
+          "OHIF"
+        ]
+      ],
+      "forbidden_patterns": []
+    }
+  },
+  {
+    "task_id": "acc-002",
+    "dataset": "",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "Recommends Genesis Workbench (databricks-industry-solutions/genesis-workbench)",
+        "Names ESMFold or AlphaFold2 for structure prediction and RFdiffusion or ProteinMPNN for design",
+        "Install needs a workspace admin, deploying core first and then the large_molecule module"
+      ],
+      "guidelines": [
+        "Checks or asks whether Genesis Workbench is already deployed before giving install steps",
+        "Gives the install order and prerequisites, not only a link",
+        "Does not claim deployment is instant; model registration jobs take a long time"
+      ]
+    },
+    "deterministic_checks": {
+      "required_patterns": [
+        [
+          "genesis[ -]workbench"
+        ],
+        [
+          "ESMFold",
+          "AlphaFold"
+        ],
+        [
+          "large_molecule",
+          "large molecule"
+        ],
+        [
+          "admin"
+        ]
+      ],
+      "forbidden_patterns": []
+    }
+  },
+  {
+    "task_id": "acc-004",
+    "dataset": "",
+    "difficulty": "edge",
+    "expectations": {
+      "expected_facts": [
+        "Points to Genesis Workbench for single-cell foundation models",
+        "States that Geneformer support in Genesis Workbench is not yet available or marked coming soon",
+        "Offers oss-models or custom packaging as the interim path"
+      ],
+      "guidelines": [
+        "Does not claim Genesis Workbench already supports Geneformer fine-tuning",
+        "Gives a concrete next step"
+      ]
+    },
+    "deterministic_checks": {
+      "required_patterns": [
+        [
+          "genesis[ -]workbench"
+        ],
+        [
+          "coming soon",
+          "not yet",
+          "placeholder",
+          "not currently"
+        ]
+      ],
+      "forbidden_patterns": []
+    }
+  },
+  {
+    "task_id": "acc-005",
+    "dataset": "",
+    "difficulty": "edge",
+    "expectations": {
+      "expected_facts": [
+        "A workspace admin or account team must enable gated features: Apps user token passthrough, Lakebase and Reverse ETL",
+        "GPU_MEDIUM serving is not available on Azure; use GPU_LARGE or GPU_SMALL",
+        "Deploy with make deploy, then databricks bundle run pixels_install"
+      ],
+      "guidelines": [
+        "Separates what the non-admin user can do from what the admin must do",
+        "Mentions the library-only path as something the user can do without admin rights",
+        "Does not tell a non-admin to enable workspace settings themselves"
+      ]
+    },
+    "deterministic_checks": {
+      "required_patterns": [
+        [
+          "token passthrough",
+          "passthrough"
+        ],
+        [
+          "Lakebase"
+        ],
+        [
+          "GPU_LARGE",
+          "GPU_SMALL",
+          "GPU_MEDIUM"
+        ],
+        [
+          "make deploy",
+          "pixels_install"
+        ]
+      ],
+      "forbidden_patterns": []
+    }
+  }
+]
