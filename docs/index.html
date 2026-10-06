@@ -64,14 +64,12 @@
     --foot-ink: #D3DBDD;
     --focus: #1B3139;
 
-    /* topic accents: lava and navy, plus restrained tints/shades of each and of oat. Each holds at
-       least 3:1 on both the white card and the oat page, in both themes (WCAG 1.4.11). */
-    --t-tx: #FF3621;   /* lava */
-    --t-fm: #1B3139;   /* navy */
-    --t-rwe: #E0644D;  /* lava, softened to coral */
-    --t-gov: #6A8087;  /* navy tint */
-    --t-pp: #A3200F;   /* lava shade */
-    --t-ev: #8F8574;   /* oat shade */
+    /* category accents: lava, the logo's blue, navy and an oat shade. Each holds at least 3:1 on both
+       the white card and the oat page, in both themes (WCAG 1.4.11). */
+    --t-bio: #FF3621;  /* lava */
+    --t-rwe: #2F7FCC;  /* logo blue, as in the hero trace */
+    --t-pp: #1B3139;   /* navy */
+    --t-oth: #8F8574;  /* oat shade */
 
     --sans: "DM Sans", "Avenir Next", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
     --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -86,7 +84,7 @@
     --page: #0B2026; --paper: #1B3139; --ink: #F9F7F4; --ink-soft: #B3C0C4; --trace-blue: #439AE2;
     --rule: #2C4751; --rule-strong: #6E8A93; --fill: #0B2026;
     --foot-bg: #0B2026; --foot-ink: #B3C0C4; --focus: #FF5F46; --lava-text: #FF6E57;
-    --t-tx: #FF5F46; --t-fm: #D3DBDD; --t-rwe: #FFB3A5; --t-gov: #7F979E; --t-pp: #E04A33; --t-ev: #B8AE9C;
+    --t-bio: #FF5F46; --t-rwe: #439AE2; --t-pp: #D3DBDD; --t-oth: #B8AE9C;
     color-scheme: dark;
   }
 
@@ -163,7 +161,7 @@
   h2 { font-weight: 500; font-size: 1.6rem; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.015em; }
   .section-lede { margin: 0 0 24px; color: var(--ink-soft); max-width: 62ch; }
 
-  /* ---------- get started: a real sequence, so numbered ---------- */
+  /* ---------- quick start: a real sequence, so numbered ---------- */
   .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; grid-template-columns: 1fr; counter-reset: step; }
   @media (min-width: 820px) { .steps { grid-template-columns: repeat(3, 1fr); } }
   .step {
@@ -216,23 +214,23 @@
   .reset { font: inherit; font-size: .9rem; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 2px 0; text-decoration: underline; text-decoration-color: var(--lava); text-underline-offset: 3px; }
   .reset[hidden] { display: none; }
 
-  /* ---------- explore: cards ---------- */
-  .grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-  .card {
-    background: var(--paper); border: 1px solid var(--rule); border-radius: var(--r-lg);
-    display: flex; flex-direction: column; min-height: 220px;
-    border-top: 4px solid var(--c);
-  }
-  .grid[hidden], .card[hidden] { display: none; }
-  .card-body { padding: 18px 20px 14px; flex: 1; }
-  .card h3 { margin: 0 0 8px; font-family: var(--mono); font-size: 1rem; font-weight: 500; overflow-wrap: anywhere; }
-  .card p { margin: 0; color: var(--ink-soft); font-size: .95rem; }
-  .labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
-  .label { font-size: .78rem; padding: 2px 9px; border-radius: var(--r-pill); background: var(--page); border: 1px solid var(--rule); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; }
+  /* ---------- explore: skills table ---------- */
+  /* Scrolls sideways on narrow screens instead of squeezing the columns. */
+  .table-wrap { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--r-lg); overflow-x: auto; }
+  .table-wrap[hidden] { display: none; }
+  .skills { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  .skills thead th { text-align: left; font-size: .82rem; font-weight: 600; color: var(--ink-soft); padding: 12px 16px; white-space: nowrap; }
+  .skills tbody th, .skills td { padding: 14px 16px; border-top: 1px solid var(--rule); vertical-align: top; text-align: left; }
+  .skills tr[hidden] { display: none; }
+  /* The category colour runs down the left edge of each row. */
+  .skills .name { border-left: 4px solid var(--c); font-family: var(--mono); font-weight: 500; white-space: nowrap; }
+  .skills .what { color: var(--ink-soft); min-width: 26ch; }
+  .label { font-size: .78rem; padding: 2px 9px; border-radius: var(--r-pill); background: var(--page); border: 1px solid var(--rule); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   .label .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
-  .card-foot { border-top: 1px solid var(--rule); padding: 10px 20px; display: flex; gap: 18px; font-size: .88rem; }
-  .card-foot a { color: var(--ink-soft); text-decoration: none; }
-  .card-foot a:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--lava); }
+  .links { white-space: nowrap; font-size: .88rem; }
+  .links a + a { margin-left: 16px; }
+  .links a { color: var(--ink-soft); text-decoration: none; }
+  .links a:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--lava); }
 
   .empty {
     border: 1.5px dashed var(--rule-strong); border-radius: var(--r-lg); padding: 40px 24px;
@@ -326,7 +324,7 @@
 
   <section aria-labelledby="start-h">
     <div class="wrap">
-      <h2 id="start-h">Get started</h2>
+      <h2 id="start-h">Quick start</h2>
       <p class="section-lede">Three steps from an empty workspace to your first skill run.</p>
       <ol class="steps">
         <li class="step">
@@ -355,10 +353,7 @@
 
       <div class="filters">
         <fieldset class="facet" data-facet="topic">
-          <legend>Topic</legend>
-        </fieldset>
-        <fieldset class="facet" data-facet="type">
-          <legend>Content type</legend>
+          <legend>Category</legend>
         </fieldset>
       </div>
 
@@ -367,7 +362,20 @@
         <button class="reset" type="button" id="resetTop" hidden>Clear filters</button>
       </div>
 
-      <ul class="grid" id="grid"></ul>
+      <div class="table-wrap" id="results">
+        <table class="skills">
+          <caption class="sr-only">Skills matching the selected filters</caption>
+          <thead>
+            <tr>
+              <th scope="col">Skill</th>
+              <th scope="col">What it does</th>
+              <th scope="col">Category</th>
+              <th scope="col"><span class="sr-only">Links</span></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
 
       <div class="empty" id="empty" hidden>
         <h3 id="emptyTitle">Nothing here yet</h3>
@@ -391,43 +399,40 @@
 <script>
 (() => {
   const TOPICS = [
-    { name: "Transcriptomics",      color: "var(--t-tx)" },
-    { name: "Foundation models",    color: "var(--t-fm)" },
-    { name: "Cohorts & RWE",        color: "var(--t-rwe)" },
-    { name: "Governance & Privacy", color: "var(--t-gov)" },
-    { name: "Payer-Provider",       color: "var(--t-pp)" },
-    { name: "Evaluation",           color: "var(--t-ev)" },
+    { name: "Bioinformatics",     color: "var(--t-bio)" },
+    { name: "Clinical RWE",       color: "var(--t-rwe)" },
+    { name: "Payer and provider", color: "var(--t-pp)" },
+    { name: "Others",             color: "var(--t-oth)" },
   ];
-  const GENIE_SKILL = "Genie Code skill";
-  const TYPES = [GENIE_SKILL, "Guide", "Tutorial", "Example"];
-
   const REPO_TREE = "https://github.com/databricks-industry-solutions/hls-skills/tree/dev/";
-  const REPO_BLOB = "https://github.com/databricks-industry-solutions/hls-skills/blob/dev/";
 
   const SKILLS = [
-    { name: "sc-rnaseq", topic: "Transcriptomics", type: "Genie Code skill",
+    { name: "sc-rnaseq", topic: "Bioinformatics",
       outcome: "Analyze single-cell RNA-seq data from .h5ad files." },
-    { name: "bulk-rnaseq", topic: "Transcriptomics", type: "Genie Code skill",
+    { name: "bulk-rnaseq", topic: "Bioinformatics",
       outcome: "Find top differentially expressed genes from bulk RNA-seq counts." },
-    { name: "pathway-enrichment-analysis", topic: "Transcriptomics", type: "Genie Code skill",
+    { name: "pathway-enrichment-analysis", topic: "Bioinformatics",
       outcome: "Pathway enrichment for RNA-seq (ORA or GSEA)." },
-    { name: "oss-models", topic: "Foundation models", type: "Genie Code skill",
+    { name: "oss-models", topic: "Bioinformatics",
       outcome: "Package, register, validate & deploy open-source HLS models on Databricks — e.g. TEDDY and Geneformer." },
-    { name: "cohort-builder", topic: "Cohorts & RWE", type: "Genie Code skill",
+    { name: "cohort-builder", topic: "Clinical RWE",
       outcome: "Build a reproducible, feasibility-checked patient cohort from coded + free-text clinical data." },
-    { name: "rwe-cohortstudy", topic: "Cohorts & RWE", type: "Genie Code skill",
+    { name: "rwe-cohortstudy", topic: "Clinical RWE",
       outcome: "Comparative effectiveness (cohort study) with propensity adjustment (matching, IPW)." },
-    { name: "phi-deidentifier", topic: "Governance & Privacy", type: "Genie Code skill",
-      outcome: "HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view)." },
-    { name: "payer-provider-measure-catalog", topic: "Payer-Provider", type: "Genie Code skill",
+    { name: "payer-provider-measure-catalog", topic: "Payer and provider",
       outcome: "Canonical payer+provider measure catalog mapped to Unity Catalog metric views." },
-    { name: "skill-eval", topic: "Evaluation", type: "Genie Code skill",
+    { name: "phi-deidentifier", topic: "Payer and provider",
+      outcome: "HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view)." },
+    { name: "skill-eval", topic: "Others",
       outcome: "Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy." },
+    { name: "accelerators", topic: "Others",
+      outcome: "Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step." },
   ];
 
   const colorOf = (topic) => (TOPICS.find(t => t.name === topic) || {}).color;
-  const state = { topic: "All", type: "All" };
-  const grid = document.getElementById("grid");
+  const state = { topic: "All" };
+  const results = document.getElementById("results");
+  const rows = document.getElementById("rows");
   const empty = document.getElementById("empty");
   const count = document.getElementById("count");
   const resetTop = document.getElementById("resetTop");
@@ -451,29 +456,22 @@
     });
   }
 
-  // Build cards once; filtering toggles visibility.
-  function buildCards() {
+  // Build rows once; filtering toggles visibility.
+  function buildRows() {
     SKILLS.forEach(s => {
-      const li = document.createElement("li");
-      li.className = "card";
-      li.dataset.topic = s.topic;
-      li.dataset.type = s.type;
-      li.style.setProperty("--c", colorOf(s.topic));
+      const tr = document.createElement("tr");
+      tr.dataset.topic = s.topic;
+      tr.style.setProperty("--c", colorOf(s.topic));
       const path = `skills/${s.name}/`;
-      li.innerHTML = `
-        <div class="card-body">
-          <h3>${s.name}</h3>
-          <p>${s.outcome}</p>
-          <div class="labels">
-            <span class="label"><span class="dot" aria-hidden="true"></span>${s.topic}</span>
-            <span class="label">${s.type}</span>
-          </div>
-        </div>
-        <div class="card-foot">
-          <a href="${REPO_TREE}${path}" target="_blank" rel="noopener noreferrer" title="${path}" aria-label="View code for ${s.name} (opens in new tab)">View code →</a>
-          <a href="${REPO_BLOB}${path}SKILL.md" target="_blank" rel="noopener noreferrer" title="${path}SKILL.md" aria-label="Use the ${s.name} skill (opens in new tab)">Use the skill →</a>
-        </div>`;
-      grid.appendChild(li);
+      tr.innerHTML = `
+        <th scope="row" class="name">${s.name}</th>
+        <td class="what">${s.outcome}</td>
+        <td><span class="label"><span class="dot" aria-hidden="true"></span>${s.topic}</span></td>
+        <td class="links">
+          <a href="guide/${path}" title="guide/${path}" aria-label="See more about ${s.name}">See more →</a>
+          <a href="${REPO_TREE}${path}" target="_blank" rel="noopener noreferrer" title="${path}" aria-label="See code for ${s.name} (opens in new tab)">See code →</a>
+        </td>`;
+      rows.appendChild(tr);
     });
   }
 
@@ -485,32 +483,27 @@
     });
 
     let shown = 0;
-    grid.querySelectorAll(".card").forEach(card => {
-      const ok = (state.topic === "All" || card.dataset.topic === state.topic) &&
-                 (state.type === "All" || card.dataset.type === state.type);
-      card.hidden = !ok;
+    rows.querySelectorAll("tr").forEach(row => {
+      const ok = state.topic === "All" || row.dataset.topic === state.topic;
+      row.hidden = !ok;
       if (ok) shown++;
     });
 
-    const filtered = state.topic !== "All" || state.type !== "All";
+    const filtered = state.topic !== "All";
     count.textContent = `Showing ${shown} of ${SKILLS.length} items`;
     resetTop.hidden = !filtered;
-    grid.hidden = shown === 0;
+    results.hidden = shown === 0;
     empty.hidden = shown !== 0;
 
     if (shown === 0) {
-      const what = state.type === "All" ? "items"
-        : state.type === GENIE_SKILL ? `${GENIE_SKILL}s` : `${state.type.toLowerCase()}s`;
       const where = state.topic !== "All" ? ` for ${state.topic}` : "";
-      document.getElementById("emptyTitle").textContent = `No ${what}${where} yet`;
+      document.getElementById("emptyTitle").textContent = `No skills${where} yet`;
       document.getElementById("emptyText").textContent =
-        state.type !== "All" && state.type !== GENIE_SKILL
-          ? `${state.type}s are planned for the hub. For now, every entry is a Genie Code skill.`
-          : "Try a different topic, or clear the filters to see every skill.";
+        "Try a different category, or clear the filters to see every skill.";
     }
   }
 
-  const resetAll = () => { state.topic = "All"; state.type = "All"; render(); };
+  const resetAll = () => { state.topic = "All"; render(); };
   resetTop.addEventListener("click", resetAll);
   document.getElementById("resetEmpty").addEventListener("click", resetAll);
 
@@ -548,8 +541,7 @@
   syncVideo();
 
   buildFacet("topic", TOPICS);
-  buildFacet("type", TYPES);
-  buildCards();
+  buildRows();
   render();
 })();
 </script>

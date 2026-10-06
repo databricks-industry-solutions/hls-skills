@@ -1,35 +1,12 @@
 # Contributing
+<!-- Do not change this header which generates contribution.md -->
+## Add or update a skill
 
-Thanks for contributing to HLS Skills.
-
-### Contributor License Agreement (CLA)
-
-By submitting a contribution to this repository, you certify that:
-
-1. **You have the right to submit the contribution.**  
-   You created the content yourself, or you have the right to submit it under the project's license.
-
-2. **You grant us a license to use your contribution.**  
-   Your contribution will be licensed under the same terms as the rest of this project, and you grant the project maintainers the right to use, modify, and distribute it as part of the project.
-
-3. **You are not submitting confidential or proprietary information.**  
-   Your contribution does not include anything you don’t have permission to share publicly.
-
-If you are contributing on behalf of an organization, you confirm that you have the authority to do so. You agree to confirm these terms in your pull request. Any request that does not explicitly accept the terms will be assumed to have accepted.
-
-## Reporting issues
-
-- [Bug report](https://github.com/databricks-industry-solutions/hls-skills/issues/new?template=bug_report.yml): a skill gives wrong guidance, its code fails, or repo tooling breaks.
-- [Skill request](https://github.com/databricks-industry-solutions/hls-skills/issues/new?template=skill_request.yml): propose a new skill or a major change. Open one before starting the work so others can weigh in and duplicates are caught early.
-- Security issues: follow [SECURITY.md](SECURITY.md), not a public issue.
-
-## Adding or updating a skill
-
-1. Follow [AGENTS.md](AGENTS.md).
-2. Start from the matching file in `templates/`.
+1. Follow authoring guidance on [AGENTS.md](AGENTS.md).
+2. Depending on whether it's a pipeline or a guidance skill, start with the appropriate template in `templates/`.
 3. Put the skill at `skills/<skill-name>/SKILL.md`.
 4. Folder name must match frontmatter `name`. Check format with `test_skill_quality.py`
-5. Update the skill table in `README.md` (Table to be created).
+5. Update the skill table in `README.md`.
 6. Open a PR and request a second-party review.
 
 ## Test
@@ -59,33 +36,58 @@ Both overall formatting and unit tests can be automated with CI (`.github/workfl
 - CI also scans the full git history for secrets with gitleaks.
 
 #### 3. Evaluate with and without skill
-Call the [skill-eval](skills/skill-eval/SKILL.md) skill to generate an evaluation harness for your skill. It will generate:
+<!-- Do not change this header which generates evaluation.md -->
+
+A skill should make the agent measurably better at its task. Each skill is benchmarked on 3-5 tasks by running Genie Code twice per task, once with the skill and once without, and scoring both runs the same way.
+
+The [skill-eval](skills/skill-eval/SKILL.md) skill builds the harness for this. Scores are logged to an MLflow experiment, and a paired comparison report `eval_report.md` is written to the skill's `eval/` folder. The [skill catalog](https://databricks-industry-solutions.github.io/hls-skills/guide/skills/) shows which skills have a report.
+
+##### Run an evaluation
+
+1. Ask Genie Code to use the skill-eval skill to generate an evaluation harness for your skill.
+2. Have Genie Code generate a notebook for each task, once with your skill and once without it.
+3. Use the skill-eval harness to score both notebooks. This logs the scores to MLflow and writes `eval_report.md`.
+
+##### What the `eval/` folder holds
+
 ```text
-skills/<skill-name>/
-├── SKILL.md               ← the skill itself (not modified during eval)
-└── eval/
-    ├── README.md            ← run protocol, scorer summary, ship gate
-    ├── evalset.json         ← 3-5 benchmark task definitions (task_id, dataset, query only)
-    ├── expectations.json    ← difficulty, expectations, deterministic_checks per task (keyed by task_id + dataset)
-    ├── generate_data.py     ← synthetic data generator (seeds the volume)
-    ├── scorers.py           ← deterministic + LLM judge definitions; exports the `scorers` list
-    ├── score_<skill>.py  ← (generated) scoring notebook: evaluate + compare + report
-    ├── eval_report.md       ← (after running) paired comparison report + failure taxonomy
-    ├── baseline_scores.json ← (after running) skill-OFF per-task scores
-    └── with_skill_scores.json ← (after running) skill-ON per-task scores
+skills/<skill-name>/eval/
+├── README.md               # run protocol, scorer summary, ship gate
+├── evalset.json            # 3-5 benchmark task definitions (task_id, dataset, query)
+├── expectations.json       # difficulty, expectations, deterministic checks per task
+├── generate_data.py        # synthetic data generator (seeds the volume)
+├── scorers.py              # deterministic + LLM judge definitions
+├── score_<skill>.py        # generated scoring notebook: evaluate, compare, report
+├── eval_report.md          # after running: paired comparison + failure taxonomy
+├── baseline_scores.json    # after running: skill-off per-task scores
+└── with_skill_scores.json  # after running: skill-on per-task scores
 ```
 
-Call Genie Code to generate a notebook each with and without using your skill. Then use the skill-eval skill to reference the evaluation harness to score both notebooks. The scores will be logged to a MLflow experiment and an eval_report.md will be generated in the `eval` subfolder.
+> [!WARNING]
+> **The `eval/` folder holds the answer key.** `expectations.json` contains the expected results, so `eval/` is excluded from the bundle that is synced to Unity Catalog. Do not copy it into a skill's `references/`.
 
 ## Docs site
 
-The [GitHub Pages site](https://databricks-industry-solutions.github.io/hls-skills/) is `docs/index.html` (landing page) plus an MkDocs guide under `/guide/`. Its skill pages are generated from each `SKILL.md`, so edit the skill, not the site.
+Most of the [docs site](https://databricks-industry-solutions.github.io/hls-skills/) is generated from `SKILL.md` files, `README.md`, and this file. Edit those, not the pages in `docs/`.
 
-- Preview: `uv run --isolated --with-requirements docs/requirements.txt mkdocs serve`
-- CI (`.github/workflows/pages.yml`) runs `mkdocs build --strict` on PRs, but does not deploy: the organization's IP allow list blocks Pages deployments from GitHub-hosted runners.
-- Publish (maintainers, after docs or skill changes merge): from an up-to-date `dev` checkout on an allowed network, run
-  ```
-  uv run --isolated --with-requirements docs/requirements.txt \
-      mkdocs gh-deploy --strict --no-history -m "Deploy docs from dev @ $(git rev-parse --short HEAD)"
-  ```
-  This pushes the built site to the `gh-pages` branch, which Pages serves.
+> [!WARNING]
+> Some headings in `README.md` and this file are copied to the site by name. Read [DOCS.md](DOCS.md) before renaming or re-leveling a heading, and for how to preview and publish the site.
+
+
+### Contributor License Agreement (CLA)
+<!-- Do not change this header which is excluded from contribution.md -->
+
+Thanks for contributing to HLS Skills.
+
+By submitting a contribution to this repository, you certify that:
+
+1. **You have the right to submit the contribution.**  
+   You created the content yourself, or you have the right to submit it under the project's license.
+
+2. **You grant us a license to use your contribution.**  
+   Your contribution will be licensed under the same terms as the rest of this project, and you grant the project maintainers the right to use, modify, and distribute it as part of the project.
+
+3. **You are not submitting confidential or proprietary information.**  
+   Your contribution does not include anything you don’t have permission to share publicly.
+
+If you are contributing on behalf of an organization, you confirm that you have the authority to do so. You agree to confirm these terms in your pull request. Any request that does not explicitly accept the terms will be assumed to have accepted.

@@ -1,10 +1,11 @@
-# <img src="vitalskills.png" alt="Vital Skills" width="40" height="40"> Vital Skills
+# <img src="docs/guide/assets/vitalskills.png" alt="Vital Skills" width="40" height="40"> Vital Skills
 ## Agent skills for Health & Life Sciences workflows. 
 Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
 
 
 ## Setup
-#### git clone this repo to Databricks
+<!-- Do not change this header which generates setup.md -->
+#### Git clone this repo to Databricks
 Git clone this repo onto Databricks. Then open Genie Code and click on Customizations to add the cloned folder. It should point to the `skills` subfolder
 
 #### Optional: Register and sync the skills to [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/)
@@ -19,7 +20,6 @@ uv run sync_skills_git2unity.py --dry-run
 uv run sync_skills_git2unity.py --catalog <your_catalog> --schema <your_schema> --warehouse-id <your_sql_wh>
 ```
 You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehouses > select warehouse > Name. It should list the warehouse ID. More details [here](https://www.getorchestra.io/guides/how-to-retrieve-your-databricks-warehouse-id).
-
 
 
 ## Available Skills
@@ -65,6 +65,21 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Repo layout and skill templates are inspired by the patterns in [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills)
 
+## Contributors
+
+- [Yen Low](mailto:yen.low@databricks.com)
+- [May Merkle-Tan](mailto:may.merkletan@databricks.com)
+- [Praneeth Paikray](mailto:praneeth.paikray@databricks.com)
+- [Vimal Thomas Joseph](mailto:vimalthomas.joseph@databricks.com)
+- [Zachary Phillips](mailto:zack.phillips@databricks.com)
+- [Peter Hawkins](mailto:peter.hawkins@databricks.com)
+- [Rohan Parikh](mailto:rohan.parikh@databricks.com)
+
+To add yourself, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Acknowledgements
+
+Thanks to Eli Swanson, Douglas Moore, Parastou and Khagay for their advice.
 
 ## License
 

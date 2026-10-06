@@ -9,13 +9,10 @@ from pathlib import Path
 
 import yaml
 from mkdocs.structure.files import File
+from repo_links import BRANCH, REPO, absolute_links
 
-REPO = "https://github.com/databricks-industry-solutions/hls-skills"
-BRANCH = "dev"
 SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
-LINK = re.compile(r"(!?\[[^\]]*\]\()([^)\s]+)(\))")
-EXTERNAL = re.compile(r"^([a-z][a-z0-9+.-]*:|#|/)", re.IGNORECASE)
 
 _skills = []
 
@@ -43,26 +40,6 @@ def _load_skills():
             }
         )
     return skills
-
-
-def _absolute_links(body, folder):
-    """Point relative links at GitHub; the skill's sibling files are not part of the site."""
-    base = f"{REPO}/blob/{BRANCH}/skills/{folder}/"
-
-    def rewrite(m):
-        target = m.group(2)
-        if EXTERNAL.match(target):
-            return m.group(0)
-        return f"{m.group(1)}{base}{target.removeprefix('./')}{m.group(3)}"
-
-    lines, fenced = [], False
-    for line in body.splitlines(keepends=True):
-        if line.lstrip().startswith(("```", "~~~")):
-            fenced = not fenced
-        elif not fenced:
-            line = LINK.sub(rewrite, line)
-        lines.append(line)
-    return "".join(lines)
 
 
 def _eval_link(skill):
@@ -103,7 +80,7 @@ def _skill_page(skill):
         links.append(f"[Evaluation {evaluation[0].lower()}]({evaluation[1]})")
     box = f'!!! abstract "Skill details"\n    {details}\n\n    {" · ".join(links)}\n\n'
 
-    body = _absolute_links(skill["body"], folder).lstrip("\n")
+    body = absolute_links(skill["body"], f"skills/{folder}").lstrip("\n")
     title, _, rest = body.partition("\n")
     if title.startswith("# "):
         rest = rest.lstrip("\n")

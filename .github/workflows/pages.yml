@@ -7,7 +7,7 @@ name: Docs
 #
 # This workflow does not deploy: the organization's IP allow list blocks the Pages
 # API from GitHub-hosted runners. A maintainer publishes from an allowed machine
-# with `mkdocs gh-deploy` (see "Docs site" in CONTRIBUTING.md); Pages serves the
+# with `mkdocs gh-deploy` (see DOCS.md); Pages serves the
 # gh-pages branch.
 # Build locally: uv run --isolated --with-requirements docs/requirements.txt mkdocs serve
 
@@ -17,6 +17,7 @@ on:
     paths:
       - docs/**
       - skills/**
+      - "*.md"
       - mkdocs.yml
       - .github/workflows/pages.yml
   push:
