@@ -1,53 +1,22 @@
-{
-  "tasks": [
-    {
-      "task_id": "se-001",
-      "difficulty": "easy",
-      "query": "Run a differential expression analysis on the bulk RNA-seq data at /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/ds1_counts.csv with metadata ds1_metadata.csv (same folder). Compare treated vs control. Export the full results table with adjusted p-values as a CSV to /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/out/<ARM>/se-001/.",
-      "dataset": "ds1",
-      "expectations": {
-        "padj_column": true,
-        "planted_in_top60_min": 30,
-        "results_csv": true
-      }
-    },
-    {
-      "task_id": "se-002",
-      "difficulty": "hard",
-      "query": "The bulk RNA-seq dataset at /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/ds2_counts.csv (metadata ds2_metadata.csv, same folder) was sequenced in two batches. Run a proper differential expression analysis of treated vs control that accounts for the batch effect, verify sample clustering with PCA, and export results CSV to /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/out/<ARM>/se-002/.",
-      "dataset": "ds2",
-      "expectations": {
-        "design_includes_batch": true,
-        "pca_done": true,
-        "padj_column": true,
-        "planted_in_top60_min": 25,
-        "results_csv": true
-      }
-    },
-    {
-      "task_id": "se-003",
-      "difficulty": "hard",
-      "query": "Run a complete bulk RNA-seq differential expression workflow on /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/ds1_counts.csv with ds1_metadata.csv: standard filtering, model fit, treated vs control test, a PCA QC plot and a volcano plot saved as PNGs, the full results CSV, and a filtered significant-genes CSV (padj < 0.05). Write all artifacts to /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/out/<ARM>/se-003/.",
-      "dataset": "ds1",
-      "expectations": {
-        "results_csv": true,
-        "significant_genes_csv": true,
-        "pca_plot": true,
-        "volcano_plot": true,
-        "padj_column": true
-      }
-    },
-    {
-      "task_id": "se-004",
-      "difficulty": "edge",
-      "query": "Run differential expression (treated vs control) on /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/ds4_counts.csv using ds4_metadata.csv for the sample annotations, and export the results CSV to /Volumes/serverless_lakebase_praneeth_catalog/skill_eval/rnaseq_data/out/<ARM>/se-004/.",
-      "dataset": "ds4",
-      "expectations": {
-        "fit_succeeded": true,
-        "results_csv": true,
-        "padj_column": true,
-        "planted_in_top60_min": 25
-      }
-    }
-  ]
-}
+[
+  {
+    "task_id": "hls-rnaseq-001",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_001",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_001 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-001/."
+  },
+  {
+    "task_id": "hls-rnaseq-002",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_002",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_002 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-002/."
+  },
+  {
+    "task_id": "hls-rnaseq-003",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_003",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_003 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-003/."
+  },
+  {
+    "task_id": "hls-rnaseq-004",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/task_004",
+    "query": "Perform a bulk RNA-seq and pathway enrichment analysis using the data in /Volumes/hls_amer_catalog/vital_skills/eval/task_004 to understand skeletal-muscular differences between the young and the old. Save the outputs under /Volumes/hls_amer_catalog/vital_skills/eval/out/<ARM>/hls-rnaseq-004/."
+  }
+]

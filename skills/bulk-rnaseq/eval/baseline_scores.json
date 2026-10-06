@@ -1,50 +1,30 @@
 {
-  "se-001": {
-    "results_csv_check": true,
-    "padj_check": true,
-    "batch_check": true,
-    "pca_done_check": true,
-    "pca_plot_check": true,
-    "volcano_plot_check": true,
-    "sig_csv_check": true,
-    "fit_check": true,
-    "planted_check": true,
-    "task_completion": false
+  "hls-rnaseq-001": {
+    "scientific_method": false,
+    "required_artifacts_present": false,
+    "notebook_source_valid": true,
+    "required_actions_present": false,
+    "expectations_guidelines": false
   },
-  "se-002": {
-    "results_csv_check": true,
-    "padj_check": true,
-    "batch_check": true,
-    "pca_done_check": true,
-    "pca_plot_check": true,
-    "volcano_plot_check": true,
-    "sig_csv_check": true,
-    "fit_check": true,
-    "planted_check": true,
-    "task_completion": false
+  "hls-rnaseq-002": {
+    "scientific_method": false,
+    "required_artifacts_present": false,
+    "notebook_source_valid": true,
+    "required_actions_present": false,
+    "expectations_guidelines": true
   },
-  "se-003": {
-    "results_csv_check": true,
-    "padj_check": true,
-    "batch_check": true,
-    "pca_done_check": true,
-    "pca_plot_check": true,
-    "volcano_plot_check": true,
-    "sig_csv_check": true,
-    "fit_check": true,
-    "planted_check": true,
-    "task_completion": false
+  "hls-rnaseq-003": {
+    "scientific_method": false,
+    "required_artifacts_present": false,
+    "notebook_source_valid": true,
+    "required_actions_present": false,
+    "expectations_guidelines": true
   },
-  "se-004": {
-    "results_csv_check": true,
-    "padj_check": true,
-    "batch_check": true,
-    "pca_done_check": true,
-    "pca_plot_check": true,
-    "volcano_plot_check": true,
-    "sig_csv_check": true,
-    "fit_check": true,
-    "planted_check": true,
-    "task_completion": true
+  "hls-rnaseq-004": {
+    "scientific_method": false,
+    "required_artifacts_present": false,
+    "notebook_source_valid": true,
+    "required_actions_present": false,
+    "expectations_guidelines": false
   }
 }

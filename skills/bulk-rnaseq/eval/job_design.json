@@ -1,0 +1,76 @@
+{
+  "run_name": "paired-rnaseq-pathway-skill-eval",
+  "tasks": [
+    {
+      "task_key": "baseline_arm",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/yen.low@databricks.com/.assistant/skills/hls-skills/skills/bulk-rnaseq/eval/run_baseline_arm",
+        "source": "WORKSPACE"
+      },
+      "environment_key": "baseline_env",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "with_skills_arm",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/yen.low@databricks.com/.assistant/skills/hls-skills/skills/bulk-rnaseq/eval/run_with_skills_arm",
+        "source": "WORKSPACE"
+      },
+      "environment_key": "skills_env",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "score_notebooks_and_outputs",
+      "depends_on": [
+        {"task_key": "baseline_arm"},
+        {"task_key": "with_skills_arm"}
+      ],
+      "run_if": "ALL_SUCCESS",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/yen.low@databricks.com/.assistant/skills/hls-skills/skills/bulk-rnaseq/eval/score_bulk_rnaseq_and_pathways",
+        "source": "WORKSPACE"
+      },
+      "environment_key": "score_env",
+      "timeout_seconds": 1800
+    }
+  ],
+  "environments": [
+    {
+      "environment_key": "baseline_env",
+      "spec": {
+        "client": "4",
+        "dependencies": [
+          "pandas>=2.2,<3",
+          "numpy<3",
+          "scipy",
+          "scikit-learn",
+          "statsmodels",
+          "matplotlib"
+        ]
+      }
+    },
+    {
+      "environment_key": "skills_env",
+      "spec": {
+        "client": "4",
+        "dependencies": [
+          "pydeseq2==0.5.4",
+          "gseapy",
+          "networkx",
+          "scikit-learn",
+          "matplotlib"
+        ]
+      }
+    },
+    {
+      "environment_key": "score_env",
+      "spec": {
+        "client": "4",
+        "dependencies": [
+          "mlflow[databricks]>=3.5.0",
+          "databricks-sdk"
+        ]
+      }
+    }
+  ]
+}

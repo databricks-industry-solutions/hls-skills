@@ -67,8 +67,10 @@ Synthetic datasets for benchmark tasks are stored in a Unity Catalog volume, sep
 #    skills/<skill>/eval/expectations.json  — task_id, dataset, difficulty, expectations, deterministic_checks
 #    If tasks need data, write generate_data.py and seed the volume:
 #    python3 skills/<skill>/eval/generate_data.py
-# 2. Skill OFF: run each task in a fresh Genie Code chat, save outputs
-# 3. Skill ON:  same tasks, fresh chats, save outputs
+# 2. BEFORE reading the target skill, use a zero-inheritance session to author
+#    one linear baseline notebook that runs all tasks sequentially.
+# 3. In a separate session, load the target skill (without eval/) and author
+#    one linear candidate notebook that runs the same tasks sequentially.
 # 4. Generate the scoring notebook (Steps 4-6 in Workflow):
 #    - imports scorers from scorers.py (not redefined inline)
 #    - loads task queries from evalset.json (not hardcoded)
@@ -76,7 +78,9 @@ Synthetic datasets for benchmark tasks are stored in a Unity Catalog volume, sep
 #    - extracts scores via compare_runs.extract_scores()
 #    - calls compare_runs.main() for text report
 #    See "Steps 4-6: Generate the Scoring Notebook" in Workflow below.
-# 5. Error-analyze the losses (references/error-analysis.md), write the report
+# 5. Create and run one combined serverless job: two independent arm tasks,
+#    then scoring with depends_on both arms (references/combined-job.md).
+# 6. Error-analyze the losses (references/error-analysis.md), write the report
 #    to eval/eval_report.md (references/report-template.md) — do NOT modify the skill's SKILL.md
 ```
 
@@ -119,13 +123,15 @@ If the tasks require data, write a `generate_data.py` in the same `eval/` folder
 
 ### Step 2: Run Baseline Sessions (Skill OFF)
 
-Remove/disable the skill (move the folder out of `.assistant/skills/`). For each task: open a **fresh** Genie Code chat, paste the query verbatim, let it finish, and save the output (notebook link, result table, or exported artifact). Record any wrong turns — these become baseline traces.
+The baseline must be authored before its context reads the target skill. Start a **zero-inheritance** agent/chat that receives only the queries from `evalset.json`, dataset/output paths, and generic execution constraints. Do not pass parent conversation history, `expectations.json`, scorer rules, prior outputs, or any target-skill file. Disabling a skill after reading it does not remove leaked knowledge; discard that baseline and restart clean.
 
-Guardrail: fresh chat per task. Carry-over context contaminates the comparison.
+Have the clean baseline author create one linear notebook with independent sections that tackle all benchmark tasks sequentially as if from scratch. Do not introduce shared helper functions derived from the target skill. Save the notebook, runtime outputs, artifacts, and wrong turns. End the baseline session before opening the target skill.
+
+Full isolation protocol: `references/combined-job.md`.
 
 ### Step 3: Run Candidate Sessions (Skill ON)
 
-Reinstall the skill **without its `eval/` folder** (copy `SKILL.md` plus `references/`, `assets/`, `scripts/` only), hard-refresh, repeat the identical queries in fresh chats. An installed `eval/` puts the answer key next to the skill the agent is reading. Save outputs the same way. Do not re-prompt or steer differently than baseline — steering invalidates the pair.
+In a separate candidate-authoring session, install/read the skill **without its `eval/` folder** (copy `SKILL.md` plus `references/`, `assets/`, `scripts/` only), then create one linear notebook with independent sections for the identical tasks in the identical order. An installed `eval/` puts the answer key next to the skill the agent is reading. Save outputs the same way. Do not re-prompt or steer differently than baseline — steering invalidates the pair.
 
 ### Steps 4–6: Generate the Scoring Notebook
 
@@ -141,6 +147,8 @@ Steps 4 (deterministic scoring), 5 (LLM judges), and 6 (paired comparison) are e
 | `expectations.json` | Difficulty labels, expected facts, deterministic checks |
 
 The notebook runs `mlflow.genai.evaluate()` for both arms into the same experiment, extracts per-task boolean scores via `compare_runs.extract_scores()`, saves the score JSONs, then calls `compare_runs.main()` with `--format text` for the paired comparison report.
+
+After both arm notebooks and the scoring notebook exist, create one combined serverless job with the two arms as independent root tasks and scoring as an `ALL_SUCCESS` task that depends on both. Validate and submit it with `scripts/run_combined_job.py`; see `references/combined-job.md`. The scoring rows should include each task's notebook source section as well as its runtime response, action log, and artifact manifest.
 
 **`scorers.py` contract**: the skill author writes one export, the `scorers` list. Nothing is appended to it at scoring time — extraction and bool coercion live in the shared `compare_runs.py`, so every skill scores the same way.
 
@@ -218,6 +226,7 @@ python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candid
 - **Scoring notebook** (`score_<skill>.py`) in `eval/` — imports scorers from `scorers.py`, runs `mlflow.genai.evaluate()` for both arms, extracts scores via `compare_runs.extract_scores()`, calls `compare_runs.main()` with `--format text`, and prints the paired comparison report
 - Two MLflow runs in one experiment (`baseline`, `with_skill`), each with per-task scorer results and linked traces
 - Score JSONs (`baseline_scores.json`, `with_skill_scores.json`) in `eval/` — consumed by `compare_runs.py`
+- Combined job design (`job_design.json`) — two independent notebook arms followed by dependent scoring
 - Console comparison from `scripts/compare_runs.py`: per-task win/regression/tie-pass/tie-fail, per-metric flips, win-rate, ship-gate verdict
 - Failure taxonomy: named failure modes with counts and example task_ids
 - Evaluation report (`eval_report.md`) in `eval/` — paired comparison results, failure taxonomy, verdict, limitations, and reproduce instructions. Do NOT modify the evaluated skill's `SKILL.md`.
@@ -244,7 +253,7 @@ python3 skills/skill-eval/scripts/compare_runs.py prev_candidate.json new_candid
 5. Confirm with the user before any run > 20 tasks or repeated judge calls (judge cost is real).
 6. Do not retry failed judge/scorer calls more than 3 times; inspect the error first.
 7. Small samples (3-5 tasks) show direction, not significance — say so in the report.
-8. **Information isolation**: When generating a notebook to execute benchmark tasks (Steps 2-3), the agent must read **only `evalset.json`** from the skill's `eval/` folder. It must NOT read `expectations.json`, `generate_data.py`, reference notebooks (`with_skills_*`, `no_skills_*`), or any other file in `eval/` that contains expected answers, ground truth, or evaluation criteria — doing so contaminates the run by leaking the answer key into the generation context. The agent MAY import `scorers.py` when generating the **scoring** notebook (Steps 4-5), since scoring happens after task execution is complete and requires the scorer definitions. Keep `eval/` out of the installed skill tree in both arms (Step 3): the scoring notebook reads it from a repo checkout outside `.assistant/skills/`. `sync_skills_git2unity.py` never publishes `eval/`.
+8. **Information isolation**: The baseline notebook must be authored in a zero-inheritance context **before that context reads any target-skill content**. Its author may read only `evalset.json` from the skill's `eval/` folder plus dataset/output paths and generic execution constraints. It must NOT receive parent conversation history, read the target `SKILL.md`, or read `expectations.json`, `generate_data.py`, scorer rules, reference notebooks, prior outputs, or any other answer-bearing file. The candidate author may read the target skill but still must not read answer-bearing eval files. The scoring notebook may import `scorers.py` after both arms finish. Keep `eval/` out of the installed target skill in both arms. Full protocol: `references/combined-job.md`.
 
 ## Evaluation
 
@@ -267,8 +276,11 @@ Findings that changed this skill:
 - `references/error-analysis.md` — open/axial coding worksheet, HLS failure-mode seeds
 - `references/report-template.md` — the `eval/eval_report.md` template for evaluated skills
 - `references/scoring-notebook.md` — scoring notebook generation guide: cell structure, imports, `scorers.py` contract
+- `references/combined-job.md` — uncontaminated baseline authoring and the two-arms-then-score serverless DAG
 - `scripts/compare_runs.py` — MLflow score extraction (`extract_scores`) and paired per-task comparison (win/loss/flip, win-rate); stdlib only
+- `scripts/run_combined_job.py` — validates and submits the combined three-task serverless evaluation job
 - `tests/test_compare_runs.py` — unit tests for the comparison logic
+- `tests/test_run_combined_job.py` — unit tests for combined-job DAG validation
 
 ### Per-skill eval artifacts (in each skill's `eval/` folder)
 

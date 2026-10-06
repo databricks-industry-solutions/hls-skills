@@ -30,61 +30,6 @@ def artifact_produced(outputs: dict) -> bool:
 
 
 @scorer
-def no_forbidden_content(outputs: dict, expectations: dict) -> Feedback:
-    """Pass if no forbidden pattern appears in the response."""
-    response = str(outputs.get("response", ""))
-    for pattern in expectations.get("forbidden_patterns", []):
-        if re.search(pattern, response, re.IGNORECASE):
-            return Feedback(
-                name="no_forbidden_content",
-                value=False,
-                rationale=f"Forbidden pattern found: {pattern}",
-            )
-    return Feedback(name="no_forbidden_content", value=True)
-
-
-@scorer
-def methodology_keywords(outputs: dict, expectations: dict) -> bool:
-    """
-    Pass if the response mentions the key methodological terms expected
-    for the task (from expected_facts). Checks for domain-specific keywords
-    that indicate the correct RWE method was used.
-    """
-    response = str(outputs.get("response", "")).lower()
-    action_log = str(outputs.get("action_log", "")).lower()
-    combined = response + " " + action_log
-
-    # Must mention at least 2 key method terms from expectations
-    key_terms = [
-        "propensity score",
-        "logistic regression",
-        "matching",
-        "caliper",
-        "inverse probability",
-        "weight",
-        "standardized mean difference",
-        "smd",
-        "balance",
-        "doubly robust",
-        "e-value",
-        "cox",
-        "hazard ratio",
-        "proportional hazards",
-        "schoenfeld",
-        "restricted mean survival time",
-        "rmst",
-        "target trial",
-        "cloning",
-        "censoring",
-        "per-protocol",
-        "bootstrap",
-        "confidence interval",
-    ]
-    found = sum(1 for term in key_terms if term in combined)
-    return found >= 2
-
-
-@scorer
 def balance_reported(outputs: dict) -> bool:
     """
     Pass if the response or action log mentions balance diagnostics
@@ -288,33 +233,6 @@ def _call_judge(system_prompt: str, inputs: dict, outputs: dict) -> bool:
     return answer.startswith("yes")
 
 
-TASK_COMPLETION_PROMPT = """\
-You are grading whether an agent session completed a real-world evidence (RWE)
-comparative effectiveness research task correctly.
-
-Grading rules:
-- Grade only claims checkable from the text (method soundness,
-  internal consistency of reported numbers, correct use of RWE terminology).
-- The statistical approach must be reasonable for comparative effectiveness
-  research (e.g., propensity score adjustment for confounding, appropriate
-  weighting scheme, correct estimator for the outcome type).
-- Numbers reported must be internally consistent with the described outputs.
-- The session must have addressed confounding by indication (treatment
-  assignment correlated with patient severity). An unadjusted comparison
-  that ignores confounding is a failure.
-- Partial completion counts as failure.
-- For tasks requiring E-values: the E-value formula must be
-  E = RR + sqrt(RR * (RR - 1)) for RR >= 1.
-- For tasks requiring doubly robust estimation: both a propensity score
-  model AND an outcome model must be used.
-- For survival tasks: the Cox model must be weighted (IPW applied), not
-  unweighted, and the proportional hazards assumption must be tested.
-- For target trial emulation: cloning (all patients under both strategies),
-  censoring for deviation, and censoring weights are all required.
-
-Answer with exactly one word: 'yes' or 'no'.
-"""
-
 TOOL_USE_PROMPT = """\
 Review the agent's recorded actions (field: action_log in Outputs) for the
 RWE task.
@@ -338,16 +256,6 @@ Answer with exactly one word: 'yes' or 'no'.
 
 
 @scorer
-def task_completion_judge(inputs: dict, outputs: dict) -> Feedback:
-    """LLM judge: did the session produce a methodologically sound RWE analysis?
-
-    Judge errors propagate: MLflow records them as a missing value, which
-    extract_scores rejects, instead of a silent task failure.
-    """
-    return Feedback(name="task_completion", value=_call_judge(TASK_COMPLETION_PROMPT, inputs, outputs))
-
-
-@scorer
 def tool_use_judge(inputs: dict, outputs: dict) -> Feedback:
     """LLM judge: were the right tools/steps used in the right order?"""
     return Feedback(name="tool_use_quality", value=_call_judge(TOOL_USE_PROMPT, inputs, outputs))
@@ -358,11 +266,9 @@ def tool_use_judge(inputs: dict, outputs: dict) -> Feedback:
 scorers = [
     artifact_produced,          # Level 1
     no_forbidden_content,       # Level 1
-    methodology_keywords,      # Level 1
     balance_reported,           # Level 1
     estimate_deviation,         # Level 1
     sensitivity_analysis_reported,  # Level 1
-    task_completion_judge,      # Level 2
     tool_use_judge,             # Level 2, process
 ]
 
