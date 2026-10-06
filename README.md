@@ -34,6 +34,7 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 | **phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
 | **payer-provider-measure-catalog** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
 | **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
+| **accelerators** | Steer to HLS solution accelerators (Pixels, Genesis Workbench) with the smallest working path, install prerequisites and known pitfalls; others can add accelerators from a template |
 | **skill-eval** | Benchmark a skill: paired runs with and without it, MLflow `genai.evaluate` scoring, per-task win/loss comparison, failure taxonomy, standardized Evaluation report |
 
 ## Repository Layout
