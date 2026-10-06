@@ -28,9 +28,10 @@ site) are recorded here. Format follows
   copied text become admonitions.
 - Landing page: skills are listed in a table instead of cards, filtered by four
   categories (Bioinformatics, Clinical RWE, Payer and provider, Others); the
-  Content type filter is removed. Each row links "See more" to the skill's guide
-  page and "See code" to GitHub, and the accelerators skill is listed. "Get
-  started" is renamed "Quick start".
+  Content type filter is removed. Each row has two icon links, under a Links
+  column header: a book to the skill's guide page and a folder to its GitHub
+  folder. The accelerators skill is listed. "Get started" is renamed
+  "Quick start".
 - Guide header shows the Vital Skills logo; the Databricks logo moves to the
   footer, next to the license line (`docs/overrides/partials/copyright.html`).
   `vitalskills.png` moves from the repo root to `docs/guide/assets/`.
