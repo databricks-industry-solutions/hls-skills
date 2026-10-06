@@ -16,7 +16,6 @@ license: Databricks
 ---
 
 # Cohort study design analysis in Python for Real-World Evidence
-## Overview
 
 ## Overview
 
