@@ -4,6 +4,39 @@ All notable changes to the `docs/` landing page (the Vital Skills GitHub Pages
 site) are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- `docs/hooks/repo_sections.py`: a guide page can copy a repository Markdown
+  file, or one section of it, with `<!-- include: FILE#Heading -->`, and leave
+  out sections with `omit="Heading"`. Headings are shifted to fit the page,
+  relative links point at GitHub, and a missing file or heading fails the build.
+- `DOCS.md` at the repo root: where each page comes from, which headings are
+  copied by name, and how to preview and publish. It replaces the Docs site
+  section of CONTRIBUTING.md, which now points to it.
+- FAQ and Links guide pages.
+- README: Contributors and Acknowledgements sections.
+
+### Changed
+- Getting started is renamed Setup (`/guide/setup/`) and now copies README.md's
+  Setup section, Contributing copies CONTRIBUTING.md without its CLA section,
+  and Evaluation copies section 3 of CONTRIBUTING.md's Test section, instead of
+  keeping their own versions. On Contributing, section 3 is replaced by a link to
+  Evaluation (`replace="Heading=Markdown"`). GitHub alerts (`> [!WARNING]`) in
+  copied text become admonitions.
+- Landing page: skills are listed in a table instead of cards, filtered by four
+  categories (Bioinformatics, Clinical RWE, Payer and provider, Others); the
+  Content type filter is removed. Each row links "See more" to the skill's guide
+  page and "See code" to GitHub, and the accelerators skill is listed. "Get
+  started" is renamed "Quick start".
+- Guide header shows the Vital Skills logo; the Databricks logo moves to the
+  footer, next to the license line (`docs/overrides/partials/copyright.html`).
+  `vitalskills.png` moves from the repo root to `docs/guide/assets/`.
+- `docs/hooks/repo_links.py`: link rewriting shared by both hooks. Relative
+  images now point at the raw file so they render.
+- `.github/workflows/pages.yml`: PRs that change root Markdown files also build
+  the site.
+
 ## [0.1.1] — 2026-10-06
 
 ### Changed

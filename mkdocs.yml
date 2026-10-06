@@ -1,6 +1,8 @@
 # Docs site. docs/index.html is the hand-built landing page and is copied as-is;
 # MkDocs renders the guide under /guide/ and generates one page per skill from
-# skills/*/SKILL.md (see docs/hooks/skill_pages.py). Build: see docs/requirements.txt.
+# skills/*/SKILL.md (see docs/hooks/skill_pages.py). Guide pages can pull sections
+# of README.md and other repo files with `<!-- include: FILE#Heading -->`
+# (see docs/hooks/repo_sections.py). Build: see docs/requirements.txt.
 strict: true
 site_name: Vital Skills
 site_description: Agent skills for Health & Life Sciences workflows on Databricks
@@ -12,20 +14,23 @@ copyright: Licensed under the Databricks License
 
 exclude_docs: |
   hooks/
+  overrides/
   requirements.txt
 
 hooks:
   - docs/hooks/skill_pages.py
+  - docs/hooks/repo_sections.py
 
 extra_css:
   - guide/stylesheets/extra.css
 
 extra:
-  homepage: https://databricks-industry-solutions.github.io/hls-skills/
+  homepage: ./
 
 theme:
   name: material
-  logo: guide/assets/databricks-logo.svg
+  custom_dir: docs/overrides
+  logo: guide/assets/vitalskills.png
   favicon: guide/assets/databricks-logo.svg
   font:
     text: DM Sans
@@ -76,9 +81,11 @@ markdown_extensions:
 
 # The Skills entry is expanded at build time into the catalog plus one page per skill.
 nav:
-  - Overview: guide/index.md
-  - Getting started: guide/getting-started.md
+#  - Overview: guide/index.md
+  - Setup: guide/setup.md
   - Skills: guide/skills/index.md
   - Evaluation: guide/evaluation.md
   - Contributing: guide/contributing.md
+  - FAQ: guide/faq.md
+  - Links: guide/links.md
   - Changelog: CHANGELOG.md

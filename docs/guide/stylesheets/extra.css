@@ -27,6 +27,18 @@
   height: 1.6rem;
 }
 
+.vs-copyright {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.vs-footer-logo img {
+  display: block;
+  height: 1.4rem;
+  width: auto;
+}
+
 .md-typeset h1 {
   color: var(--md-default-fg-color);
   font-weight: 600;

@@ -4,13 +4,13 @@ Vital Skills is a collection of agent skills for Health & Life Sciences workflow
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch: **Getting started**
+-   :material-rocket-launch: **Setup**
 
     ---
 
     Add the skills to Genie Code, or sync them to Unity Catalog.
 
-    [:octicons-arrow-right-24: Set up](getting-started.md)
+    [:octicons-arrow-right-24: Set up](setup.md)
 
 -   :material-view-grid: **Skill catalog**
 
