@@ -1,6 +1,6 @@
 name: Bug report
 description: A skill gives wrong guidance, its code fails, or repo tooling breaks.
-labels: ["bug"]
+labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:

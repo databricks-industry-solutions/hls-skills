@@ -1,6 +1,6 @@
 name: Skill request
 description: Propose a new HLS skill or a major change to an existing one.
-labels: ["enhancement"]
+labels: ["skill-request", "needs-triage"]
 body:
   - type: markdown
     attributes:
