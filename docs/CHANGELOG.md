@@ -4,6 +4,15 @@ All notable changes to the `docs/` landing page (the Vital Skills GitHub Pages
 site) are recorded here. Format follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.1.1] — 2026-10-06
+
+### Changed
+- Publishing: the site is deployed with `mkdocs gh-deploy` to the `gh-pages`
+  branch, and Pages serves `gh-pages` / root. The Actions deploy job was removed
+  because the organization's IP allow list blocks the Pages API from
+  GitHub-hosted runners. `.github/workflows/pages.yml` still runs
+  `mkdocs build --strict` on PRs and on pushes to `dev`.
+
 ## [0.1.0] — 2026-10-06
 
 Adds a documentation section under `/guide/`, built with MkDocs Material, and

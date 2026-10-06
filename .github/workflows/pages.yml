@@ -1,9 +1,14 @@
 name: Docs
 
-# Builds the GitHub Pages site on every PR that can change it, and deploys it on
-# pushes to dev. The site is docs/index.html (landing page, copied as-is) plus the
-# MkDocs guide under /guide/, whose skill pages are generated from skills/*/SKILL.md.
-# Deploying requires Settings > Pages > Source: GitHub Actions.
+# Builds the GitHub Pages site with --strict on every PR that can change it and on
+# pushes to dev, so broken links or nav fail here. The site is docs/index.html
+# (landing page, copied as-is) plus the MkDocs guide under /guide/, whose skill
+# pages are generated from skills/*/SKILL.md.
+#
+# This workflow does not deploy: the organization's IP allow list blocks the Pages
+# API from GitHub-hosted runners. A maintainer publishes from an allowed machine
+# with `mkdocs gh-deploy` (see "Docs site" in CONTRIBUTING.md); Pages serves the
+# gh-pages branch.
 # Build locally: uv run --isolated --with-requirements docs/requirements.txt mkdocs serve
 
 on:
@@ -16,15 +21,13 @@ on:
       - .github/workflows/pages.yml
   push:
     branches: [dev]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
-# Never cancel a deploy halfway; superseded PR builds can be cancelled.
 concurrency:
-  group: pages-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   UV_VERSION: "0.11.32"
@@ -44,23 +47,3 @@ jobs:
           version: ${{ env.UV_VERSION }}
       - name: mkdocs build --strict
         run: uv run --isolated --with-requirements docs/requirements.txt mkdocs build --strict
-      - if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
-        with:
-          path: site
-
-  deploy:
-    name: Deploy to GitHub Pages
-    if: github.event_name != 'pull_request'
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1

@@ -38,3 +38,14 @@ uv run --isolated --with-requirements docs/requirements.txt mkdocs serve
 ```
 
 The skill pages are generated from each `SKILL.md`, so edit the skill, not the site. Full details are in [CONTRIBUTING.md](https://github.com/databricks-industry-solutions/hls-skills/blob/dev/CONTRIBUTING.md).
+
+## Publish this site
+
+The site is published by a maintainer, not by CI, because the GitHub organization's IP allow list blocks Pages deployments from GitHub-hosted runners. After docs or skill changes merge, run this from an up-to-date `dev` checkout on an allowed network:
+
+```bash
+uv run --isolated --with-requirements docs/requirements.txt \
+    mkdocs gh-deploy --strict --no-history -m "Deploy docs from dev @ $(git rev-parse --short HEAD)"
+```
+
+This builds the site and pushes it to the `gh-pages` branch, which GitHub Pages serves.
