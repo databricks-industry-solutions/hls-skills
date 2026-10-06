@@ -24,18 +24,20 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 
 ## Available Skills
 
-| Skill | Description |
-|-------|-------------|
-| **sc-rnaseq** | Analyze single-cell RNA-seq data from .h5ad files |
-| **bulk-rnaseq** | Analyze for top differentially expressed genes (DEG) from bulk RNA-seq count data |
-| **pathway-enrichment-analysis** | Pathway enrichment for RNA-seq. Choose from ORA or GSEA |
-| **cohort-builder** | Build a defensible, reproducible, feasibility-checked patient cohort from structured coded data and free-text clinical notes — grounds codes, surfaces threshold + code/note combine choices, never fabricates citations |
-| **rwe-cohortstudy** | Perform comparative effectiveness research (aka cohort study design) with appropriate propensity score adjustment, including matching and IPW |
-| **phi-deidentifier** | De-identify a structured Unity Catalog table under HIPAA Safe Harbor — enforces k-anonymity on quasi-identifiers and applies a governed view over the raw table (no second PHI copy) |
-| **payer-provider-measure-catalog** | Canonical healthcare payer+provider measure catalog (care delivery, access, capacity, claims, gap-in-care, payer economics incl. MLR/PMPM) + generator that maps a customer's sources to Unity Catalog metric views |
-| **oss-models** | Package, register, validate, and deploy open-source HLS models (Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz) on Databricks |
-| **accelerators** | Steer to HLS solution accelerators (Pixels, Genesis Workbench) with the smallest working path, install prerequisites and known pitfalls; others can add accelerators from a template |
-| **skill-eval** | Benchmark a skill: paired runs with and without it, MLflow `genai.evaluate` scoring, per-task win/loss comparison, failure taxonomy, standardized Evaluation report |
+<!-- skill-catalog:start -->
+| Skill | Category | What it does |
+|-------|----------|--------------|
+| [**sc-rnaseq**](skills/sc-rnaseq/SKILL.md) | Bioinformatics | Analyze single-cell RNA-seq data from .h5ad files. |
+| [**bulk-rnaseq**](skills/bulk-rnaseq/SKILL.md) | Bioinformatics | Find top differentially expressed genes from bulk RNA-seq counts. |
+| [**pathway-enrichment-analysis**](skills/pathway-enrichment-analysis/SKILL.md) | Bioinformatics | Pathway enrichment for RNA-seq (ORA or GSEA). |
+| [**oss-models**](skills/oss-models/SKILL.md) | Bioinformatics | Package, register, validate & deploy open-source HLS models on Databricks — e.g. TEDDY and Geneformer. |
+| [**cohort-builder**](skills/cohort-builder/SKILL.md) | Clinical RWE | Build a reproducible, feasibility-checked patient cohort from coded + free-text clinical data. |
+| [**rwe-cohortstudy**](skills/rwe-cohortstudy/SKILL.md) | Clinical RWE | Comparative effectiveness (cohort study) with propensity adjustment (matching, IPW). |
+| [**payer-provider-measure-catalog**](skills/payer-provider-measure-catalog/SKILL.md) | Payer and provider | Canonical payer+provider measure catalog mapped to Unity Catalog metric views. |
+| [**phi-deidentifier**](skills/phi-deidentifier/SKILL.md) | Payer and provider | HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view). |
+| [**skill-eval**](skills/skill-eval/SKILL.md) | Others | Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy. |
+| [**accelerators**](skills/accelerators/SKILL.md) | Others | Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step. |
+<!-- skill-catalog:end -->
 
 ## Repository Layout
 
@@ -65,13 +67,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Repo layout and skill templates are inspired by the patterns in [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills)
 
+## License
+
+Licensed under the Databricks License. See [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md).
+
 ## Contributors
 
 - [Yen Low](mailto:yen.low@databricks.com)
+- [Zachary Phillips](mailto:zack.phillips@databricks.com)
 - [May Merkle-Tan](mailto:may.merkletan@databricks.com)
 - [Praneeth Paikray](mailto:praneeth.paikray@databricks.com)
 - [Vimal Thomas Joseph](mailto:vimalthomas.joseph@databricks.com)
-- [Zachary Phillips](mailto:zack.phillips@databricks.com)
 - [Peter Hawkins](mailto:peter.hawkins@databricks.com)
 - [Rohan Parikh](mailto:rohan.parikh@databricks.com)
 
@@ -79,8 +85,6 @@ To add yourself, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgements
 
-Thanks to Eli Swanson, Douglas Moore, Parastou and Khagay for their advice.
+Thanks to Eli Swanson, Douglas Moore, Parastou Eslami and Khagay Nagdimov for their advice.
 
-## License
 
-Licensed under the Databricks License. See [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md).

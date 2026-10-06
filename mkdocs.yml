@@ -1,8 +1,9 @@
-# Docs site. docs/index.html is the hand-built landing page and is copied as-is;
-# MkDocs renders the guide under /guide/ and generates one page per skill from
-# skills/*/SKILL.md (see docs/hooks/skill_pages.py). Guide pages can pull sections
-# of README.md and other repo files with `<!-- include: FILE#Heading -->`
-# (see docs/hooks/repo_sections.py). Build: see docs/requirements.txt.
+# Docs site. docs/index.html is the hand-built landing page and is copied as-is
+# except for the skill table, which is filled from skills/*/SKILL.md frontmatter
+# (docs/hooks/skill_catalog.py). MkDocs renders the guide under /guide/ and
+# generates one page per skill (docs/hooks/skill_pages.py). Guide pages can pull
+# sections of README.md and other repo files with `<!-- include: FILE#Heading -->`
+# (docs/hooks/repo_sections.py). Build: see docs/requirements.txt.
 strict: true
 site_name: Vital Skills
 site_description: Agent skills for Health & Life Sciences workflows on Databricks

@@ -1,6 +1,9 @@
 ---
 name: payer-provider-measure-catalog
 description: Healthcare payer + provider measure catalog and semantic-layer generator. Canonical, source-agnostic definitions across six domains (care delivery, access/throughput, capacity, claims revenue-cycle + adjudication, gap-in-care, payer medical economics incl. MLR/PMPM), plus a workflow that maps a customer's Databricks sources to the canonical model and generates Unity Catalog metric views for Genie, dashboards, and agents. Answers "what is the correct/additive definition of measure X" and "build/generate the metric views for <customer>". Inputs → a per-customer source-mapping file; outputs → conforming views + metric views. For PHI/HIPAA scanning use a compliance skill; this skill defines and builds measures, it does not classify data.
+category: Payer and provider
+summary: Canonical payer+provider measure catalog mapped to Unity Catalog metric views.
+catalog_order: 10
 version: 0.1.0
 author: Vimal Thomas Joseph
 license: Databricks License

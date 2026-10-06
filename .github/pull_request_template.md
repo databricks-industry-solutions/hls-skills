@@ -22,7 +22,7 @@
 - [ ] Folder name matches frontmatter `name`; `author`, `version`, `license` set
 - [ ] Unit tests in `skills/<name>/tests/` (test-only deps in `tests/requirements.txt`)
 - [ ] Benchmark evidence in `skills/<name>/eval/` (see `skills/skill-eval`), or a note on why not yet
-- [ ] `README.md` skill table updated
+- [ ] `category` and `summary` set; `python docs/hooks/skill_catalog.py` run
 
 ## Contribution terms
 

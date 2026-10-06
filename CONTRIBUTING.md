@@ -5,8 +5,8 @@
 1. Follow authoring guidance on [AGENTS.md](AGENTS.md).
 2. Depending on whether it's a pipeline or a guidance skill, start with the appropriate template in `templates/`.
 3. Put the skill at `skills/<skill-name>/SKILL.md`.
-4. Folder name must match frontmatter `name`. Check format with `test_skill_quality.py`
-5. Update the skill table in `README.md`.
+4. Folder name must match frontmatter `name`. Set `category` and `summary` (the public table blurb). Check format with `test_skill_quality.py`
+5. Run `python docs/hooks/skill_catalog.py` to refresh the skill table in `README.md` and `docs/index.html`.
 6. Open a PR and request a second-party review.
 
 ## Test

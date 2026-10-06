@@ -12,6 +12,9 @@ description: >-
   Handles structured/tabular tables (scripts/run_deid.py) AND unstructured clinical documents
   (PDF/image via scripts/deid_docs.py + ai_parse_document). Run by calling the vetted entrypoints —
   do not hand-write de-identification SQL. For building patient cohorts use cohort-builder.
+category: Payer and provider
+summary: HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view).
+catalog_order: 20
 version: 0.0.3
 author: Databricks HLS Field Engineering
 license: Databricks License

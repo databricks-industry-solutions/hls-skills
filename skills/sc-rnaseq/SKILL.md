@@ -7,6 +7,9 @@ description: >
   cell-type annotation, batch correction, harmony, UMAP, leiden clustering,
   MLflow experiment tracking for single-cell, marker genes, pseudotime,
   or asks to build tables/dashboards from single-cell experiments.
+category: Bioinformatics
+summary: Analyze single-cell RNA-seq data from .h5ad files.
+catalog_order: 10
 author: Peter Hawkins
 version: 0.1
 license: Databricks

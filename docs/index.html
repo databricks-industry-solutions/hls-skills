@@ -398,13 +398,13 @@
 
 <script>
 (() => {
+  /* skill-catalog:start */
   const TOPICS = [
-    { name: "Bioinformatics",     color: "var(--t-bio)" },
-    { name: "Clinical RWE",       color: "var(--t-rwe)" },
+    { name: "Bioinformatics", color: "var(--t-bio)" },
+    { name: "Clinical RWE", color: "var(--t-rwe)" },
     { name: "Payer and provider", color: "var(--t-pp)" },
-    { name: "Others",             color: "var(--t-oth)" },
+    { name: "Others", color: "var(--t-oth)" }
   ];
-  const REPO_TREE = "https://github.com/databricks-industry-solutions/hls-skills/tree/dev/";
 
   const SKILLS = [
     { name: "sc-rnaseq", topic: "Bioinformatics",
@@ -426,8 +426,11 @@
     { name: "skill-eval", topic: "Others",
       outcome: "Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy." },
     { name: "accelerators", topic: "Others",
-      outcome: "Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step." },
+      outcome: "Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step." }
   ];
+  /* skill-catalog:end */
+
+  const REPO_TREE = "https://github.com/databricks-industry-solutions/hls-skills/tree/dev/";
 
   const colorOf = (topic) => (TOPICS.find(t => t.name === topic) || {}).color;
   const state = { topic: "All" };

@@ -59,6 +59,9 @@ The `description` field is the discovery hook agents use before loading the full
 - Lead with keywords, not stop verbs (`Use`, `A`, `An`, `The`, `Query`, `Fetch`, `Run`)
 - Put disambiguation (`For X use Y`) at the **end**
 - No promotional adjectives (`powerful`, `comprehensive`, `state-of-the-art`)
+- Set `category` to one of `Bioinformatics`, `Clinical RWE`, `Payer and provider`, `Others`
+- Set `summary` to a one-line outcome for the README and landing-page tables (≤ 200 chars; quote the value if it contains a colon)
+- After adding or changing a skill, run `python docs/hooks/skill_catalog.py` so those tables stay in sync
 
 ### Step 4. Bundled Resources
 
@@ -80,7 +83,7 @@ The `description` field is the discovery hook agents use before loading the full
 
 ## Quality Checklist
 
-- [ ] Frontmatter has `name`, `description`, `author`, `version` (and `license` when known)
+- [ ] Frontmatter has `name`, `description`, `category`, `summary`, `author`, `version` (and `license` when known)
 - [ ] `name` matches parent folder
 - [ ] Correct template / sub-type
 - [ ] "When to Use" written from the user's task perspective

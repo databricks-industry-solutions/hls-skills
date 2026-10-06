@@ -1,45 +1,17 @@
 """MkDocs hook: build the skill catalog and one page per skill from skills/*/SKILL.md.
 
 Pages are generated at build time, so the site always matches the skills on the
-branch being built and nothing under docs/ has to be kept in sync by hand.
+branch being built. The landing-page skill rows are filled from the same
+frontmatter (see skill_catalog.py).
 """
 
-import re
 from pathlib import Path
 
-import yaml
 from mkdocs.structure.files import File
 from repo_links import BRANCH, REPO, absolute_links
-
-SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
-FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
+from skill_catalog import inject_landing_page, load_skills
 
 _skills = []
-
-
-def _load_skills():
-    skills = []
-    for path in sorted(SKILLS_DIR.glob("*/SKILL.md")):
-        text = path.read_text(encoding="utf-8")
-        match = FRONTMATTER.match(text)
-        meta = yaml.safe_load(match.group(1)) if match else {}
-        body = text[match.end() :] if match else text
-        folder = path.parent
-        eval_dir = folder / "eval"
-        skills.append(
-            {
-                "folder": folder.name,
-                "name": meta.get("name", folder.name),
-                "description": " ".join(str(meta.get("description", "")).split()),
-                "version": meta.get("version", ""),
-                "author": meta.get("author", ""),
-                "license": meta.get("license", ""),
-                "body": body,
-                "has_report": (eval_dir / "eval_report.md").is_file(),
-                "has_eval": eval_dir.is_dir() and any(eval_dir.iterdir()),
-            }
-        )
-    return skills
 
 
 def _eval_link(skill):
@@ -97,7 +69,7 @@ def _catalog(skills):
         return f"[{evaluation[0]}]({evaluation[1]})" if evaluation else "Pending"
 
     rows = "\n".join(
-        f"| [{s['name']}]({s['folder']}.md) | {_summary(s['description'])} | {s['version']} | {eval_cell(s)} |"
+        f"| [{s['name']}]({s['folder']}.md) | {_summary(s['summary'])} | {s['version']} | {eval_cell(s)} |"
         for s in skills
     )
     return (
@@ -113,8 +85,17 @@ def _catalog(skills):
     )
 
 
+def on_post_build(config):
+    path = Path(config["site_dir"]) / "index.html"
+    if path.is_file():
+        path.write_text(
+            inject_landing_page(path.read_text(encoding="utf-8"), _skills),
+            encoding="utf-8",
+        )
+
+
 def on_config(config):
-    _skills[:] = _load_skills()
+    _skills[:] = load_skills()
     for i, item in enumerate(config.nav):
         if isinstance(item, dict) and "Skills" in item:
             config.nav[i] = {

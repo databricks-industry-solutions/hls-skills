@@ -6,8 +6,9 @@ The [GitHub Pages site](https://databricks-industry-solutions.github.io/hls-skil
 
 | Page | Source | Edit |
 |------|--------|------|
-| Landing page | `docs/index.html` | The page itself, including the skill cards |
+| Landing page | `docs/index.html`; skill rows from each `skills/*/SKILL.md` (`category`, `summary`) | Layout and copy on the page; skill rows via frontmatter + `python docs/hooks/skill_catalog.py` |
 | Skill catalog and one page per skill | Each `skills/*/SKILL.md` (frontmatter and body) | The skill's `SKILL.md` |
+| README skill table | Same `category` / `summary` frontmatter | The skill's `SKILL.md`, then `python docs/hooks/skill_catalog.py` |
 | Setup | The `## Setup` section of [README.md](README.md) | `README.md` |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md), without the CLA section; section 3 of Test becomes a link to Evaluation | `CONTRIBUTING.md` |
 | Evaluation | The `#### 3. Evaluate with and without skill` section of [CONTRIBUTING.md](CONTRIBUTING.md) | `CONTRIBUTING.md` |

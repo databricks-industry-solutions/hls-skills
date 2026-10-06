@@ -6,6 +6,9 @@ description: <Domain or decision-space keyword> <what it covers>. <When to consu
 # Description rules (AGENTS.md):
 #   - Length ≤ 1024 chars; first 120 chars carry discovery weight
 #   - Lead with the domain or decision-space keyword — NOT stop verbs
+category: Bioinformatics  # Bioinformatics | Clinical RWE | Payer and provider | Others
+summary: "<one-line outcome for the README and landing-page tables>"
+catalog_order: 10  # optional; lower numbers first within a category
 version: 1.0.0
 author: your name
 license: Databricks License
