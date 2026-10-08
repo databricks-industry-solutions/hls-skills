@@ -77,7 +77,7 @@
       "expected_facts": [
         "Points to Genesis Workbench for single-cell foundation models",
         "States that Geneformer support in Genesis Workbench is not yet available or marked coming soon",
-        "Offers oss-models or custom packaging as the interim path"
+        "Offers open-weight-models or custom packaging as the interim path"
       ],
       "guidelines": [
         "Does not claim Genesis Workbench already supports Geneformer fine-tuning",

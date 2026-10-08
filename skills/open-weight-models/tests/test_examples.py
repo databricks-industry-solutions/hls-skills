@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline structural tests for the worked examples in the oss-models skill.
+"""Offline structural tests for the worked examples in the open-weight-models skill.
 
 These tests validate the STRUCTURE of the examples added to SKILL.md and the
 per-model reference files. They are deliberately offline and deterministic:
@@ -24,8 +24,8 @@ What is checked:
      (e.g. whitespace inside the URL, as in `https://host/ path`).
 
 Run:
-  python3 -m pytest skills/oss-models/tests/ -q
-  python3 skills/oss-models/tests/test_examples.py   # no-pytest fallback
+  python3 -m pytest skills/open-weight-models/tests/ -q
+  python3 skills/open-weight-models/tests/test_examples.py   # no-pytest fallback
 """
 
 from __future__ import annotations

@@ -15,14 +15,14 @@
 
 Geneformer is a transformer encoder foundation model for single-cell RNA-seq. Given gene expression profiles, it produces per-cell embedding vectors for downstream tasks: cell-type annotation, batch correction, perturbation prediction, and cross-dataset transfer. The model tokenizes cells by rank-ordering expressed genes and mapping to a learned vocabulary.
 
-This reference covers **two validated deployment paths**:
+This reference covers **two deployment paths** (serving exercised on Databricks; end-to-end eval validation is WIP — see oss-005/006):
 
 | Path | Checkpoint | hidden_size | Vocab | Layers | Status |
 |------|-----------|-------------|-------|--------|--------|
-| **A. HF/ctheodoris** | `ctheodoris/Geneformer` → `Geneformer-V1-10M` | 256 | gc30M (25,426 tokens) | 6 | **Validated** |
-| **B. NVIDIA BioNeMo** | `nvidia/geneformer_V2_316M` | 1152 | gc104M (20,275 tokens) | 18 | **Validated** |
+| **A. HF/ctheodoris** | `ctheodoris/Geneformer` → `Geneformer-V1-10M` | 256 | gc30M (25,426 tokens) | 6 | Serving tested; eval WIP |
+| **B. NVIDIA BioNeMo** | `nvidia/geneformer_V2_316M` | 1152 | gc104M (20,275 tokens) | 18 | Serving tested; eval WIP |
 
-Both paths are validated end-to-end on Databricks (serverless GPU, Model Serving GPU_SMALL A10G).
+Both paths have been exercised on Databricks (serverless GPU, Model Serving GPU_SMALL A10G); end-to-end eval validation (oss-005/006) is still in progress (WIP).
 
 ### Downstream applications
 
@@ -77,18 +77,28 @@ Both PyFunc wrappers accept per-cell inputs:
 
 ```json
 {
-  "cell_id": "cell-0001",
-  "genes": ["<ENSG-id-from-token-dict>", "<ENSG-id-from-token-dict>"],
-  "expression": [2.0, 1.0],
-  "vocab_version": "gc104M",
-  "config": "{\"truncation\": true, \"gene_count_limit\": \"4096\", \"pooling_mode\": \"mean\"}"
+  "dataframe_records": [
+    {
+      "cell_id": "cell-0001",
+      "genes": ["ENSG00000139618", "ENSG00000141510", "ENSG00000146648"],
+      "expression": [12.0, 5.0, 3.0],
+      "vocab_version": "gc104M",
+      "config": "{\"truncation\": true, \"gene_count_limit\": \"4096\", \"pooling_mode\": \"mean\"}"
+    }
+  ]
 }
 ```
+
+> Gene IDs above are real Ensembl IDs (BRCA2, TP53, EGFR) as examples; actual inputs should use genes from the model's token dictionary.
+
+**Critical**: always use real Ensembl IDs from the token dictionary. Synthetic gene names produce degenerate embeddings.
+
+Python construction (showing how to build the payload from the token dictionary):
 
 ```python
 import pickle
 
-# Token dictionaries are pickle, not JSON
+# token dictionaries are pickle, not JSON
 with open(dict_path, "rb") as f:
     token_dict = pickle.load(f)
 ensembl_genes = [g for g in token_dict.keys() if str(g).startswith("ENSG")][:10]
@@ -102,18 +112,18 @@ input_example = pd.DataFrame([{
 }])
 ```
 
-**Critical**: always use real Ensembl IDs from the token dictionary. Synthetic gene names produce degenerate embeddings.
-
 ### Output
 
 ```json
 {
   "cell_id": "cell-0001",
-  "embedding": [0.37, -1.56, 0.08],
+  "embedding": [0.37, -1.56, 0.82, -0.45, 1.23],
   "embedding_dim": 1152,
   "vocab_version": "gc104M"
 }
 ```
+
+> The `embedding` array is truncated for readability; the actual response contains `embedding_dim` floats.
 
 Embedding dimension equals the model's `hidden_size` (256 for Path A, 1152 for Path B).
 
@@ -123,7 +133,7 @@ Embedding dimension equals the model's `hidden_size` (256 for Path A, 1152 for P
 
 | Path | Purpose |
 |------|---------|
-| `Geneformer-V1-10M/` | 10M-param checkpoint (6 layers) — **validated** |
+| `Geneformer-V1-10M/` | 10M-param checkpoint (6 layers) — serving tested (eval WIP) |
 | `geneformer/gene_dictionaries_30m/token_dictionary_gc30M.pkl` | gc30M token dictionary (pickle) |
 
 ### HF repo structure (`nvidia/geneformer_V2_316M` — Path B)
@@ -172,8 +182,8 @@ Use sentinel files (`.snapshot_complete`, `.copy_complete`) for idempotent re-ru
 | Task | Compute |
 |------|---------|
 | Download from HF | CPU (Serverless or classic). Adaptive storage (`/local_disk0/tmp` or `/tmp`). |
-| Dry-load, log model, register | **GPU required**. Serverless GPU (1×A10G) validated. |
-| Model Serving endpoint | `GPU_SMALL` (A10G). Both paths validated. |
+| Dry-load, log model, register | **GPU required**. Serverless GPU (1×A10G) exercised. |
+| Model Serving endpoint | `GPU_SMALL` (A10G). Both paths serving-tested (eval WIP). |
 
 Path A (10M params) fits easily on A10G. Path B (316M params, 1.36 GB safetensors) also fits on A10G with headroom.
 
@@ -334,7 +344,7 @@ Log license, HF source URL, paper DOI, and checkpoint name as MLflow tags.
 
 ## Resolved questions
 
-* **TE in Model Serving container**: TE does NOT build in serving containers. Functional `nn.Module` stubs are the validated workaround — no TE source build needed.
+* **TE in Model Serving container**: TE does NOT build in serving containers. Functional `nn.Module` stubs are the working workaround — no TE source build needed.
 * **GPU tier for 316M**: A10G (`GPU_SMALL`) handles the 1.36 GB model comfortably.
 * **BF16 vs FP32**: `torch.autocast(dtype=torch.bfloat16)` works correctly on A10G for both paths. Weights stored as float32, autocast at inference.
 * **Embedding dimensions**: 256 for V1-10M (Path A), 1152 for V2-316M (Path B) — confirmed via `config.json` and smoke tests.

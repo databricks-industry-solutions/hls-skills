@@ -7,7 +7,7 @@
 # MAGIC %md
 # MAGIC # Notebook Eval Comparison
 # MAGIC
-# MAGIC Compares **baseline** (skill OFF) vs **skill** (skill ON) notebook arms for the OSS-models eval.
+# MAGIC Compares **baseline** (skill OFF) vs **skill** (skill ON) notebook arms for the open-weight-models eval.
 # MAGIC
 # MAGIC Auto-discovers notebook pairs in the project directory by matching a **prefix** (model family)
 # MAGIC against two **suffixes** (`Baseline` vs a skill-arm suffix). Scores each arm with `scorers.py`,
@@ -279,7 +279,7 @@ for category, skills in builtin_relevant.items():
 print(f"\n--- Toggle helper ---")
 print(f"  To disable a custom skill: rename SKILL.md \u2192 SKILL.md.off")
 print(f"  To re-enable:              rename SKILL.md.off \u2192 SKILL.md")
-print(f"  \u26a0 Renaming the FOLDER (e.g. _oss-models-off/) is unreliable \u2014")
+print(f"  \u26a0 Renaming the FOLDER (e.g. _open-weight-models-off/) is unreliable \u2014")
 print(f"    the assistant's */SKILL.md glob still matches.")
 print(f"  \u26a0 Built-in skills cannot be disabled. Baseline comparisons")
 print(f"    measure custom skill value ON TOP of built-in knowledge.")
@@ -301,7 +301,7 @@ if BASE not in sys.path:
 
 EVALSET_PATH = os.path.join(BASE, "evalset.json")
 RESULTS_DIR = os.path.join(BASE, "results")
-SKILL_DIR = os.path.join(BASE, ".assistant", "skills", "oss-models")
+SKILL_DIR = os.path.join(BASE, ".assistant", "skills", "open-weight-models")
 
 w = WorkspaceClient()
 

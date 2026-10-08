@@ -1,29 +1,47 @@
 ---
-name: oss-models
-description: Package, register, validate, and deploy open-source health and life-sciences models on Databricks. Use for Geneformer, scGPT, Scimilarity, TEDDY, AlphaFold/OpenFold, Boltz, or similar models whose code, checkpoints, databases, tokenizers, or scientific inputs come from Hugging Face, Git, Zenodo, or other external sources. Use this skill when a request involves custom PyFunc wrappers, Unity Catalog registration, Model Serving, Jobs, GPU/runtime selection, complex biological inputs, provenance, or AI Gateway inference tables.
+name: open-weight-models
+description: Package, register, validate, and deploy open-weight health and life-sciences models on Databricks. Use for Geneformer, scGPT, Scimilarity, TEDDY, AlphaFold/OpenFold, Boltz, or similar models whose code, checkpoints, databases, tokenizers, or scientific inputs come from Hugging Face, Git, Zenodo, or other external sources. Use this skill when a request involves custom PyFunc wrappers, Unity Catalog registration, Model Serving, Jobs, GPU/runtime selection, complex biological inputs, provenance, or AI Gateway inference tables.
 category: Bioinformatics
-summary: Package, register, validate & deploy open-source HLS models on Databricks — e.g. TEDDY and Geneformer.
+summary: Package, register, validate & deploy open-weight HLS models on Databricks — e.g. TEDDY and Geneformer.
 version: 0.5
 author: May Merkle Tan
 license: Databricks License
 ---
 
-# HLS OSS Models
+# HLS Open-Weight Models
 
 ## Overview
 
-This guide is a Health & Life Sciences (HLS) extension layer for packaging, registering, validating, and deploying open-source scientific models on Databricks. It does not reproduce generic MLflow or custom PyFunc mechanics — it supplies the model-family decisions that generic guidance cannot know: scientific preprocessing, checkpoint and database requirements, GPU and runtime constraints, serving-versus-Jobs suitability, provenance, and biological sanity checks. When the request needs standard logging, signatures, dependency packaging, Unity Catalog registration, Model Serving, or MLflow evaluation, use the existing Databricks ML training and Model Serving skills as the implementation foundation and layer this guide on top.
+This guide is a Health & Life Sciences (HLS) extension layer for packaging, registering, validating, and deploying open-weight scientific models on Databricks. It does not reproduce generic MLflow or custom PyFunc mechanics — it supplies the model-family decisions that generic guidance cannot know: scientific preprocessing, checkpoint and database requirements, GPU and runtime constraints, serving-versus-Jobs suitability, provenance, and biological sanity checks. When the request needs standard logging, signatures, dependency packaging, Unity Catalog registration, Model Serving, or MLflow evaluation, use the existing Databricks ML training and Model Serving skills as the implementation foundation and layer this guide on top.
 
-These six model families (single-cell; protein/biomolecular structure) are an initial, representative set. The skill is designed to extend — see `references/models/index.md` and `references/model-template.md` to add a family. Coverage grows as demand and validated models arrive.
+These seven model families (single-cell transcriptomics; histopathology; protein/biomolecular structure) are an initial, representative set. The skill is designed to extend — see `references/models/index.md` and `references/model-template.md` to add a family. Coverage grows as demand and validated models arrive.
+
+### Model reference validation status
+
+Not all model references have been tested end-to-end through the eval harness.
+
+| Reference | Validated | Eval tasks | Notes |
+|-----------|-----------|------------|-------|
+| `teddy.md` | **Yes** | oss-001 (deploy), oss-002 (deploy + VS) | 70M variant. 160M/400M share ref but not yet tested. |
+| `geneformer.md` | No | oss-005, oss-006 (WIP) | Serving tested; eval (oss-005/006) WIP. Path A + Path B; NVIDIA TE stub pattern for BioNeMo PyFunc serving. |
+| `scgpt.md` | No | — | Reference provided; no eval task yet. |
+| `scimilarity.md` | No | — | Zenodo v1.1 and HF expanded. |
+| `alphafold-openfold.md` | No | — | Reference provided; no eval task yet. |
+| `boltz.md` | No | — | Reference provided; no eval task yet. |
+| `midnight.md` | No | — | DINOv2 pathology tile embedder. Skeleton wrapper. |
+
+**Validated** = used by Genie Code in a blind eval run producing a working deployment. Does not imply scientific/clinical validation.
 
 ## When to Use
 
-- The request names an HLS model (Geneformer, scGPT, Scimilarity, TEDDY, AlphaFold/OpenFold, Boltz, or similar) whose code or weights come from an external source.
+- The request names an HLS model (TEDDY, Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz, Midnight, or similar) whose code or weights come from an external source.
 - The task involves biological sequences or structures, single-cell data, molecular design, or other complex scientific inputs that need a deliberate serving contract.
 - Model code, checkpoints, tokenizers, or reference databases must be pinned and packaged for offline, reproducible startup.
 - You must decide between Model Serving, Jobs, an interactive app, or a multi-step workflow for a scientific model.
 - The request touches provenance, licensing, or offline reproducibility controls for external model weights and datasets.
 - The user asks for AI Gateway policies, usage tracking, or inference tables over an HLS endpoint that may log sensitive payloads.
+- The deployment combines a model endpoint with a **Databricks AI Search index** for embedding-based retrieval.
+- The model requires **vLLM** (autoregressive generation) or **NVIDIA TE stubs** (BioNeMo models) rather than a standard PyFunc wrapper.
 
 For generic custom PyFunc, sklearn, or ordinary PyTorch packaging with no scientific inputs, use the standard Databricks ML training skill instead.
 
@@ -43,6 +61,24 @@ Complex inputs (AnnData, sparse matrices, FASTA, YAML, structures) need a delibe
 
 ### Technical vs scientific validation
 Technical validation (imports, signatures, deployment) is distinct from scientific, clinical, and regulatory validation. A successful deployment never implies clinical validity.
+
+### Retrieval-augmented deployment (Databricks AI Search)
+Many HLS embedding models (TEDDY, Geneformer, Scimilarity, Midnight) produce per-sample vectors useful for nearest-neighbour retrieval. The deployment has two components: (1) a Model Serving endpoint producing embeddings, and (2) a Databricks AI Search index storing and querying the reference atlas. For index lifecycle, defer to the `vector-search` skill and [Databricks AI Search docs](https://docs.databricks.com/aws/en/ai-search/ai-search/). This guide covers the model-side contract and atlas-population workflow. See `teddy.md` for a validated example (oss-002 covers TEDDY + VS end-to-end).
+
+### Serving engines and NVIDIA architecture components
+The default deployment path is MLflow custom PyFunc. Two important extensions:
+
+**NVIDIA TransformerEngine stubs for BioNeMo models (PyFunc enabler)**
+
+Some NVIDIA BioNeMo models (e.g. Geneformer V2-316M) depend on `transformer_engine.pytorch` for optimised transformer layers. TE requires a full CUDA toolkit source build, which fails on Serverless GPU and in Model Serving containers. Without a workaround, these models would require Docker containers, NVIDIA NIM, or external API/MCP integrations to serve. This skill provides functional `nn.Module` stubs matching TE layer interfaces and weight-key names, enabling standard PyFunc serving on Databricks without the native NVIDIA stack. See `geneformer.md` TransformerEngine stubs section for the working pattern. This approach generalises to other BioNeMo models that import TE.
+
+**vLLM for autoregressive / generative models (separate path, no PyFunc)**
+
+For autoregressive protein language models or generative bio-sequence models, Databricks supports [custom LLM serving via vLLM](https://docs.databricks.com/aws/en/machine-learning/model-serving/serve-custom-llms/) (Beta). This is a fundamentally different serving path — vLLM loads the model directly and exposes an OpenAI-compatible API. Models are logged via `mlflow.transformers.log_model()` with a task type (`llm/v1/chat`, `llm/v1/embeddings`), not `mlflow.pyfunc.log_model()`. Use when the model is a standard HF transformers architecture, fits on one GPU, and needs no custom scientific preprocessing in the serving path. Refs: [Databricks custom LLM serving](https://docs.databricks.com/aws/en/machine-learning/model-serving/serve-custom-llms/), [vLLM docs](https://docs.vllm.ai/).
+
+**When PyFunc + stubs won't work: Docker / NIM / external API**
+
+When neither PyFunc (even with stubs) nor vLLM fits, the fallback is [NVIDIA NIM](https://docs.nvidia.com/nim/) (pre-built inference microservices), [Databricks custom container serving](https://docs.databricks.com/aws/en/machine-learning/model-serving/bring-your-own-container), or external API/MCP. The model reference file should note which serving path is viable.
 
 ## Decision Framework
 
@@ -250,6 +286,15 @@ artifacts:
 25. **Model forward output keys differ from documentation or expected conventions.** Custom HLS models may return pre-pooled embeddings under non-standard dict keys (e.g. `cell_emb` instead of `all_embs` or `last_hidden_state`). The wrapper’s embedding extraction silently returns `None`, which surfaces later as `unsupported operand type(s) for *: 'NoneType' and 'Tensor'` in the pooling step.
     - *How to avoid*: **Always run a runtime diagnostic** before writing the extraction logic: call `model(**fwd_kwargs)` once and print `type(outputs)`, `outputs.keys()` (for dicts), and shape/dim of each value. Check the model reference (`references/models/<model>.md`) for the verified output key. If the output is already 2D (pre-pooled), skip external pooling with a `dim() == 2` guard. Also verify which parameters `forward()` actually accepts via `inspect.signature(model.forward).parameters.keys()` — unused kwargs are silently filtered but worth documenting.
     - *Discovered*: oss-002 v2 (2026-10-01). TEDDY 70M returns `{"cell_emb": tensor(cells, d_model)}`. See `references/models/teddy.md` §Forward output key.
+26. **`artifacts=` dict in `log_model` only accepts file/directory paths.** Passing a literal string value (e.g. `artifacts={"vocab_version": "v1"}`) causes `MlflowException: No such artifact: 'v1'` because MLflow treats every value in the `artifacts` dict as a local filesystem path to upload. Non-path metadata silently becomes a broken artifact reference.
+    - *How to avoid*: Only put file or directory paths in the `artifacts=` dict. For scalar metadata (version strings, config flags), either hardcode them inside the wrapper class, write them to a JSON/text file and pass that file path, or log them as MLflow tags/params.
+    - *Discovered*: oss-005 (2026-10-03). Geneformer `vocab_version="v1"` passed as artifact value.
+27. **`workload_size` required alongside `workload_type` for GPU served entities.** Some workspace/API combinations reject a `ServedEntityInput` that specifies only `workload_type` (e.g. `GPU_SMALL`) without also setting `workload_size`. The error is `InvalidParameterValue: workloadSizeId is undefined`.
+    - *How to avoid*: Always pass both fields: `workload_type=ServingModelWorkloadType.GPU_SMALL, workload_size="Small"`. The `workload_size` string values are `"Small"`, `"Medium"`, `"Large"`.
+    - *Discovered*: oss-005 (2026-10-03). Geneformer endpoint creation failed without `workload_size`.
+28. **`serving_endpoints.query()` returns a typed `QueryEndpointResponse`, not a dict.** Calling `.get("predictions")` or other dict methods on the response raises `AttributeError: 'QueryEndpointResponse' object has no attribute 'get'`.
+    - *How to avoid*: Use attribute access: `response.predictions`. If you need to handle both SDK objects and raw dicts (e.g. from `requests.post`), use `getattr(response, "predictions", None) or response["predictions"]`.
+    - *Discovered*: oss-005 (2026-10-03). Geneformer endpoint smoke test.
 
 ## Workflow
 
@@ -271,6 +316,7 @@ Load only the relevant reference:
 - `references/models/alphafold-openfold.md`
 - `references/models/boltz.md`
 - `references/models/teddy.md`
+- `references/models/midnight.md`
 
 Add new families by copying `references/model-template.md`, adding one row to `references/models/index.md`, and documenting tests before changing this core file.
 
@@ -305,8 +351,13 @@ Every new model reference should include:
 ## Related Skills
 
 - `databricks-ml-training` — generic custom PyFunc, signatures, dependency packaging, and Unity Catalog registration this guide builds on.
-- `databricks-model-serving` — endpoint lifecycle, routing, and AI Gateway configuration for the serving path.
+- `databricks-model-serving` — endpoint lifecycle, routing, AI Gateway configuration, and vLLM-based custom LLM serving.
 - `databricks-mlflow-evaluation` — evaluation mechanics for validating model outputs.
+- `vector-search` — AI Search endpoint and index lifecycle for embedding-based retrieval.
+- [Databricks: Custom LLM serving (vLLM)](https://docs.databricks.com/aws/en/machine-learning/model-serving/serve-custom-llms/) — vLLM engine, no PyFunc.
+- [Databricks: Bring your own container](https://docs.databricks.com/aws/en/machine-learning/model-serving/bring-your-own-container) — Docker (NVIDIA NIM / Triton).
+- [NVIDIA NIM](https://docs.nvidia.com/nim/) — pre-built inference microservices for BioNeMo models.
+- [vLLM docs](https://docs.vllm.ai/) — continuous batching, PagedAttention, OpenAI-compatible serving.
 
 ## Guardrails
 

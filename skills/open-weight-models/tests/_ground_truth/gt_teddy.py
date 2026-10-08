@@ -16,7 +16,7 @@
 # MAGIC ### Provenance
 # MAGIC
 # MAGIC [Genesis Workbench TEDDY module](https://github.com/databricks-industry-solutions/genesis-workbench/tree/main/modules/single_cell/teddy/teddy_g_v1)
-# MAGIC → [PR #7](https://github.com/databricks-industry-solutions/hls-skills/pull/7) (`oss-models` skill)
+# MAGIC → [PR #7](https://github.com/databricks-industry-solutions/hls-skills/pull/7) (`open-weight-models` skill)
 # MAGIC → this ground truth notebook.
 # MAGIC
 # MAGIC | Field | Value |

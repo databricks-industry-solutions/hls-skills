@@ -12,7 +12,7 @@
 # MAGIC ### Provenance
 # MAGIC
 # MAGIC [Genesis Workbench scGPT module](https://github.com/databricks-industry-solutions/genesis-workbench/tree/main/modules/single_cell/scgpt)
-# MAGIC → [PR #7](https://github.com/databricks-industry-solutions/hls-skills/pull/7) (`oss-models` skill) → this ground truth notebook.
+# MAGIC → [PR #7](https://github.com/databricks-industry-solutions/hls-skills/pull/7) (`open-weight-models` skill) → this ground truth notebook.
 # MAGIC
 # MAGIC **Canonical source:** [`modules/single_cell/scgpt`](https://github.com/databricks-industry-solutions/genesis-workbench/tree/main/modules/single_cell/scgpt)
 # MAGIC

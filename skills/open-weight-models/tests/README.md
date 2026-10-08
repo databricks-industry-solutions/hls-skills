@@ -1,11 +1,11 @@
-# HLS OSS-Models Skill Screening Tests
+# HLS Open-Weight Models Skill Screening Tests
 
-Paired A/B evaluation of the `oss-models` custom skill for deploying open-source
+Paired A/B evaluation of the `open-weight-models` custom skill for deploying open-weight
 health & life-sciences models on Databricks.
 
 ## What This Tests
 
-Does the custom `oss-models` skill (SKILL.md + model references) produce **better
+Does the custom `open-weight-models` skill (SKILL.md + model references) produce **better
 notebook code** than Genie Code's built-in knowledge alone? Each task is run
 twice — once with the skill active ("skill arm"), once without ("baseline arm")
 — and scored on 8 phases / 25+ sub-checks.
@@ -27,7 +27,7 @@ twice — once with the skill active ("skill arm"), once without ("baseline arm"
 ├── oss-002_TEDDY-70M+VS_Deploy_Baseline   # Notebook pair: oss-002
 ├── oss-002_TEDDY-70M+VS_Deploy_withSkills
 │
-├── .assistant/skills/oss-models/          # The custom skill under test
+├── .assistant/skills/open-weight-models/          # The custom skill under test
 │   ├── SKILL.md  (or .off when disabled)  #   Toggle: rename to disable
 │   └── references/models/                 #   Model-specific references
 │       ├── teddy.md
@@ -155,7 +155,7 @@ compare_runs.py
 1. Add the task to `evalset.json` with `task_id`, `model_family`, `query`,
    `expectations`, `deterministic_checks`
 2. If the model family is new, add a reference file to
-   `.assistant/skills/oss-models/references/models/`
+   `.assistant/skills/open-weight-models/references/models/`
 3. If needed, add family-specific sub-checks to `scorers.py`
    (gate on `task.model_family`)
 4. Create the notebook pair:
