@@ -29,7 +29,7 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 | Skill | Category | What it does |
 |-------|----------|--------------|
 | [**bulk-rnaseq**](skills/bulk-rnaseq/SKILL.md) | Bioinformatics | Find top differentially expressed genes from bulk RNA-seq counts. |
-| [**oss-models**](skills/oss-models/SKILL.md) | Bioinformatics | Package, register, validate & deploy open-source HLS models on Databricks — e.g. TEDDY and Geneformer. |
+| [**open-weight-models**](skills/open-weight-models/SKILL.md) | Bioinformatics | Package, register, validate & deploy open-weight HLS models on Databricks — e.g. TEDDY and Geneformer. |
 | [**pathway-enrichment-analysis**](skills/pathway-enrichment-analysis/SKILL.md) | Bioinformatics | Pathway enrichment for RNA-seq (ORA or GSEA). |
 | [**sc-rnaseq**](skills/sc-rnaseq/SKILL.md) | Bioinformatics | Analyze single-cell RNA-seq data from .h5ad files. |
 | [**cohort-builder**](skills/cohort-builder/SKILL.md) | Clinical RWE | Build a reproducible, feasibility-checked patient cohort from coded + free-text clinical data. |

@@ -1,14 +1,14 @@
 {
-  "skill": "oss-models",
+  "skill": "open-weight-models",
   "version": "3.0.0",
   "catalog": "<catalog>",
   "schema": "skills",
   "volume": "models",
   "notes": [
-    "Full task catalog for oss-models skill. Tasks grouped by model_family.",
+    "Full task catalog for open-weight-models skill. Tasks grouped by model_family.",
     "Evaluate TEDDY tasks first; other models as skill coverage grows.",
     "Use the model_family widget in 02_skill_eval_runner to select which family to score.",
-    "Baseline arm: rename SKILL.md \u2192 SKILL.md.off in .assistant/skills/oss-models/",
+    "Baseline arm: rename SKILL.md \u2192 SKILL.md.off in .assistant/skills/open-weight-models/",
     "Skill arm: rename SKILL.md.off back to SKILL.md."
   ],
   "tasks": [

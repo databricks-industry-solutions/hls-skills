@@ -57,9 +57,9 @@ What is the user trying to do?
     ├── Single-cell foundation models (SCimilarity, scGPT, TEDDY) → Genesis Workbench single_cell
     │   (notebook QC, clustering, markers → sc-rnaseq)
     ├── Geneformer → Genesis Workbench bionemo; support is marked "coming soon",
-    │   so say so and offer the `oss-models` skill as the interim path
+    │   so say so and offer the `open-weight-models` skill as the interim path
     ├── Variant calling, GWAS, ClinVar → Genesis Workbench genomics
-    └── Model not shipped by Genesis Workbench → `oss-models` skill
+    └── Model not shipped by Genesis Workbench → `open-weight-models` skill
 ```
 
 | Task | Accelerator | Smallest path | Reference |
@@ -141,6 +141,6 @@ Without the skill, Genie Code rebuilt a DICOM pipeline and a protein folding sta
 
 ## Related Skills
 
-- `oss-models` - package and serve an open-source HLS model that Genesis Workbench does not ship
+- `open-weight-models` - package and serve an open-weight HLS model that Genesis Workbench does not ship
 - `sc-rnaseq` - notebook-level single-cell analysis with scanpy and rapids-singlecell
 - `phi-deidentifier` - de-identify structured Unity Catalog tables (Pixels covers DICOM tags)

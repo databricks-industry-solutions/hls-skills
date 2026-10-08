@@ -19,7 +19,7 @@
 ## Do not use it for
 
 - De-identifying structured tables of patient records: use `phi-deidentifier`
-- Training a new imaging model from scratch: Pixels serves Vista3D; for other models use `oss-models`
+- Training a new imaging model from scratch: Pixels serves Vista3D; for other models use `open-weight-models`
 - Sending studies back to a PACS: not supported (open feature request, issue #198)
 
 ## Deploy signals

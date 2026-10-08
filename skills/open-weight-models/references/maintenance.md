@@ -1,4 +1,4 @@
-# Maintaining the HLS OSS model skill
+# Maintaining the HLS open-weight model skill
 
 This guide keeps the HLS extension current without copying generic Databricks ML guidance into every model reference.
 

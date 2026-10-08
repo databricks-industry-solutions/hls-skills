@@ -20,6 +20,10 @@ site) are recorded here. Format follows
   `category` and `summary` frontmatter (`docs/hooks/skill_catalog.py`).
 
 ### Changed
+- The `oss-models` skill is renamed `open-weight-models` (its guide page moves
+  from `/guide/skills/oss-models/` to `/guide/skills/open-weight-models/`; the
+  old URL no longer exists). The README and landing-page rows are regenerated
+  from its frontmatter.
 - Getting started is renamed Setup (`/guide/setup/`) and now copies README.md's
   Setup section, Contributing copies CONTRIBUTING.md without its CLA section,
   and Evaluation copies section 3 of CONTRIBUTING.md's Test section, instead of

@@ -11,7 +11,7 @@
 # MAGIC ### Provenance
 # MAGIC
 # MAGIC [Genesis Workbench SCimilarity module](https://github.com/databricks-industry-solutions/genesis-workbench/tree/main/modules/single_cell/scimilarity)
-# MAGIC → [PR #7](https://github.com/databricks-industry-solutions/hls-skills/pull/7) (`oss-models` skill) → this ground truth notebook.
+# MAGIC → [PR #7](https://github.com/databricks-industry-solutions/hls-skills/pull/7) (`open-weight-models` skill) → this ground truth notebook.
 # MAGIC
 # MAGIC **Canonical source:** [`modules/single_cell/scimilarity`](https://github.com/databricks-industry-solutions/genesis-workbench/tree/main/modules/single_cell/scimilarity) |
 # MAGIC ### Module notebooks ([source](https://github.com/databricks-industry-solutions/genesis-workbench/tree/main/modules/single_cell/scimilarity/notebooks))

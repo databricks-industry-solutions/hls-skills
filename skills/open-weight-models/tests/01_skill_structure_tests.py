@@ -1,9 +1,9 @@
 # Databricks notebook source
 # DBTITLE 1,Overview
 # MAGIC %md
-# MAGIC # OSS-Models Skill — Structural Tests (Offline Gate)
+# MAGIC # Open-Weight Models Skill — Structural Tests (Offline Gate)
 # MAGIC
-# MAGIC Runs 44 offline checks against `.assistant/skills/oss-models/`.
+# MAGIC Runs 44 offline checks against `.assistant/skills/open-weight-models/`.
 # MAGIC No network, no GPU, no model weights needed.
 # MAGIC
 # MAGIC **Checks:** JSON/YAML block parsing, provenance manifest keys,
@@ -23,7 +23,7 @@ import subprocess, sys, os
 
 # Resolve skill path relative to this notebook
 NB_DIR = os.path.dirname(os.path.abspath(dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()))
-SKILL_DIR = os.path.join("/Workspace", NB_DIR.lstrip("/"), ".assistant", "skills", "oss-models")
+SKILL_DIR = os.path.join("/Workspace", NB_DIR.lstrip("/"), ".assistant", "skills", "open-weight-models")
 TEST_FILE = os.path.join(SKILL_DIR, "tests", "test_examples.py")
 
 assert os.path.exists(TEST_FILE), f"Test file not found: {TEST_FILE}"

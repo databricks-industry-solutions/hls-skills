@@ -1,6 +1,6 @@
 # scGPT model reference
 
-> **Status: work in progress — needs further testing.** The serving / validation path for this model has not yet been workspace-validated; the input and output examples below are provisional and may change once tested.
+> **Status: work in progress — needs further testing.** Serving path not yet workspace-validated (see validation status table in `SKILL.md`). Examples below are provisional and may change once tested.
 
 ## Identity
 
@@ -47,23 +47,17 @@ Inference controls via `params` (MLflow local) or `extra_params` (SDK):
 ```json
 {
   "predictions": {
-    "GENE1": [0.1, 0.2, 0.3],
-    "GENE2": [-0.3, 0.4, 0.5]
+    "GENE1": [0.1, 0.2, -0.5, 0.8],
+    "GENE2": [-0.3, 0.4, 0.1, -0.7]
   }
 }
 ```
 
+> Embedding vectors are truncated for readability; actual vectors have `hidden_size` floats per gene.
+
 Returns a dict of `{gene_name: embedding_vector}` for genes present in both the vocabulary and the preprocessed input.
 
 ### Input example (Python)
-
-```json
-{
-  "adata_sparsematrix": [[2.0, 0.0, 3.0]],
-  "adata_obs": "<json-string orient=split: cell metadata (batch, final_annotation)>",
-  "adata_var": "<json-string orient=split: gene metadata (gene_name)>"
-}
-```
 
 ```python
 import numpy as np, pandas as pd, json
@@ -85,6 +79,22 @@ input_example = pd.DataFrame([{
     "adata_var": var,
 }])
 ```
+
+HTTP request equivalent (JSON):
+
+```json
+{
+  "dataframe_records": [
+    {
+      "adata_sparsematrix": [[2.0, 0.0, 5.0], [0.0, 3.0, 1.0]],
+      "adata_obs": "{\"columns\": [\"batch\", \"final_annotation\"], \"index\": [\"0\", \"1\"], \"data\": [[\"batch0\", \"T cell\"], [\"batch0\", \"B cell\"]]}",
+      "adata_var": "{\"columns\": [\"gene_name\"], \"index\": [\"GENE0\", \"GENE1\", \"GENE2\"], \"data\": [[\"GENE0\"], [\"GENE1\"], [\"GENE2\"]]}"
+    }
+  ]
+}
+```
+
+> The example uses a 2-cell, 3-gene matrix. Real inputs should use gene names from the model vocabulary and `orient="split"` JSON encoding for obs/var DataFrames.
 
 ### HTTP payload (Databricks SDK)
 

@@ -1,13 +1,27 @@
-# Changelog — oss-models skill
+# Changelog — open-weight-models skill
 
-All notable changes to the `oss-models` skill are recorded here.
+All notable changes to the `open-weight-models` skill are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/). The skill's
 frontmatter `version` is the source of truth for releases.
+
+## [Unreleased]
+
+### Added
+- `references/models/midnight.md` for the `kaiko-ai/midnight` pathology tile
+  encoder.
+- Evaluation prompt-template library (`tests/02_eval_prompt_templates.py`) and
+  runtime-environment reference (`tests/README_environments.md`).
+
+### Changed
+- Renamed the skill from `oss-models` to `open-weight-models`.
+- Corrected Geneformer status to serving tested, with evaluation still in
+  progress.
+- Scrubbed concrete catalog identifiers from examples.
 
 ## [0.0.1] — 2026-10-01
 
 Initial contribution — a Health & Life Sciences (HLS) guide for packaging,
-registering, validating, and deploying open-source scientific/foundation models on
+registering, validating, and deploying open-weight scientific/foundation models on
 Databricks (acquire weights → MLflow PyFunc → Unity Catalog → Model Serving / Jobs).
 
 ### Added
@@ -15,7 +29,7 @@ Databricks (acquire weights → MLflow PyFunc → Unity Catalog → Model Servin
   Framework, Best Practices, Troubleshooting, Guardrails, and References.
 - Model references for six families (single-cell transcriptomics; protein /
   biomolecular structure):
-  - **Geneformer** — two workspace-validated deployment paths: V1-10M
+  - **Geneformer** — two deployment paths (serving exercised on workspace; end-to-end eval validation WIP): V1-10M
     (embedding dim 256) and NVIDIA BioNeMo / TransformerEngine V2-316M
     (embedding dim 1152). The TransformerEngine checkpoints load via pip (no
     Docker container required), keeping the standard PyFunc → Unity Catalog →

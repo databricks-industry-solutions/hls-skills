@@ -1,10 +1,10 @@
 # Databricks notebook source
 # DBTITLE 1,Title
 # MAGIC %md
-# MAGIC # OSS-Models Skill — Test Plan
+# MAGIC # Open-Weight Models Skill — Test Plan
 # MAGIC
-# MAGIC End-to-end validation of the `oss-models` skill for packaging, registering,
-# MAGIC and deploying open-source HLS models on Databricks.
+# MAGIC End-to-end validation of the `open-weight-models` skill for packaging, registering,
+# MAGIC and deploying open-weight HLS models on Databricks.
 # MAGIC
 # MAGIC ---
 # MAGIC
@@ -17,7 +17,7 @@
 # MAGIC |-------|----------|--------|-------------|
 # MAGIC | **1 — Structural** | Are the skill files well-formed? (JSON blocks parse, provenance keys present, model references complete) | `01_skill_structure_tests` | Every PR — fast gate, no GPU, no network |
 # MAGIC | **2 — Ground Truth** | Do the deployments actually work? (weights download, model registers, endpoint serves, predictions return) | `_dev/_ground_truth/gt_*` notebooks | Before shipping a new model reference — proves the instructions are correct |
-# MAGIC | **3 — Skill Eval** | Does the skill improve Genie Code’s output? (baseline vs skill, scored by deterministic rubric) | `03_eval_rubric_and_compare` + `02_eval_scratch` | Before shipping the skill itself — proves it adds value |
+# MAGIC | **3 — Skill Eval** | Does the skill improve Genie Code’s output? (baseline vs skill, scored by deterministic rubric) | `03_eval_rubric_and_compare` + `02_eval_prompt_templates` | Before shipping the skill itself — proves it adds value |
 # MAGIC
 # MAGIC > **Layer 2 status:** GT notebooks are archived in `_dev/_ground_truth/` and score 5-6/8 against the current rubric. They need updating before Layer 2 is operational again.
 # MAGIC
@@ -39,12 +39,12 @@
 # MAGIC %md
 # MAGIC ## Skill Location
 # MAGIC
-# MAGIC The local skill copy lives at `.assistant/skills/oss-models/` (this folder).
+# MAGIC The local skill copy lives at `.assistant/skills/open-weight-models/` (this folder).
 # MAGIC All test notebooks reference this path.
 # MAGIC
 # MAGIC ```
 # MAGIC <project-folder>/
-# MAGIC ├── .assistant/skills/oss-models/     ← skill under test
+# MAGIC ├── .assistant/skills/open-weight-models/     ← skill under test
 # MAGIC │   ├── SKILL.md                      (rename to SKILL.md.off to disable)
 # MAGIC │   ├── references/
 # MAGIC │   │   ├── models/                   (7 files: geneformer, scgpt, scimilarity,
@@ -62,7 +62,7 @@
 # MAGIC │   └── with_skill/                   (skill ON)
 # MAGIC ├── 00_oss_models_test_plan           ← this notebook
 # MAGIC ├── 01_skill_structure_tests          (Layer 1 — offline gate, runs first)
-# MAGIC ├── 02_eval_scratch                   (Layer 3 — prompt cards, paste into Genie Code)
+# MAGIC ├── 02_eval_prompt_templates          (Layer 3 — prompt cards, paste into Genie Code)
 # MAGIC ├── 03_eval_rubric_and_compare        (Layer 3 — scoring rubric + ship gate)
 # MAGIC ├── oss-001_TEDDY-70M_Deploy_Baseline     (scored pair)
 # MAGIC ├── oss-001_TEDDY-70M_Deploy_withSkills   (scored pair)
@@ -184,7 +184,7 @@
 # MAGIC All notebooks are standalone (adapted from GWB, no `genesis_workbench` wheel).
 # MAGIC
 # MAGIC These notebooks are **not** the skill eval. They are the answer key.
-# MAGIC For the actual eval, open `02_eval_scratch`, copy a prompt card, and let Genie Code generate code on a blank notebook.
+# MAGIC For the actual eval, open `02_eval_prompt_templates`, copy a prompt card, and let Genie Code generate code on a blank notebook.
 # MAGIC
 # MAGIC > **Ground truth status (Sep 2026):** GT notebooks are archived in `_dev/_ground_truth/`
 # MAGIC > and score 5-6/8 against the current rubric. They predate the skill and lack newer
@@ -202,7 +202,7 @@
 # MAGIC |-------|---------|
 # MAGIC | `evalset.json` | 9 benchmark tasks with model repo URLs (v2.1.0, 5 families) |
 # MAGIC | `scorers.py` | 8 phases, 21 sub-checks (TEDDY-specific checks family-gated) |
-# MAGIC | `02_eval_scratch` | Prompt cards per task — paste into Genie Code on blank notebooks |
+# MAGIC | `02_eval_prompt_templates` | Prompt cards per task — paste into Genie Code on blank notebooks |
 # MAGIC | `03_eval_rubric_and_compare` | Scoring rubric, auto-export, ship gate comparison |
 # MAGIC | `results/baseline/` | Exported notebook source with skill OFF |
 # MAGIC | `results/with_skill/` | Exported notebook source with skill ON |
@@ -232,8 +232,8 @@
 # MAGIC
 # MAGIC **Layer 3** (before shipping the skill, ~30 min per task):
 # MAGIC ```
-# MAGIC 1. Rename SKILL.md → SKILL.md.off in .assistant/skills/oss-models/
-# MAGIC 2. Open 02_eval_scratch, find the prompt card for the task
+# MAGIC 1. Rename SKILL.md → SKILL.md.off in .assistant/skills/open-weight-models/
+# MAGIC 2. Open 02_eval_prompt_templates, find the prompt card for the task
 # MAGIC 3. Paste prompt into Genie Code on a blank notebook (fresh chat) → baseline arm
 # MAGIC 4. Rename SKILL.md.off → SKILL.md (re-enable skill)
 # MAGIC 5. Repeat on another blank notebook (fresh chat) → skill arm
@@ -260,7 +260,7 @@
 # MAGIC
 # MAGIC | Step | What | How |
 # MAGIC |------|------|-----|
-# MAGIC | 1 | Send benchmark prompt | Copy from `02_eval_scratch` prompt card, paste in Genie Code on blank notebook |
+# MAGIC | 1 | Send benchmark prompt | Copy from `02_eval_prompt_templates` prompt card, paste in Genie Code on blank notebook |
 # MAGIC | 2 | Name + save notebooks | `oss-NNN_<Model>_Deploy_Baseline` / `_withSkills` |
 # MAGIC | 3 | Score response | `03_eval_rubric_and_compare` (8 phases, 21 sub-checks per task) |
 # MAGIC | 4 | Compare arms | Skill ON vs OFF → ship/no-ship |
@@ -291,8 +291,8 @@
 # MAGIC | oss-002 | teddy | 400M | hard | Deploy endpoint + Vector Search index |
 # MAGIC | oss-003 | teddy | 70M | compute | Serverless ML compute |
 # MAGIC | oss-004 | scimilarity | v1.1 | hard | Deploy from Zenodo + curl |
-# MAGIC | oss-005 | geneformer | — | easy | Download from HuggingFace |
-# MAGIC | oss-006 | geneformer | — | compute | T4 GPU feasibility |
+# MAGIC | oss-005 | geneformer | V1-10M (Path A) | hard | Full Model Serving deploy for single-cell embeddings |
+# MAGIC | oss-006 | geneformer | V2-316M BioNeMo (Path B) | hard | Full Model Serving deploy with TransformerEngine-aware loading |
 # MAGIC | oss-007 | midnight | — | hard | Pathology tile-embedding deploy |
 # MAGIC | oss-008 | generic | ESM-2 | edge | Unsupported model (template fallback) |
 # MAGIC | oss-009 | generic | — | compute | CPU-only cluster advisory |
@@ -424,9 +424,9 @@
 # MAGIC
 # MAGIC To add a new HF model (or any external model) to this test suite:
 # MAGIC
-# MAGIC 1. Create a model reference at `.assistant/skills/oss-models/references/models/<model>.md`
+# MAGIC 1. Create a model reference at `.assistant/skills/open-weight-models/references/models/<model>.md`
 # MAGIC  (copy `model-template.md`, fill in identity, inputs/outputs, artifacts, deployment)
-# MAGIC 2. Add a row to `.assistant/skills/oss-models/references/models/index.md`
+# MAGIC 2. Add a row to `.assistant/skills/open-weight-models/references/models/index.md`
 # MAGIC 3. Create a combined `gt_<model>` notebook (download + register/deploy in one)
 # MAGIC 4. Update the test matrix in this notebook
 # MAGIC 5. Run `01_skill_structure_tests` to verify the new reference passes all checks
@@ -450,6 +450,6 @@
 # MAGIC | [**PR #7**](https://github.com/databricks-industry-solutions/hls-skills/pull/7) | TEDDY module (BP 8-12, TS 8-13), `HF_HUB_DISABLE_XET`, adaptive storage, `io.StringIO` wrapper, real-vocab test payloads, endpoint readiness polling, service log diagnosis |
 # MAGIC | **PR #8** (planned) | Eval framework: `evalset.json`, `scorers.py`, `eval_rubric_and_compare` |
 # MAGIC | [Yen's TEDDY notebooks](https://github.com/databricks-industry-solutions/hls-skills/tree/main/notebooks/yenl_tests/TEDDY) | trial1 + trial2: real deployment code for TEDDY-70M and Scimilarity |
-# MAGIC | [Validation notebooks](https://github.com/databricks-industry-solutions/hls-skills/tree/main/skills/oss-models/validation) | Geneformer BioNeMo, DNABERT-2, Midnight serving proofs-of-concept |
-# MAGIC | [SKILL.md](https://github.com/databricks-industry-solutions/hls-skills/blob/feat/oss-models-teddy/skills/oss-models/SKILL.md) | The skill under test (BP 1-12, TS 1-13, 7 model references) |
-# MAGIC | [Model references](https://github.com/databricks-industry-solutions/hls-skills/tree/feat/oss-models-teddy/skills/oss-models/references/models) | Per-model deployment guides (geneformer, scgpt, scimilarity, alphafold-openfold, boltz, teddy) and `index.md` (table-of-contents listing all available model references) |
+# MAGIC | Serving-validation notebooks | Geneformer BioNeMo, DNABERT-2, and Midnight proofs-of-concept are kept outside the repo for now. |
+# MAGIC | [SKILL.md](https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/open-weight-models/SKILL.md) | The skill under test (BP 1-12, TS 1-13, 7 model references) |
+# MAGIC | [Model references](https://github.com/databricks-industry-solutions/hls-skills/tree/main/skills/open-weight-models/references/models) | Per-model deployment guides (geneformer, scgpt, scimilarity, alphafold-openfold, boltz, teddy) and `index.md` (table-of-contents listing all available model references) |

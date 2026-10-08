@@ -18,8 +18,8 @@
 # MAGIC > Deploy TEDDY-70M as a Model Serving endpoint and enable nearest-neighbor cell-type search on Databricks. The model is at https://huggingface.co/Merck/TEDDY (Apache-2.0, paper: arxiv 2503.03485). Use catalog `<catalog>`, schema `skills`. Store downloaded artifacts under `/Volumes/<catalog>/skills/test_with/models/teddy`. Register the model as `<catalog>.skills.teddy_70m_v2` and name the endpoint `teddy-70m-v2-embedder`. Create a Delta table `<catalog>.skills.teddy_cells_70m_v2` of reference cell embeddings and a Vector Search index `<catalog>.skills.teddy_cell_index_70m_v2` on endpoint `teddy-70m-v2-search-endpoint` for nearest-neighbor lookup. Make the notebook fully re-runnable: on first run, delete any pre-existing endpoint and UC model versions; on subsequent runs, skip cleanup if the endpoint is already in READY state (only tear down if it's in a FAILED state or doesn't exist). If a deployment fails, diagnose the error from endpoint events/logs, fix the root cause, and retry — don't leave the notebook in a broken state. Write the code and explain your decisions.
 # MAGIC >
 # MAGIC > **Before writing any code**, read the project's HLS model-deployment skill and TEDDY model reference using `readAssetById` (type `file`) at these workspace paths:
-# MAGIC > - `/Workspace/Users/<workspace-user>/PROJECTS/hls-skills-tests/<project-folder>/.assistant/skills/oss-models/SKILL.md`
-# MAGIC > - `/Workspace/Users/<workspace-user>/PROJECTS/hls-skills-tests/<project-folder>/.assistant/skills/oss-models/references/models/teddy.md`
+# MAGIC > - `/Workspace/Users/<workspace-user>/PROJECTS/hls-skills-tests/<project-folder>/.assistant/skills/open-weight-models/SKILL.md`
+# MAGIC > - `/Workspace/Users/<workspace-user>/PROJECTS/hls-skills-tests/<project-folder>/.assistant/skills/open-weight-models/references/models/teddy.md`
 # MAGIC >
 # MAGIC > **Treat these skill references as authoritative.** When a skill specifies a concrete implementation pattern (e.g., a particular MLflow logging method, a dependency version, a wrapper structure, an AI Search index spec), use that exact pattern — do not substitute your own approach even if it seems simpler or more familiar. Before writing each code cell, re-check the relevant skill section to ensure your implementation matches. If you deviate from a skill recommendation, state why explicitly in a code comment.
 # MAGIC >
@@ -80,8 +80,8 @@ import os
 
 # --- Paths ---
 WS_HOME = "/Workspace/Users/<workspace-user>"
-SYMLINK_PATH = f"{WS_HOME}/.assistant/skills/oss-models"
-SOURCE_DIR = f"{WS_HOME}/PROJECTS/hls-skills-tests/<project-folder>/.assistant/skills/oss-models"
+SYMLINK_PATH = f"{WS_HOME}/.assistant/skills/open-weight-models"
+SOURCE_DIR = f"{WS_HOME}/PROJECTS/hls-skills-tests/<project-folder>/.assistant/skills/open-weight-models"
 
 # --- Symlink ---
 print("=== Symlink ===")
@@ -1467,8 +1467,8 @@ else:
 # MAGIC
 # MAGIC The following skills from the Skill Registry were loaded or consulted during development:
 # MAGIC
-# MAGIC 1. **oss-models/SKILL.md** (project skill) — HLS model packaging, file-based logging, SDK enum patterns, AI Gateway config, isatty fix, sys.modules purge, serving contract design, pip_requirements from pyproject.toml
-# MAGIC 2. **oss-models/references/models/teddy.md** (project skill) — TEDDY-specific: subprocess HF download, transformers==4.41.0 pin, Census organism key, gene filtering, batch sizing, VS ResultData positional indexing, tensor-boolean safety
+# MAGIC 1. **open-weight-models/SKILL.md** (project skill) — HLS model packaging, file-based logging, SDK enum patterns, AI Gateway config, isatty fix, sys.modules purge, serving contract design, pip_requirements from pyproject.toml
+# MAGIC 2. **open-weight-models/references/models/teddy.md** (project skill) — TEDDY-specific: subprocess HF download, transformers==4.41.0 pin, Census organism key, gene filtering, batch sizing, VS ResultData positional indexing, tensor-boolean safety
 # MAGIC 3. **Prior memory: databricks-sdk-gotchas-serving-vs.md** — Accumulated SDK gotchas from prior oss-002 baseline deployment: enum comparisons (`.value`), `ModelVersionsAPI.delete()` uses `full_name` not `name`, `EndpointType` must be an enum not a string, `DeltaSyncVectorIndexSpecRequest` requires typed dataclasses not dicts, VS endpoint state is a string not an enum, deprecated `AutoCaptureConfigInput`, config update staleness, and the transformers 5.x `all_tied_weights_keys` / `pad_token_id` patches
 
 # COMMAND ----------

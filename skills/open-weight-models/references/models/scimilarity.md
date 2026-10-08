@@ -1,6 +1,6 @@
 # Scimilarity model reference
 
-> **Status: work in progress — needs further testing.** The serving / validation path for this model has not yet been workspace-validated; the input and output examples below are provisional and may change once tested.
+> **Status: work in progress — needs further testing.** Serving path not yet workspace-validated (see validation status table in `SKILL.md`). Examples below are provisional and may change once tested.
 
 ## Identity
 

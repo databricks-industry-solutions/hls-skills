@@ -28,7 +28,7 @@ def test_catalog_order_follows_category_then_name():
     names = [s["name"] for s in skills]
     assert names == [
         "bulk-rnaseq",
-        "oss-models",
+        "open-weight-models",
         "pathway-enrichment-analysis",
         "sc-rnaseq",
         "cohort-builder",

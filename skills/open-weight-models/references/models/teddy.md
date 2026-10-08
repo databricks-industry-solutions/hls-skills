@@ -227,7 +227,7 @@ The AI Search index needs a Delta table of pre-embedded cells (`teddy_cells_{var
 #### Table naming (variant-aware)
 
 ```
-{catalog}.{schema}.teddy_cells_{variant}   # e.g. my_catalog.skills.teddy_cells_70m
+{catalog}.{schema}.teddy_cells_{variant}   # e.g. <catalog>.skills.teddy_cells_70m
 {catalog}.{schema}.teddy_{variant}          # UC model name
 teddy-{variant}-embedder                   # endpoint name
 ```
@@ -530,7 +530,7 @@ served_entity = ServedEntityInput(
 
 ## Registration and observability
 
-Register to Unity Catalog as `<catalog>.<schema>.teddy_<variant>` (e.g. `my_catalog.skills.teddy_70m`). Log Apache-2.0 license, paper DOI, HF source URL, and variant as MLflow tags. The Census table follows the same convention: `teddy_cells_<variant>` (e.g. `teddy_cells_70m`), and the endpoint: `teddy-<variant>-embedder` (e.g. `teddy-70m-embedder`).
+Register to Unity Catalog as `<catalog>.<schema>.teddy_<variant>` (e.g. `<catalog>.skills.teddy_70m`). Log Apache-2.0 license, paper DOI, HF source URL, and variant as MLflow tags. The Census table follows the same convention: `teddy_cells_<variant>` (e.g. `teddy_cells_70m`), and the endpoint: `teddy-<variant>-embedder` (e.g. `teddy-70m-embedder`).
 
 **Inference tables** are a best-practice default (see SKILL.md §AI Gateway and inference tables). Enable them in the `serving_endpoints.create()` call. The `adata_sparsematrix` and `adata_var` payloads contain gene expression profiles — classify before logging; prefer logging only `cell_id`, embedding dimension, and variant tag. Confirm the inference-table catalog is backed by external storage.
 

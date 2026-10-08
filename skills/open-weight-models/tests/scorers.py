@@ -1,4 +1,4 @@
-"""Phase-based scorers for oss-models skill evaluation.
+"""Phase-based scorers for open-weight-models skill evaluation.
 
 Three-level hierarchy: Categories → Phases → Sub-checks.
 Uses mlflow.genai.evaluate() with @scorer-decorated functions.
