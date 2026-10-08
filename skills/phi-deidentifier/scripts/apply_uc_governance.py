@@ -105,7 +105,9 @@ def build_deid_view(
     for idc in id_columns:
         select_parts.append(f"{_pseudo_id_expr(idc, salt)} AS pseudo_{idc.strip('_')}")
     for dc in date_year_columns:
-        select_parts.append(f"YEAR({dc}) AS {dc.strip('_')}_year")
+        # TRY_CAST so a malformed date STRING (e.g. '2022-09-55') yields NULL year instead of
+        # erroring the whole view; no-op on columns already typed DATE.
+        select_parts.append(f"YEAR(TRY_CAST({dc} AS DATE)) AS {dc.strip('_')}_year")
     # generalized quasi-identifiers (exposed, generalized -- includes LOS via __los__)
     gsummary = generalization_summary(qis, gen)
     for item in gsummary:
