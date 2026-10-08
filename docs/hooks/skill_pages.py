@@ -8,7 +8,7 @@ frontmatter (see skill_catalog.py).
 from pathlib import Path
 
 from mkdocs.structure.files import File
-from repo_links import BRANCH, REPO, absolute_links
+from repo_links import BRANCH, REPO, absolute_links, nest_lists
 from skill_catalog import inject_landing_page, load_skills
 
 _skills = []
@@ -52,7 +52,7 @@ def _skill_page(skill):
         links.append(f"[Evaluation {evaluation[0].lower()}]({evaluation[1]})")
     box = f'!!! abstract "Skill details"\n    {details}\n\n    {" · ".join(links)}\n\n'
 
-    body = absolute_links(skill["body"], f"skills/{folder}").lstrip("\n")
+    body = nest_lists(absolute_links(skill["body"], f"skills/{folder}")).lstrip("\n")
     title, _, rest = body.partition("\n")
     if title.startswith("# "):
         rest = rest.lstrip("\n")

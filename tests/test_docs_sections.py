@@ -8,7 +8,13 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "docs" / "hooks"))
 
-from repo_links import REPO, absolute_links  # noqa: E402
+from repo_links import (  # noqa: E402
+    LIST_ITEM,
+    REPO,
+    absolute_links,
+    is_fence,
+    nest_lists,
+)
 from repo_sections import (  # noqa: E402
     MARKER,
     SectionError,
@@ -125,6 +131,36 @@ def test_relative_links_and_images_point_at_github():
     assert f"![i]({REPO}/raw/main/skills/foo/img.png)" in out
     assert "[a](#x)" in out and "[e](https://e.com)" in out
     assert "[c](code.py)" in out
+
+
+def test_nested_lists_get_four_spaces_per_level():
+    md = (
+        "1. **Pitfall.** Text.\n   - *How to avoid*: Fix.\n2. Next.\n"
+        "- Inputs:\n  - Counts\n    - Raw\n"
+    )
+    assert nest_lists(md) == (
+        "1. **Pitfall.** Text.\n    - *How to avoid*: Fix.\n2. Next.\n"
+        "- Inputs:\n    - Counts\n        - Raw\n"
+    )
+
+
+def test_item_text_and_fenced_code_move_with_their_item():
+    md = "1. Step\n\n   More text.\n   ```\n     code\n   ```\n\nAfter\n```\n  - not a list\n```\n"
+    assert nest_lists(md) == (
+        "1. Step\n\n    More text.\n    ```\n      code\n    ```\n\nAfter\n```\n  - not a list\n```\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "skill", sorted(REPO_ROOT.glob("skills/*/SKILL.md")), ids=lambda p: p.parent.name
+)
+def test_skill_page_lists_nest_on_the_site(skill):
+    fenced = False
+    for line in nest_lists(skill.read_text(encoding="utf-8")).splitlines():
+        if is_fence(line):
+            fenced = not fenced
+        elif not fenced and (item := LIST_ITEM.match(line)):
+            assert len(item[1]) % 4 == 0, line
 
 
 @pytest.mark.parametrize("path", ["../outside.md", "missing.md"])

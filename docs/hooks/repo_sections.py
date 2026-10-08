@@ -33,7 +33,7 @@ The source file stays the only copy, so edit it there, not on the site.
 import re
 from pathlib import Path
 
-from repo_links import absolute_links, is_fence
+from repo_links import absolute_links, is_fence, nest_lists
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MARKER = re.compile(
@@ -191,7 +191,7 @@ def _include(m):
     text = shift_headings(_nonempty(text, "included text", source), level)
     text = alerts_to_admonitions(text)
     rel_dir = path.parent.relative_to(REPO_ROOT).as_posix()
-    text = absolute_links(text, "" if rel_dir == "." else rel_dir)
+    text = nest_lists(absolute_links(text, "" if rel_dir == "." else rel_dir))
     for heading, body in replace:
         text = replace_section(text, heading, body, source)
     return text, path
