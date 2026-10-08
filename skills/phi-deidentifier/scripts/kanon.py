@@ -77,7 +77,11 @@ DEFAULT_QIS = [
     ),
 ]
 
-LOS_EXPR = "DATEDIFF(discharge_date, admit_date)"   # substituted for __los__ column ref
+# Length-of-stay from the two date columns. TRY_CAST (not plain DATEDIFF) so malformed date
+# STRINGS — real clinical data has them, e.g. '2022-09-55' — become NULL instead of ERRORING the
+# whole k-anonymity query; a NULL LOS simply forms its own equivalence group. TRY_CAST is a no-op
+# on columns already typed DATE, so this is safe whether the source dates are STRING or DATE.
+LOS_EXPR = "DATEDIFF(TRY_CAST(discharge_date AS DATE), TRY_CAST(admit_date AS DATE))"
 
 
 def _resolve_expr(qi: QuasiIdentifier, level: int) -> str:

@@ -337,6 +337,27 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
 # frontier (read-only); apply_deid commits the k the user picked. run_deid stays as the
 # one-call path for callers that just want the k=5 default.
 
+def _date_quality(q: Q, table: str, plan: DeidPlan) -> list:
+    """Count rows whose date columns don't parse (TRY_CAST IS NULL while the raw value is not).
+
+    Returns [(column, bad_count)] for date columns with >0 unparseable non-null values, so the
+    preview can surface a data-quality issue instead of the engine silently NULL-ing it. Scans
+    the detected date columns plus admit/discharge (the LOS inputs). Best-effort: a column that
+    can't be scanned is skipped, never raised (this is advisory, not a gate)."""
+    date_cols = set(plan.date_year_columns) | {"admit_date", "discharge_date"}
+    present = {p.column for p in plan.profiles}
+    out = []
+    for c in sorted(date_cols & present):
+        try:
+            n = int(q(f"SELECT COUNT(*) FROM {table} "
+                      f"WHERE {c} IS NOT NULL AND TRY_CAST({c} AS DATE) IS NULL")[0][0])
+            if n:
+                out.append((c, n))
+        except Exception:
+            continue
+    return out
+
+
 def preview_deid_options(raw_fqn: str, k_candidates=(2, 5, 10, 20),
                          profile: str | None = None, warehouse_id: str | None = None) -> str:
     """READ-ONLY. Surface the privacy/utility tradeoff so the USER picks the point.
@@ -354,6 +375,14 @@ def preview_deid_options(raw_fqn: str, k_candidates=(2, 5, 10, 20),
     lines = ["## De-identification preview — choose the privacy/utility point", ""]
     detected = "\n".join(f"  - {c} → {klass}" for c, klass in plan.phi_cols) or "  (none)"
     lines += ["**PHI detected (auto):**", detected, ""]
+
+    # Data-quality: surface unparseable dates rather than silently NULL-ing them. The engine
+    # TRY_CASTs so a malformed date can't crash the k-anon query, but the SA should SEE that the
+    # source has date-quality issues (they distort any date-derived measure, e.g. length-of-stay).
+    dq = _date_quality(q, table, plan)
+    if dq:
+        lines += ["**⚠️ Data quality — unparseable dates (TRY_CAST → NULL, counted not dropped):**",
+                  *[f"  - `{c}`: {n} of {total} rows not a valid date" for c, n in dq], ""]
     lines += ["**Per-column plan (Safe Harbor strategy — redaction vs reduction):**",
               f"  - **Redacted / removed** (direct identifiers): {', '.join(plan.dropped_direct) or '—'}",
               f"  - **Tokenized** (pseudonym, linkage kept): {', '.join(plan.id_columns) or '—'}",
