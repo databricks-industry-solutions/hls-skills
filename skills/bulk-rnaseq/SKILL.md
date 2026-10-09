@@ -4,7 +4,7 @@ description: Bulk RNA-seq differential expression with PyDESeq2 (DESeq2 in Pytho
 category: Bioinformatics
 summary: Find top differentially expressed genes from bulk RNA-seq counts.
 author: Yen Low
-version: 0.5
+version: 0.6
 license: Databricks
 ---
 
