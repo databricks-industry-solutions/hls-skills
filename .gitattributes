@@ -1,0 +1,2 @@
+# Store the hero video as a blob; Git will not attempt a text diff.
+docs/vitalskills.mp4 binary
