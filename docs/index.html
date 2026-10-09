@@ -125,7 +125,7 @@
   /* ---------- hero: wordmark + signal trace, with the video tour alongside ---------- */
   .hero { padding: 48px 0 40px; }
   .hero-grid { display: grid; gap: 32px; align-items: center; }
-  @media (min-width: 900px) { .hero-grid { grid-template-columns: 1.15fr 1fr; gap: 48px; } }
+  @media (min-width: 900px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 48px; } }
   .hero-media { margin: 0; }
   .hero-video {
     display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
@@ -186,6 +186,9 @@
   }
   .step a.more { margin-top: auto; font-size: .9rem; font-weight: 600; text-decoration: underline; text-decoration-color: var(--lava); text-decoration-thickness: 2px; }
   .step a.more:hover { color: var(--lava-text); }
+  .steps-note { margin: 16px 0 0; color: var(--ink-soft); font-size: .95rem; }
+  .steps-note a { font-weight: 600; text-decoration-color: var(--lava); text-underline-offset: 3px; }
+  .steps-note a:hover { color: var(--lava-text); }
 
   /* ---------- explore: filter bar ---------- */
   .filters {
@@ -309,8 +312,9 @@
           <path class="t-rungs" d="M263 19.9 V40.1 M311 40.1 V19.9 M359 19.9 V40.1 M407 40.1 V19.9"/>
           <g class="t-atoms"><circle cx="664" cy="30" r="3.6"/><circle cx="680" cy="19" r="3.6"/><circle cx="696" cy="30" r="3.6"/></g>
         </svg>
-        <p class="tagline">Genie Code skills for Health &amp; Life Sciences workflows.</p>
-        <p class="hero-note">Each skill teaches Genie Code one end-to-end job on Databricks, from single-cell analysis to patient cohorts to de-identification.</p>
+        <p class="tagline">Agent skills for Health &amp; Life Sciences</p>
+        <p class="hero-note">Each skill teaches Genie Code one end-to-end job on Databricks, from single-cell analysis to patient cohort selection.</p>
+        <p class="hero-note">More than a sandbox, move your analysis into production leveraging the full-featured Databricks Data & AI platform.</p>
       </div>
       <figure class="hero-media">
         <!-- vitalskills.mp4 is 7.6MB / ~26s (1024x768, 30fps). Production should compress and trim it.
@@ -327,7 +331,7 @@
   <section aria-labelledby="start-h">
     <div class="wrap">
       <h2 id="start-h">Quick start</h2>
-      <p class="section-lede">Three steps from an empty workspace to your first skill run.</p>
+      <p class="section-lede">Three steps from an empty workspace to your first skill run. <br> No Databricks? Check out <a href="https://www.databricks.com/learn/free-edition" target="_blank" rel="noopener noreferrer" aria-label="Databricks Free Edition (opens in new tab)">Databricks Free Edition</a>.</p>
       <ol class="steps">
         <li class="step">
           <h3>Clone the repo into Databricks</h3>
