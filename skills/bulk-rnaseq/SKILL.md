@@ -1,10 +1,10 @@
 ---
 name: bulk-rnaseq
-description: PyDESeq2 differential expression for bulk RNA-seq. Counts + metadata → Wald tests, FDR, optional apeGLM shrinkage, PCA/volcano/MA plots. For pathway enrichment of DE results use pathway-enrichment-analysis.
+description: Bulk RNA-seq differential expression with PyDESeq2 (DESeq2 in Python). Load this skill when the user has a bulk RNA-seq count matrix (integer read counts per gene and sample) with sample metadata, or asks for differentially expressed genes, log2 fold changes, treatment vs control or multi-group comparisons, comparisons across doses or time points, batch-adjusted or covariate-adjusted designs, or PCA, volcano or MA plots of bulk expression data. For pathway enrichment of DE results use pathway-enrichment-analysis. For single-cell data use sc-rnaseq.
 category: Bioinformatics
 summary: Find top differentially expressed genes from bulk RNA-seq counts.
 author: Yen Low
-version: 0.5
+version: 0.6
 license: Databricks
 ---
 
