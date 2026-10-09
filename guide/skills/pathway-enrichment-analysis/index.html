@@ -1,0 +1,1881 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Pathway enrichment method selection for RNA-seq. Choose among ORA (Enrichr), GSEA Prerank, and standard GSEA; covers inputs, significance thresholds, required plots, and GSEApy implementation. Consult after differential expression when interpreting gene lists at pathway/GO level. For DESeq2 DE workflows use bulk-rnaseq.">
+      
+      
+      
+        <link rel="canonical" href="https://databricks-industry-solutions.github.io/hls-skills/guide/skills/pathway-enrichment-analysis/">
+      
+      
+        <link rel="prev" href="../open-weight-models/">
+      
+      
+        <link rel="next" href="../sc-rnaseq/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/databricks-logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>pathway-enrichment-analysis - Vital Skills</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=DM+Sans:300,300i,400,400i,700,700i%7CDM+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"DM Sans";--md-code-font:"DM Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pathway-enrichment-analysis" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../" title="Vital Skills" class="md-header__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vital Skills
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              pathway-enrichment-analysis
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../evaluation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../links/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Links
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../CHANGELOG/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="Vital Skills" class="md-nav__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    Vital Skills
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bulk-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../open-weight-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    open-weight-models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pathway-enrichment-analysis
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pathway-enrichment-analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#over-representation-analysis-ora" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Over-representation analysis (ORA)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gsea-prerank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GSEA Prerank
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-gsea" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standard GSEA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gene-set-libraries-and-identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gene set libraries and identifiers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Framework
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocol-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol Guidelines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Skills
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#companion-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Companion Assets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sc-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sc-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort-builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cohort-builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rwe-cohortstudy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rwe-cohortstudy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../payer-provider-measure-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    payer-provider-measure-catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phi-deidentifier/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    phi-deidentifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../accelerators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    accelerators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skill-eval/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    skill-eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../links/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Links
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CHANGELOG/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#over-representation-analysis-ora" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Over-representation analysis (ORA)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gsea-prerank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GSEA Prerank
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-gsea" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standard GSEA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gene-set-libraries-and-identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gene set libraries and identifiers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Framework
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocol-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol Guidelines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Skills
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#companion-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Companion Assets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="pathway-enrichment-analysis">Pathway Enrichment Analysis<a class="headerlink" href="#pathway-enrichment-analysis" title="Permanent link">&para;</a></h1>
+<div class="admonition abstract">
+<p class="admonition-title">Skill details</p>
+<p><strong>Version</strong> 0.5 · <strong>Author</strong> Yen Low · <strong>License</strong> MIT</p>
+<p><a href="https://github.com/databricks-industry-solutions/hls-skills/tree/main/skills/pathway-enrichment-analysis">Browse on GitHub</a> · <a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/pathway-enrichment-analysis/SKILL.md">Raw SKILL.md</a></p>
+</div>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Pathway enrichment interprets differential expression (or other ranked/hit gene lists) at the pathway and GO-term level rather than gene by gene. This guide covers when to use over-representation analysis (ORA), GSEA Prerank, or standard GSEA; how to prepare inputs; which outputs and plots to produce; and how to run the analyses with GSEApy against Enrichr libraries (GO, KEGG, MSigDB, Reactome, and 200+ others). Use it after DESeq2, edgeR, limma, or scanpy DE — not as a substitute for the DE step itself.</p>
+<h2 id="when-to-use">When to Use<a class="headerlink" href="#when-to-use" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Interpreting DESeq2 or edgeR differential expression results at pathway/GO-term level</li>
+<li>Choosing among ORA, GSEA Prerank, and standard GSEA given the available inputs</li>
+<li>Running Enrichr ORA against GO, KEGG, MSigDB Hallmarks, and other libraries</li>
+<li>Performing GSEA prerank on a log2-fold-change-ranked gene list without a raw expression matrix</li>
+<li>Identifying enriched pathways in scRNA-seq cluster marker genes</li>
+<li>Producing enrichment tables plus required bar plots, network maps, and GSEA running-score plots</li>
+<li>For upstream DESeq2 differential expression, use <code>bulk-rnaseq</code> instead</li>
+</ul>
+<h2 id="key-concepts">Key Concepts<a class="headerlink" href="#key-concepts" title="Permanent link">&para;</a></h2>
+<h3 id="over-representation-analysis-ora">Over-representation analysis (ORA)<a class="headerlink" href="#over-representation-analysis-ora" title="Permanent link">&para;</a></h3>
+<p>ORA tests whether a <strong>discrete gene list</strong> (e.g. significant DEGs) is enriched for genes in curated sets. In GSEApy this is <code>gp.enrichr</code>, which queries Enrichr. It is simple and fast, but ignores magnitude of change and depends on an arbitrary significance cutoff. Run <strong>separately</strong> on up- and down-regulated lists. Typical threshold: adjusted P-value &lt; 0.05. Full recipe: <code>references/ora_analysis_reference.md</code>.</p>
+<h3 id="gsea-prerank">GSEA Prerank<a class="headerlink" href="#gsea-prerank" title="Permanent link">&para;</a></h3>
+<p>GSEA Prerank runs the GSEA algorithm on a <strong>ranked list of all tested genes</strong> (e.g. log2 fold-change sorted descending) without needing a raw expression matrix. In GSEApy this is <code>gp.prerank</code>. It detects coordinated pathway shifts even when individual genes are modest, handles both directions in one run (positive NES = up, negative NES = down), and avoids cutoff bias. Typical threshold: FDR q-val &lt; 0.25. Full recipe: <code>references/gsea_prerank_analysis_reference.md</code>.</p>
+<h3 id="standard-gsea">Standard GSEA<a class="headerlink" href="#standard-gsea" title="Permanent link">&para;</a></h3>
+<p>Standard GSEA (<code>gp.gsea</code>) permutes <strong>sample/phenotype labels</strong> on an expression matrix. It is closest to the original Broad methodology but needs enough samples per group (≥7 recommended), is slowest, and couples ranking to the test. Prefer <code>gp.prerank()</code> in virtually every other case — it separates DE from enrichment and works with output from any DE tool.</p>
+<h3 id="gene-set-libraries-and-identifiers">Gene set libraries and identifiers<a class="headerlink" href="#gene-set-libraries-and-identifiers" title="Permanent link">&para;</a></h3>
+<p>Enrichr provides 200+ libraries (<code>gp.get_library_name(organism="human")</code>). Pass a local <code>.gmt</code> via <code>gene_sets=</code> for offline use. Gene IDs must match the library (typically HGNC symbols, not Ensembl IDs).</p>
+<h2 id="decision-framework">Decision Framework<a class="headerlink" href="#decision-framework" title="Permanent link">&para;</a></h2>
+<p><strong>ALWAYS decide which method to use BEFORE running any enrichment analysis.</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Question: What input do you have?
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── Discrete gene list only (no ranks)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   └── → ORA (`gp.enrichr`)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── Full DE results with a ranking metric (e.g. log2FC)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── Default → GSEA Prerank (`gp.prerank`)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   └── User explicitly wants ORA / Enrichr → ORA on significant subset
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── Raw expression matrix + phenotype labels
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   └── User explicitly wants sample-permutation GSEA
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│       └── → Standard GSEA (`gp.gsea`); otherwise still prefer Prerank on a DE ranking
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>└── User asks for both ORA and GSEA
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    └── → ORA on significant genes + Prerank on full ranked list
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Recommended approach</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full DE table with log2FC for all genes</td>
+<td>GSEA Prerank</td>
+<td>More powerful; no arbitrary cutoff</td>
+</tr>
+<tr>
+<td>Only a gene list (e.g. scRNA-seq cluster markers)</td>
+<td>ORA</td>
+<td>No ranks available</td>
+</tr>
+<tr>
+<td>Quick hypothesis check on a curated hit list</td>
+<td>ORA</td>
+<td>Fast and interpretable</td>
+</tr>
+<tr>
+<td>Expression matrix + labels; user wants classic Broad GSEA</td>
+<td>Standard GSEA</td>
+<td>Sample-label permutation</td>
+</tr>
+<tr>
+<td>User asks for both methods</td>
+<td>ORA + Prerank</td>
+<td>Discrete hits + subtle coordinated signals</td>
+</tr>
+<tr>
+<td>Default when unsure and ranks exist</td>
+<td>GSEA Prerank</td>
+<td>Preferred over <code>gp.gsea()</code> in almost all cases</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>ORA (<code>gp.enrichr</code>)</th>
+<th>GSEA Prerank (<code>gp.prerank</code>)</th>
+<th>Standard GSEA (<code>gp.gsea</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td>Discrete gene list</td>
+<td>Ranked list of ALL tested genes</td>
+<td>Expression matrix + phenotype</td>
+</tr>
+<tr>
+<td><strong>Typical source</strong></td>
+<td><code>padj &lt; 0.05 &amp; abs(log2FC) &gt; 1</code></td>
+<td>Full <code>log2FoldChange</code> column</td>
+<td>TPM/CPM + two-group labels</td>
+</tr>
+<tr>
+<td><strong>Strength</strong></td>
+<td>Simple, fast, focused</td>
+<td>Subtle distributed signals; no cutoff</td>
+<td>Faithful to Broad GSEA</td>
+</tr>
+<tr>
+<td><strong>Weakness</strong></td>
+<td>Threshold-dependent; ignores magnitude</td>
+<td>Slower; sensitive to ranking metric</td>
+<td>Needs ≥7 samples/group; slowest</td>
+</tr>
+<tr>
+<td><strong>Significance</strong></td>
+<td>Adjusted P &lt; 0.05</td>
+<td>FDR q &lt; 0.25</td>
+<td>FDR q &lt; 0.25</td>
+</tr>
+<tr>
+<td><strong>Direction</strong></td>
+<td>Separate up/down runs</td>
+<td>One run (sign of NES)</td>
+<td>One run (sign of NES)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Choose the method first</strong>: Apply the decision framework before calling Enrichr or prerank — do not default to ORA solely because it is familiar.</li>
+<li><strong>Prefer GSEA Prerank when ranks exist</strong>: Use the full DE ranking (e.g. log2FC) rather than thresholding away signal.</li>
+<li><strong>Split ORA by direction</strong>: Always run up- and down-regulated gene lists separately; never pool them.</li>
+<li><strong>Use HGNC symbols and exact library names</strong>: Confirm species and ID type; list libraries with <code>gp.get_library_name()</code> rather than guessing strings.</li>
+<li><strong>Ship required plots every run</strong>: Always produce the bar plot and network enrichment map; for GSEA also produce enrichment curves for the top 3 terms per direction. Use <code>gp.barplot</code> / <code>gseapy.plot.dotplot</code> — not ad-hoc seaborn/matplotlib bar charts.</li>
+<li><strong>Dot plots only on request</strong>: Generate a dot plot only when the user explicitly asks for one.</li>
+<li><strong>Set seeds and publication-grade permutations</strong>: For prerank, use <code>permutation_num=1000</code> and a fixed <code>seed</code> when reporting results.</li>
+<li><strong>Compare across contrasts deliberately</strong>: For multiple conditions, repeat the full workflow per contrast and compare significant-term sets afterward.</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Running ORA on a thresholded list when full ranks were available</strong><ul>
+<li><em>How to avoid</em>: Default to GSEA Prerank whenever log2FC (or another ranking metric) exists for all tested genes.</li>
+</ul>
+</li>
+<li><strong>Pooling up- and down-regulated genes in one ORA call</strong><ul>
+<li><em>How to avoid</em>: Always run separate Enrichr analyses per direction.</li>
+</ul>
+</li>
+<li><strong>Using Ensembl IDs against symbol-based Enrichr libraries</strong><ul>
+<li><em>How to avoid</em>: Convert to HGNC (or matching) symbols before enrichment; verify overlap size is non-trivial.</li>
+</ul>
+</li>
+<li><strong>Skipping the network map or using custom bar charts</strong><ul>
+<li><em>How to avoid</em>: Follow the required visualization table; call GSEApy plotting helpers.</li>
+</ul>
+</li>
+<li><strong>Calling <code>gp.gsea()</code> by default on an expression matrix</strong><ul>
+<li><em>How to avoid</em>: Prefer DE → ranked list → <code>gp.prerank()</code> unless the user explicitly wants sample-permutation GSEA.</li>
+</ul>
+</li>
+<li><strong>Unsorted or tiny ranked lists yielding flat NES ≈ 0</strong><ul>
+<li><em>How to avoid</em>: Sort <code>rnk</code> descending; keep gene-set size within <code>min_size</code>/<code>max_size</code>; ensure ≥10 genes for ORA.</li>
+</ul>
+</li>
+<li><strong>Offline or API failures treated as empty biology</strong><ul>
+<li><em>How to avoid</em>: Check Enrichr availability; fall back to a local <code>.gmt</code> via <code>gene_sets=</code>.</li>
+</ul>
+</li>
+</ol>
+<h2 id="workflow">Workflow<a class="headerlink" href="#workflow" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Step 1: Planning</strong><ul>
+<li>Apply the decision framework (ORA / GSEA Prerank / standard GSEA / both).</li>
+<li>Confirm organism, gene ID type, and target Enrichr libraries (or local <code>.gmt</code>).</li>
+</ul>
+</li>
+<li><strong>Step 2: Prepare input</strong><ul>
+<li>ORA: derive up- and down-regulated gene lists (<code>references/ora_analysis_reference.md</code> → <em>Load Gene Lists</em>).</li>
+<li>Prerank: build full ranked Series, e.g. log2FC sorted descending (<code>references/gsea_prerank_analysis_reference.md</code> → <em>Load Ranked Gene List</em>).</li>
+</ul>
+</li>
+<li><strong>Step 3: Run analysis</strong><ul>
+<li>ORA: <code>gp.enrichr</code> per direction against one or more databases.</li>
+<li>Prerank: single <code>gp.prerank</code> on the full list.</li>
+</ul>
+</li>
+<li><strong>Step 4: Save results</strong><ul>
+<li>Write full and significance-filtered tables (<code>references/*.md</code> → <em>Save Results</em>).</li>
+</ul>
+</li>
+<li><strong>Step 5: Visualize</strong><ul>
+<li>Required plots + method-specific diagnostics (see Protocol Guidelines).</li>
+<li>Dot plot only if explicitly requested.</li>
+</ul>
+</li>
+<li><strong>Step 6: Multi-contrast (optional)</strong><ul>
+<li>Repeat steps 2–5 per comparison; compare significant-term sets across runs.</li>
+</ul>
+</li>
+</ol>
+<p>Load the matching reference file on demand and adapt variable names to the user's existing DESeq2/edgeR/scanpy objects — snippets are step-oriented recipes, not a packaged library.</p>
+<h2 id="protocol-guidelines">Protocol Guidelines<a class="headerlink" href="#protocol-guidelines" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Required visualizations (always)</strong><ul>
+<li>ORA: bar plot + network enrichment map; plus up/down term-overlap comparison and gene-set-size vs significance scatter for full analyses.</li>
+<li>GSEA Prerank: NES bar plot + enrichment curves (top 3 terms per direction) + network map; plus NES waterfall and leading-edge overlap heatmap for full analyses.</li>
+<li>Both methods requested: produce the full set for each.</li>
+</ul>
+</li>
+<li><strong>Optional visualizations</strong>: Dot plot only when the user asks (e.g. "show a dotplot").</li>
+<li>
+<p><strong>Key parameters</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Range / options</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gene_sets</code></td>
+<td>required</td>
+<td>string, list, or <code>.gmt</code> path</td>
+<td>Enrichr library name(s) or local GMT</td>
+</tr>
+<tr>
+<td><code>organism</code> (enrichr)</td>
+<td><code>"human"</code></td>
+<td>human, mouse, fly, fish, worm, yeast</td>
+<td>Species for lookup</td>
+</tr>
+<tr>
+<td><code>cutoff</code> (enrichr)</td>
+<td><code>0.05</code></td>
+<td>0–1</td>
+<td>Adjusted p-value filter</td>
+</tr>
+<tr>
+<td><code>rnk</code> (prerank)</td>
+<td>required</td>
+<td><code>pd.Series</code></td>
+<td>Gene → score; sort descending</td>
+</tr>
+<tr>
+<td><code>permutation_num</code> (prerank)</td>
+<td><code>1000</code></td>
+<td>100–10000</td>
+<td>Permutations for p-values</td>
+</tr>
+<tr>
+<td><code>min_size</code> / <code>max_size</code> (prerank)</td>
+<td><code>15</code> / <code>500</code></td>
+<td>5–50 / 100–2000</td>
+<td>Gene-set size bounds</td>
+</tr>
+<tr>
+<td><code>threads</code> (prerank)</td>
+<td><code>4</code></td>
+<td>1–64</td>
+<td>CPU threads</td>
+</tr>
+<tr>
+<td><code>seed</code> (prerank)</td>
+<td><code>None</code></td>
+<td>integer</td>
+<td>Reproducibility</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>Expected output patterns</strong></p>
+<table>
+<thead>
+<tr>
+<th>Output pattern</th>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ora_{up,down}_all_terms.tsv</code>, <code>ora_{up,down}_significant_terms.tsv</code></td>
+<td>ORA</td>
+<td>Full and filtered tables</td>
+</tr>
+<tr>
+<td><code>ora_{up,down}_barplot.png</code>, <code>ora_{up,down}_network_map.png</code></td>
+<td>ORA</td>
+<td>Required plots</td>
+</tr>
+<tr>
+<td><code>ora_{up,down}_dotplot.png</code></td>
+<td>ORA</td>
+<td>Optional (request only)</td>
+</tr>
+<tr>
+<td><code>ora_updown_term_overlap.png</code>, <code>ora_size_vs_significance.png</code></td>
+<td>ORA</td>
+<td>Additional diagnostics</td>
+</tr>
+<tr>
+<td><code>gsea_prerank_all_terms.tsv</code>, <code>gsea_prerank_significant_terms.tsv</code></td>
+<td>Prerank</td>
+<td>Full and FDR-filtered tables</td>
+</tr>
+<tr>
+<td><code>gsea_nes_barplot.png</code>, <code>gsea_curve_*_NES_*.png</code>, <code>gsea_network_map.png</code></td>
+<td>Prerank</td>
+<td>Required plots</td>
+</tr>
+<tr>
+<td><code>gsea_dotplot.png</code>, <code>gsea_nes_waterfall.png</code>, <code>gsea_leading_edge_overlap.png</code></td>
+<td>Prerank</td>
+<td>Optional / additional</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>Environment</strong></p>
+<ul>
+<li>Packages: <code>gseapy</code>, <code>pandas</code>, <code>matplotlib</code>, <code>networkx</code>, <code>seaborn</code>.</li>
+<li>Install: <code>pip install gseapy</code>. Internet required unless a local <code>.gmt</code> is supplied.</li>
+</ul>
+</li>
+</ol>
+<h2 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Apply the Decision Framework before the first <code>gp.enrichr</code> / <code>gp.prerank</code> / <code>gp.gsea</code> call — do not pick a method after seeing results.</li>
+<li>Never pool up- and down-regulated genes into one ORA call; run each direction separately.</li>
+<li>Check symbol overlap against the chosen library before interpreting. A near-zero overlap is an identifier problem (e.g. Ensembl IDs against symbol-based libraries), not absent biology.</li>
+<li>Treat an Enrichr network or API failure as a failure, not an empty result. Report it, or fall back to a local <code>.gmt</code> via <code>gene_sets=</code>; never state "no enriched pathways" on the back of a failed request.</li>
+<li>State the significance threshold with every result set. GSEA/Prerank hits are reported at FDR q &lt; 0.25 and must not be presented as significant at the ORA adjusted P &lt; 0.05 bar.</li>
+<li>Do not retry a failing enrichment more than 3 times — read the error (see Troubleshooting) first.</li>
+<li>Confirm with the user before heavy workloads: <code>permutation_num</code> above 1000, sweeping many contrasts in one run, or standard <code>gp.gsea</code> on large expression matrices.</li>
+</ol>
+<h2 id="related-skills">Related Skills<a class="headerlink" href="#related-skills" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>bulk-rnaseq</code> — upstream differential expression (DESeq2); produce the ranked lists and DEG tables this guide consumes.</li>
+</ul>
+<h2 id="companion-assets">Companion Assets<a class="headerlink" href="#companion-assets" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>references/ora_analysis_reference.md</code> — ORA implementation: directional Enrichr runs, bar/network plots, optional dot plot, up/down overlap and size-vs-significance diagnostics.</li>
+<li><code>references/gsea_prerank_analysis_reference.md</code> — GSEA Prerank implementation: single-run prerank, NES bar/curves/network, optional dot plot, NES waterfall and leading-edge overlap diagnostics.</li>
+</ul>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Adapted from <a href="https://github.com/jaechang-hits/SciAgent-Skills/blob/0d18706fe1a51239f12b395f046c8aa30fe632b4/skills/genomics-bioinformatics/rnaseq/gseapy-gene-enrichment/SKILL.md">SciAgent gseapy-gene-enrichment skill</a></li>
+<li><a href="https://gseapy.readthedocs.io/">GSEApy documentation</a> — usage guide and API reference</li>
+<li><a href="https://github.com/zqfang/GSEApy">GSEApy GitHub: zqfang/GSEApy</a> — source and examples</li>
+<li>Fang Z et al. (2023) "GSEApy: a comprehensive package for performing gene set enrichment analysis in Python" — <em>Bioinformatics</em> 39(1):btac757. <a href="https://doi.org/10.1093/bioinformatics/btac757">DOI:10.1093/bioinformatics/btac757</a></li>
+<li>Subramanian A et al. (2005) "Gene set enrichment analysis: A knowledge-based approach for interpreting genome-wide expression profiles" — <em>PNAS</em> 102(43):15545-15550. <a href="https://doi.org/10.1073/pnas.0506580102">DOI:10.1073/pnas.0506580102</a></li>
+<li><a href="https://maayanlab.cloud/Enrichr/">Enrichr gene set databases</a> — 200+ gene set libraries</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright vs-copyright">
+  <a class="vs-footer-logo" href="https://www.databricks.com/" target="_blank" rel="noopener" title="Databricks">
+    <img src="../../assets/databricks-logo.svg" alt="Databricks" width="24" height="24">
+  </a>
+  <div>
+    
+      <div class="md-copyright__highlight">
+        Licensed under the Databricks License
+      </div>
+    
+    
+      Made with
+      <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+        Material for MkDocs
+      </a>
+    
+  </div>
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.suggest", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

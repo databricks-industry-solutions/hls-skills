@@ -1,0 +1,2237 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Package, register, validate, and deploy open-weight health and life-sciences models on Databricks. Use for Geneformer, scGPT, Scimilarity, TEDDY, AlphaFold/OpenFold, Boltz, or similar models whose code, checkpoints, databases, tokenizers, or scientific inputs come from Hugging Face, Git, Zenodo, or other external sources. Use this skill when a request involves custom PyFunc wrappers, Unity Catalog registration, Model Serving, Jobs, GPU/runtime selection, complex biological inputs, provenance, or AI Gateway inference tables.">
+      
+      
+      
+        <link rel="canonical" href="https://databricks-industry-solutions.github.io/hls-skills/guide/skills/open-weight-models/">
+      
+      
+        <link rel="prev" href="../bulk-rnaseq/">
+      
+      
+        <link rel="next" href="../pathway-enrichment-analysis/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/databricks-logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>open-weight-models - Vital Skills</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=DM+Sans:300,300i,400,400i,700,700i%7CDM+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"DM Sans";--md-code-font:"DM Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hls-open-weight-models" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../" title="Vital Skills" class="md-header__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vital Skills
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              open-weight-models
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../evaluation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../links/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Links
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../CHANGELOG/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="Vital Skills" class="md-nav__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    Vital Skills
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bulk-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    open-weight-models
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    open-weight-models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-reference-validation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model reference validation status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extension-layer-not-a-replacement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension layer, not a replacement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provenance-controlled-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance-controlled inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serving-contract-shapes-for-scientific-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serving-contract shapes for scientific inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#technical-vs-scientific-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical vs scientific validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retrieval-augmented-deployment-databricks-ai-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retrieval-augmented deployment (Databricks AI Search)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serving-engines-and-nvidia-architecture-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serving engines and NVIDIA architecture components
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Framework
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-python-input_example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (a) Python input_example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-equivalent-http-request-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (b) Equivalent HTTP request JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-expected-response-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (c) Expected response shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d-provenance-manifest-snippet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (d) Provenance manifest snippet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-family-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model-family references
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-gateway-and-inference-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Gateway and inference tables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maintenance-and-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maintenance and updates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocol-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol Guidelines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Skills
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pathway-enrichment-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pathway-enrichment-analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sc-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sc-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort-builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cohort-builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rwe-cohortstudy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rwe-cohortstudy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../payer-provider-measure-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    payer-provider-measure-catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phi-deidentifier/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    phi-deidentifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../accelerators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    accelerators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skill-eval/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    skill-eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../links/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Links
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CHANGELOG/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-reference-validation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model reference validation status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extension-layer-not-a-replacement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension layer, not a replacement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provenance-controlled-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance-controlled inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serving-contract-shapes-for-scientific-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serving-contract shapes for scientific inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#technical-vs-scientific-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical vs scientific validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retrieval-augmented-deployment-databricks-ai-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retrieval-augmented deployment (Databricks AI Search)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serving-engines-and-nvidia-architecture-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serving engines and NVIDIA architecture components
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Framework
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-python-input_example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (a) Python input_example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-equivalent-http-request-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (b) Equivalent HTTP request JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-expected-response-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (c) Expected response shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d-provenance-manifest-snippet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (d) Provenance manifest snippet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-family-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model-family references
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-gateway-and-inference-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Gateway and inference tables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maintenance-and-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maintenance and updates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocol-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol Guidelines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Skills
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="hls-open-weight-models">HLS Open-Weight Models<a class="headerlink" href="#hls-open-weight-models" title="Permanent link">&para;</a></h1>
+<div class="admonition abstract">
+<p class="admonition-title">Skill details</p>
+<p><strong>Version</strong> 0.5 · <strong>Author</strong> May Merkle Tan · <strong>License</strong> Databricks License</p>
+<p><a href="https://github.com/databricks-industry-solutions/hls-skills/tree/main/skills/open-weight-models">Browse on GitHub</a> · <a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/open-weight-models/SKILL.md">Raw SKILL.md</a></p>
+</div>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>This guide is a Health &amp; Life Sciences (HLS) extension layer for packaging, registering, validating, and deploying open-weight scientific models on Databricks. It does not reproduce generic MLflow or custom PyFunc mechanics — it supplies the model-family decisions that generic guidance cannot know: scientific preprocessing, checkpoint and database requirements, GPU and runtime constraints, serving-versus-Jobs suitability, provenance, and biological sanity checks. When the request needs standard logging, signatures, dependency packaging, Unity Catalog registration, Model Serving, or MLflow evaluation, use the existing Databricks ML training and Model Serving skills as the implementation foundation and layer this guide on top.</p>
+<p>These seven model families (single-cell transcriptomics; histopathology; protein/biomolecular structure) are an initial, representative set. The skill is designed to extend — see <code>references/models/index.md</code> and <code>references/model-template.md</code> to add a family. Coverage grows as demand and validated models arrive.</p>
+<h3 id="model-reference-validation-status">Model reference validation status<a class="headerlink" href="#model-reference-validation-status" title="Permanent link">&para;</a></h3>
+<p>Not all model references have been tested end-to-end through the eval harness.</p>
+<table>
+<thead>
+<tr>
+<th>Reference</th>
+<th>Validated</th>
+<th>Eval tasks</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>teddy.md</code></td>
+<td><strong>Yes</strong></td>
+<td>oss-001 (deploy), oss-002 (deploy + VS)</td>
+<td>70M variant. 160M/400M share ref but not yet tested.</td>
+</tr>
+<tr>
+<td><code>geneformer.md</code></td>
+<td>No</td>
+<td>oss-005, oss-006 (WIP)</td>
+<td>Serving tested; eval (oss-005/006) WIP. Path A + Path B; NVIDIA TE stub pattern for BioNeMo PyFunc serving.</td>
+</tr>
+<tr>
+<td><code>scgpt.md</code></td>
+<td>No</td>
+<td>—</td>
+<td>Reference provided; no eval task yet.</td>
+</tr>
+<tr>
+<td><code>scimilarity.md</code></td>
+<td>No</td>
+<td>—</td>
+<td>Zenodo v1.1 and HF expanded.</td>
+</tr>
+<tr>
+<td><code>alphafold-openfold.md</code></td>
+<td>No</td>
+<td>—</td>
+<td>Reference provided; no eval task yet.</td>
+</tr>
+<tr>
+<td><code>boltz.md</code></td>
+<td>No</td>
+<td>—</td>
+<td>Reference provided; no eval task yet.</td>
+</tr>
+<tr>
+<td><code>midnight.md</code></td>
+<td>No</td>
+<td>—</td>
+<td>DINOv2 pathology tile embedder. Skeleton wrapper.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Validated</strong> = used by Genie Code in a blind eval run producing a working deployment. Does not imply scientific/clinical validation.</p>
+<h2 id="when-to-use">When to Use<a class="headerlink" href="#when-to-use" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The request names an HLS model (TEDDY, Geneformer, scGPT, Scimilarity, AlphaFold/OpenFold, Boltz, Midnight, or similar) whose code or weights come from an external source.</li>
+<li>The task involves biological sequences or structures, single-cell data, molecular design, or other complex scientific inputs that need a deliberate serving contract.</li>
+<li>Model code, checkpoints, tokenizers, or reference databases must be pinned and packaged for offline, reproducible startup.</li>
+<li>You must decide between Model Serving, Jobs, an interactive app, or a multi-step workflow for a scientific model.</li>
+<li>The request touches provenance, licensing, or offline reproducibility controls for external model weights and datasets.</li>
+<li>The user asks for AI Gateway policies, usage tracking, or inference tables over an HLS endpoint that may log sensitive payloads.</li>
+<li>The deployment combines a model endpoint with a <strong>Databricks AI Search index</strong> for embedding-based retrieval.</li>
+<li>The model requires <strong>vLLM</strong> (autoregressive generation) or <strong>NVIDIA TE stubs</strong> (BioNeMo models) rather than a standard PyFunc wrapper.</li>
+</ul>
+<p>For generic custom PyFunc, sklearn, or ordinary PyTorch packaging with no scientific inputs, use the standard Databricks ML training skill instead.</p>
+<h2 id="key-concepts">Key Concepts<a class="headerlink" href="#key-concepts" title="Permanent link">&para;</a></h2>
+<h3 id="extension-layer-not-a-replacement">Extension layer, not a replacement<a class="headerlink" href="#extension-layer-not-a-replacement" title="Permanent link">&para;</a></h3>
+<p>Reusable Databricks mechanics (PyFunc, signatures, UC registration, serving) live in the generic skills. This guide adds only the HLS-specific adapter behavior. Do not assume Genie Code has a formal skill-inheritance mechanism; if the generic skill is unavailable, restate only the minimum implementation checklist from <code>references/integration-contract.md</code> rather than copying the generic tutorial.</p>
+<h3 id="execution-boundary">Execution boundary<a class="headerlink" href="#execution-boundary" title="Permanent link">&para;</a></h3>
+<p>Before writing code, record the exact upstream repository/package/model card, the model and code revision (immutable commit — prefer a commit SHA, since git tags can be re-pointed), the checkpoint or weight source and revision, the model and dataset licenses, expected input modalities and output objects, preprocessing/postprocessing and reference-data dependencies, and whether the user needs online inference, batch scoring, an interactive app, or a multi-step workflow. If the model name is ambiguous, stop and ask for the exact upstream project, or select the closest reference while clearly marking assumptions.</p>
+<h3 id="provenance-controlled-inputs">Provenance-controlled inputs<a class="headerlink" href="#provenance-controlled-inputs" title="Permanent link">&para;</a></h3>
+<p>Treat code, weights, tokenizers, scientific databases, and configuration as separate provenance-controlled inputs — each pinned to an immutable revision with URL, checksum, license, and acquisition date recorded in a manifest. A mutable branch, <code>latest</code> URL, or unpinned model card is non-reproducible until pinned.</p>
+<h3 id="serving-contract-shapes-for-scientific-inputs">Serving-contract shapes for scientific inputs<a class="headerlink" href="#serving-contract-shapes-for-scientific-inputs" title="Permanent link">&para;</a></h3>
+<p>Complex inputs (AnnData, sparse matrices, FASTA, YAML, structures) need a deliberate contract: scalar/tabular fields for small bounded values; JSON strings for nested records or configuration; base64 or URI references for files and structures; arrays or nested lists only after testing the exact serving serializer; a Volume or object-storage URI for large inputs with authorization and lifecycle rules.</p>
+<h3 id="technical-vs-scientific-validation">Technical vs scientific validation<a class="headerlink" href="#technical-vs-scientific-validation" title="Permanent link">&para;</a></h3>
+<p>Technical validation (imports, signatures, deployment) is distinct from scientific, clinical, and regulatory validation. A successful deployment never implies clinical validity.</p>
+<h3 id="retrieval-augmented-deployment-databricks-ai-search">Retrieval-augmented deployment (Databricks AI Search)<a class="headerlink" href="#retrieval-augmented-deployment-databricks-ai-search" title="Permanent link">&para;</a></h3>
+<p>Many HLS embedding models (TEDDY, Geneformer, Scimilarity, Midnight) produce per-sample vectors useful for nearest-neighbour retrieval. The deployment has two components: (1) a Model Serving endpoint producing embeddings, and (2) a Databricks AI Search index storing and querying the reference atlas. For index lifecycle, defer to the <code>vector-search</code> skill and <a href="https://docs.databricks.com/aws/en/ai-search/ai-search/">Databricks AI Search docs</a>. This guide covers the model-side contract and atlas-population workflow. See <code>teddy.md</code> for a validated example (oss-002 covers TEDDY + VS end-to-end).</p>
+<h3 id="serving-engines-and-nvidia-architecture-components">Serving engines and NVIDIA architecture components<a class="headerlink" href="#serving-engines-and-nvidia-architecture-components" title="Permanent link">&para;</a></h3>
+<p>The default deployment path is MLflow custom PyFunc. Two important extensions:</p>
+<p><strong>NVIDIA TransformerEngine stubs for BioNeMo models (PyFunc enabler)</strong></p>
+<p>Some NVIDIA BioNeMo models (e.g. Geneformer V2-316M) depend on <code>transformer_engine.pytorch</code> for optimised transformer layers. TE requires a full CUDA toolkit source build, which fails on Serverless GPU and in Model Serving containers. Without a workaround, these models would require Docker containers, NVIDIA NIM, or external API/MCP integrations to serve. This skill provides functional <code>nn.Module</code> stubs matching TE layer interfaces and weight-key names, enabling standard PyFunc serving on Databricks without the native NVIDIA stack. See <code>geneformer.md</code> TransformerEngine stubs section for the working pattern. This approach generalises to other BioNeMo models that import TE.</p>
+<p><strong>vLLM for autoregressive / generative models (separate path, no PyFunc)</strong></p>
+<p>For autoregressive protein language models or generative bio-sequence models, Databricks supports <a href="https://docs.databricks.com/aws/en/machine-learning/model-serving/serve-custom-llms/">custom LLM serving via vLLM</a> (Beta). This is a fundamentally different serving path — vLLM loads the model directly and exposes an OpenAI-compatible API. Models are logged via <code>mlflow.transformers.log_model()</code> with a task type (<code>llm/v1/chat</code>, <code>llm/v1/embeddings</code>), not <code>mlflow.pyfunc.log_model()</code>. Use when the model is a standard HF transformers architecture, fits on one GPU, and needs no custom scientific preprocessing in the serving path. Refs: <a href="https://docs.databricks.com/aws/en/machine-learning/model-serving/serve-custom-llms/">Databricks custom LLM serving</a>, <a href="https://docs.vllm.ai/">vLLM docs</a>.</p>
+<p><strong>When PyFunc + stubs won't work: Docker / NIM / external API</strong></p>
+<p>When neither PyFunc (even with stubs) nor vLLM fits, the fallback is <a href="https://docs.nvidia.com/nim/">NVIDIA NIM</a> (pre-built inference microservices), <a href="https://docs.databricks.com/aws/en/machine-learning/model-serving/bring-your-own-container">Databricks custom container serving</a>, or external API/MCP. The model reference file should note which serving path is viable.</p>
+<h2 id="decision-framework">Decision Framework<a class="headerlink" href="#decision-framework" title="Permanent link">&para;</a></h2>
+<p>Route the model first, then choose the execution mode.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Is there scientific preprocessing, a custom checkpoint layout, or complex biological input?
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── No  → use the standard Databricks ML training skill (generic PyFunc/PyTorch packaging)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>└── Yes → use this guide together with the ML training skill
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    └── How is inference shaped?
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        ├── Bounded, deterministic, self-contained, stable request schema → consider Model Serving
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        ├── CPU-heavy prep / MSA / very large DBs / multi-stage / large artifact outputs → Jobs / workflow
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        └── Both (bounded scoring + heavy preparation or design loops) → hybrid: endpoint + Job
+</code></pre></div>
+<p>Choose <strong>Model Serving</strong> only when <em>all</em> hold; choose <strong>Jobs / orchestration</strong> when <em>any</em> of the Jobs-side conditions hold:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Recommended</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bounded JSON/file-URI contract, artifacts fit endpoint, no runtime internet, acceptable latency/size, safe outputs</td>
+<td>Model Serving</td>
+<td>Low-latency online inference with a stable, packaged contract</td>
+</tr>
+<tr>
+<td>CPU-heavy preprocessing or MSA generation before GPU inference</td>
+<td>Jobs</td>
+<td>Separates heavy prep from latency-sensitive scoring</td>
+</tr>
+<tr>
+<td>Very large reference databases or multiple containers/processes</td>
+<td>Jobs</td>
+<td>Exceeds endpoint resource and packaging limits</td>
+</tr>
+<tr>
+<td>Multi-stage, iterative, asynchronous, or long-running inference</td>
+<td>Jobs</td>
+<td>Not representable as a single bounded request</td>
+</tr>
+<tr>
+<td>Large structures, trajectories, files, or artifact collections as output</td>
+<td>Jobs</td>
+<td>Outputs too large or numerous for an HTTP response</td>
+</tr>
+<tr>
+<td>Reproducibility/auditability outweigh low latency</td>
+<td>Jobs</td>
+<td>Deterministic, logged, re-runnable execution</td>
+</tr>
+<tr>
+<td>Bounded scoring plus preparation, enrichment, or design loops</td>
+<td>Hybrid</td>
+<td>Endpoint for scoring, Job for preparation/artifact generation</td>
+</tr>
+</tbody>
+</table>
+<p>For endpoint observability, usage tracking, or request logging, use supported AI Gateway features subject to data-governance review (see Best Practices and <code>references/maintenance.md</code>).</p>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Define the serving contract before the wrapper.</strong> Create an <code>input_example</code> and a signature that represent the actual request. Prefer explicit columns/fields for meaningful optional controls over an untested SDK <code>params=</code> path. Document request/response examples for both Python SDK and HTTP invocation, and validate them with the generic MLflow serving-input tools plus a real endpoint or local runner.</li>
+<li><strong>Package for reproducibility.</strong> Pin source revisions and dependency versions; prefer build-time downloads into a governed Volume or model artifact location; record URL, revision, checksum, license, and acquisition date in a manifest; never download weights at request time; never embed credentials in artifacts or notebooks; test an offline / network-restricted startup path.</li>
+<li><strong>Make cache and database paths explicit.</strong> Ensure cache paths are writable by the serving or Job identity. Keep large reference databases outside the model artifact when appropriate, but version and validate their mounted location.</li>
+<li><strong>Keep the wrapper boundary thin.</strong> Load heavyweight objects once during initialization; keep <code>predict</code> deterministic with respect to declared inputs; normalize scientific input types at the boundary; return stable serializable outputs or persisted artifact references; expose provenance without leaking secrets.</li>
+<li><strong>Register with a promotion strategy.</strong> Register to Unity Catalog with an explicit versioning/promotion strategy, and store the source/weight manifest alongside the model version or in a linked governed location.</li>
+<li><strong>Minimize sensitive data in observability.</strong> Before enabling inference tables, classify sequence, structure, patient, donor, and compound data; minimize or redact payloads; define retention, access, and masking rules; prefer a hash, metadata record, or governed URI over raw inputs; confirm failures/retries do not create misleading duplicate records. Inference tables are governance mechanisms, not a substitute for model validation or authorization design.</li>
+<li><strong>Separate technical from scientific validation.</strong> For regulated, clinical, or decision-support use cases, keep technical validation distinct from scientific, clinical, regulatory, and human-review requirements.</li>
+<li><strong>Split the download notebook from the register-and-deploy notebook.</strong> The model download requires only CPU and a stable write path; the dry-load test, MLflow logging, and registration require GPU. Separating them keeps each notebook independently re-entrant and avoids wasting GPU time on downloads. The download notebook writes to a UC Volume; the register/deploy notebook reads from it.</li>
+<li><strong>Read <code>pip_requirements</code> from the model's own dependency spec, not from PyFunc class imports.</strong> PyFunc imports show only the wrapper's direct dependencies; they miss the full import chain of any bundled package. Read <code>pyproject.toml</code>, <code>requirements.txt</code>, or <code>setup.cfg</code> from the source repository, then pin exact or bounded versions for packages known to have breaking APIs across releases (especially <code>transformers</code>, <code>numpy</code>, <code>pandas</code>, <code>anndata</code>). An unbounded <code>&gt;=X.Y</code> resolved to a newer incompatible major version is a common cause of "A library raised an error during model load" failures in the serving container.</li>
+<li><strong>On Serverless compute, write temporary files to <code>/tmp</code>, not <code>/local_disk0</code>.</strong> <code>/local_disk0</code> is not available on Serverless CPU or GPU compute. <code>/tmp</code> is always writable on both Serverless and classic compute.</li>
+<li><strong>Import every stdlib and third-party symbol used inside a PyFunc class explicitly in that class cell.</strong> The serving container deserialises the class in a fresh Python process that has no knowledge of what the notebook imported. Even <code>sys</code>, <code>os</code>, <code>io</code>, and other stdlib modules must be imported inside the class cell — not only at the top of the notebook — or they will raise <code>NameError</code> in the serving container while the same code passes a local dry-load test (because notebook-session globals are shared within the kernel).</li>
+<li><strong>Use file-based model logging (<code>python_model=&lt;path&gt;</code>) when the model code is shipped via <code>code_paths</code>, not pip-installed.</strong> Passing a live instance (<code>python_model=wrapper</code>) triggers cloudpickle serialisation, which captures <code>import &lt;package&gt;</code> references. If the package is not pip-installable (only available via <code>code_paths</code>), the serving container will fail at unpickle time with <code>ModuleNotFoundError</code> because <code>cloudpickle.load()</code> runs <strong>before</strong> <code>code_paths</code> are placed on <code>sys.path</code>. The fix: write the PyFunc class to a standalone <code>.py</code> file, add <code>mlflow.models.set_model(MyWrapper())</code> at module level, and pass <code>python_model=&lt;path_to_wrapper.py&gt;</code> to <code>log_model</code>. This makes MLflow import the file directly after <code>code_paths</code> are on <code>sys.path</code>, bypassing cloudpickle entirely. This applies to all HLS models whose source code is bundled (TEDDY, Geneformer custom tokenizers, scGPT, etc.).</li>
+<li><strong>Use SDK enum classes for endpoint configuration, not string literals.</strong> When setting <code>workload_type</code>, use <code>ServingModelWorkloadType.GPU_SMALL</code> (from <code>databricks.sdk.service.serving</code>), not the string <code>"GPU_SMALL"</code>. String literals bypass SDK validation and can silently produce invalid configs. The same principle applies to other typed fields: <code>EndpointStateReady</code>, <code>EndpointStateConfigUpdate</code>, <code>ServedModelStateDeployment</code>, etc.</li>
+<li><strong>Construct test payloads from the declared signature, not from "typical" template code.</strong> Before running a smoke test against a deployed endpoint, read the model's MLflow signature and ensure every required field is present with the correct type. A missing required column (e.g. <code>adata_obs</code>) produces a schema-enforcement <code>BadRequest</code> that is distinct from the model logic itself. Use real input values from the model's vocabulary or reference data — synthetic values that map to the OOV token produce degenerate outputs that cannot validate the tokenisation path.</li>
+</ol>
+<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
+<p>A concrete end-to-end example that makes Best Practices §1 real for a <strong>bounded single-cell Geneformer request</strong> on Model Serving. Every <em>field name</em> is grounded in <code>references/models/geneformer.md</code> (gene identifiers, vocabulary version, truncation, gene-count limit, pooling mode, output selection) and <code>references/integration-contract.md</code> (transport-encoding table, manifest keys). Every <em>upstream-specific value</em> is a clearly-marked placeholder <code>&lt;...&gt;</code> that MUST be resolved from the pinned Geneformer release — the no-invention rule applies: these are not real vocabulary IDs, revisions, checksums, or tensor shapes.</p>
+<p>Transport choice: the encoding table routes an AnnData / sparse-matrix row to tabular fields plus a JSON configuration string, so a single cell becomes a compact feature record (<code>genes</code> + <code>expression</code>) and a <code>config</code> JSON string for the optional controls.</p>
+<h3 id="a-python-input_example">(a) Python <code>input_example</code><a class="headerlink" href="#a-python-input_example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">input_example</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="s2">"cell_id"</span><span class="p">:</span> <span class="s2">"cell-0001"</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="c1"># Gene IDs MUST be present in the pinned vocabulary &lt;vocab-version&gt;.</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="c1"># Placeholders — resolve real Ensembl IDs from the pinned Geneformer release.</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">"genes"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"&lt;ensembl-gene-id-1&gt;"</span><span class="p">,</span> <span class="s2">"&lt;ensembl-gene-id-2&gt;"</span><span class="p">,</span> <span class="s2">"&lt;ensembl-gene-id-3&gt;"</span><span class="p">],</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="s2">"expression"</span><span class="p">:</span> <span class="p">[</span><span class="mf">12.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span>  <span class="c1"># counts aligned position-for-position to `genes`</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="s2">"vocab_version"</span><span class="p">:</span> <span class="s2">"&lt;vocab-version&gt;"</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="c1"># Optional controls as explicit fields (Best Practices §1), NOT an untested params= path.</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="c1"># Supported values (e.g. the pooling mode enum, the max token/gene-count limit) must be</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="c1"># read from the pinned reference — do not assume them here.</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="s2">"config"</span><span class="p">:</span> <span class="s2">"{</span><span class="se">\"</span><span class="s2">truncation</span><span class="se">\"</span><span class="s2">: true, </span><span class="se">\"</span><span class="s2">gene_count_limit</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="s2">&lt;max-input-tokens&gt;</span><span class="se">\"</span><span class="s2">, </span><span class="se">\"</span><span class="s2">pooling_mode</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="s2">&lt;pooling-mode&gt;</span><span class="se">\"</span><span class="s2">, </span><span class="se">\"</span><span class="s2">output</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="s2">embedding</span><span class="se">\"</span><span class="s2">}"</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="b-equivalent-http-request-json">(b) Equivalent HTTP request JSON<a class="headerlink" href="#b-equivalent-http-request-json" title="Permanent link">&para;</a></h3>
+<p>MLflow scoring-server <code>dataframe_records</code> format. Confirm the exact accepted format (<code>dataframe_split</code> / <code>dataframe_records</code> / <code>inputs</code>) against the deployed endpoint signature and MLflow version before depending on it — see <code>databricks-model-serving</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">"dataframe_records"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">      </span><span class="nt">"cell_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cell-0001"</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="nt">"genes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"&lt;ensembl-gene-id-1&gt;"</span><span class="p">,</span><span class="w"> </span><span class="s2">"&lt;ensembl-gene-id-2&gt;"</span><span class="p">,</span><span class="w"> </span><span class="s2">"&lt;ensembl-gene-id-3&gt;"</span><span class="p">],</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="nt">"expression"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">12.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">],</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">      </span><span class="nt">"vocab_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;vocab-version&gt;"</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="nt">"config"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{\"truncation\": true, \"gene_count_limit\": \"&lt;max-input-tokens&gt;\", \"pooling_mode\": \"&lt;pooling-mode&gt;\", \"output\": \"embedding\"}"</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="c-expected-response-shape">(c) Expected response shape<a class="headerlink" href="#c-expected-response-shape" title="Permanent link">&para;</a></h3>
+<p>MLflow scoring-server response envelope. The embedding vector values and dimension are placeholders because the true shape is fixed by the pinned checkpoint — do not assert a dimension.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"predictions"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">"cell_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cell-0001"</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">"embedding"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"&lt;float&gt;"</span><span class="p">,</span><span class="w"> </span><span class="s2">"&lt;float&gt;"</span><span class="p">,</span><span class="w"> </span><span class="s2">"..."</span><span class="p">],</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="nt">"embedding_dim"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;embedding-dim&gt;"</span><span class="p">,</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="nt">"vocab_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;vocab-version&gt;"</span><span class="p">,</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">      </span><span class="nt">"model_revision"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;immutable-commit&gt;"</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="d-provenance-manifest-snippet">(d) Provenance manifest snippet<a class="headerlink" href="#d-provenance-manifest-snippet" title="Permanent link">&para;</a></h3>
+<p>Stored next to the model version (keys per <code>references/integration-contract.md</code>). The two <code>source_url</code> values are the reference sources listed in <code>geneformer.md</code>; every other <code>&lt;...&gt;</code> must be resolved and never marked verified until confirmed upstream.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">model</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">geneformer</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">upstream_revision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;immutable-commit&gt;</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">reviewed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;YYYY-MM-DD&gt;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nt">code</span><span class="p">:</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nt">source_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/jkobject/geneformer</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nt">revision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;commit-or-tag&gt;</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="nt">weights</span><span class="p">:</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">  </span><span class="nt">source_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://huggingface.co/ctheodoris/Geneformer</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span><span class="nt">revision_or_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;immutable-commit&gt;</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">  </span><span class="nt">sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;sha256&gt;</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="nt">license</span><span class="p">:</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">  </span><span class="nt">code</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;license-or-unknown&gt;</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">  </span><span class="nt">weights</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;license-or-unknown&gt;</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">  </span><span class="nt">databases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">not-applicable</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="nt">runtime</span><span class="p">:</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">  </span><span class="nt">python</span><span class="p">:</span><span class="w"> </span><span class="s">"&lt;python-version&gt;"</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">  </span><span class="nt">accelerator</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;cpu-gpu-or-specific-family&gt;</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">  </span><span class="nt">network_required_at_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="nt">artifacts</span><span class="p">:</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vocabulary</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">    </span><span class="nt">location</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;governed-volume-or-model-artifact&gt;</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">    </span><span class="nt">sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;sha256&gt;</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">    </span><span class="nt">location</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;governed-volume-or-model-artifact&gt;</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">    </span><span class="nt">sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;sha256&gt;</span>
+</code></pre></div>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Downloading weights at request time.</strong> Slow, non-reproducible, and often fails in network-restricted serving.<ul>
+<li><em>How to avoid</em>: Download at build time into a governed Volume or artifact location; test an offline startup path.</li>
+</ul>
+</li>
+<li><strong>Unpinned or <code>latest</code> revisions.</strong> A mutable branch or model card silently changes behavior.<ul>
+<li><em>How to avoid</em>: Pin an immutable commit SHA or content-addressed release/DOI (git tags can move) and record it in the manifest with a checksum.</li>
+</ul>
+</li>
+<li><strong>Relying on an untested <code>params=</code> path.</strong> The SDK <code>params=</code> route may not round-trip for a given custom PyFunc and deployment route.<ul>
+<li><em>How to avoid</em>: Use explicit fields/columns for controls, and validate the exact serving serializer before depending on arrays or nested lists.</li>
+</ul>
+</li>
+<li><strong>Logging raw sensitive payloads.</strong> Inference tables can capture patient, donor, sequence, or compound data.<ul>
+<li><em>How to avoid</em>: Classify and minimize/redact first; log hashes, metadata, or governed URIs instead of raw inputs.</li>
+</ul>
+</li>
+<li><strong>Assuming skill inheritance.</strong> Genie Code has no formal mechanism to inherit the generic skill's steps.<ul>
+<li><em>How to avoid</em>: When the generic skill is absent, restate only the minimum checklist from <code>references/integration-contract.md</code>.</li>
+</ul>
+</li>
+<li><strong>Implying clinical validity from a green deployment.</strong> A successful technical deployment says nothing about scientific or clinical validity.<ul>
+<li><em>How to avoid</em>: Report technical validation separately and defer scientific/clinical/regulatory sign-off to the appropriate review.</li>
+</ul>
+</li>
+<li><strong>Inventing model APIs.</strong> Guessing tensor shapes, tokenizer names, database paths, or license terms produces broken wrappers.<ul>
+<li><em>How to avoid</em>: Load the matching <code>references/models/&lt;model&gt;.md</code>; if none exists, use <code>references/model-template.md</code> and propose an adapter plan before writing code.</li>
+</ul>
+</li>
+<li><strong>Hugging Face Xet storage backend causes IO errors during download.</strong> Some HF repos use HF's Xet/CAS storage backend, which performs parallel seeks and fails with <code>RuntimeError: CAS service error: IO Error: Illegal seek (os error 29)</code> in environments that do not support it (including Serverless).<ul>
+<li><em>How to avoid</em>: Set <code>os.environ["HF_HUB_DISABLE_XET"] = "1"</code> <strong>before</strong> the first <code>import huggingface_hub</code> in the process. If <code>huggingface_hub</code> was already imported in the session, restart the Python kernel first so the env var takes effect before the library initialises. Check the repo's <code>.gitattributes</code> for <code>filter=xet</code> to detect Xet-backed files before downloading.</li>
+</ul>
+</li>
+<li><strong>Unpinned <code>transformers&gt;=X.Y</code> resolves to 5.x and breaks 4.x models.</strong> Transformers 5.x restructured <code>PreTrainedModel._move_missing_keys_from_meta_to_device</code> to call <code>self.all_tied_weights_keys.keys()</code> where 4.x used <code>_tied_weights_keys</code> (a list). An unbounded <code>pip_requirements</code> entry resolves to the latest release in the serving container, silently introducing the incompatibility. This surfaces as <code>AttributeError: 'Model' object has no attribute 'all_tied_weights_keys'</code> in the service logs — not the build logs.<ul>
+<li><em>How to avoid</em>: Always pin <code>transformers</code> to the version from the model's own <code>pyproject.toml</code>. Validate by reading that file from the source repo, not by inspecting PyFunc class imports.
+9b. <strong><code>get_head_mask</code> removed in transformers ≥4.52.</strong> <code>geneformer.py</code> (BioNeMo) calls <code>self.get_head_mask()</code>, removed from <code>PreTrainedModel</code> in 4.52. Surfaces as <code>AttributeError: 'BertModel' object has no attribute 'get_head_mask'</code> — same root cause as #9 (unpinned transformers) but a different breaking change within the 4.x series.</li>
+</ul>
+</li>
+<li><em>How to avoid</em>: Pin <code>transformers&gt;=4.30.0,&lt;4.52.0</code> in <code>pip_requirements</code> <strong>and</strong> add a runtime shim that patches the method back onto <code>PreTrainedModel</code> inside <code>load_context</code> as a safety net.</li>
+<li><strong>Deployment failure diagnosis requires service logs, not build logs.</strong> Build logs only show Docker/pip installation steps. The Python traceback from a model-load failure appears in the <em>service logs</em>.<ul>
+<li><em>How to find service logs</em>: <code>GET /api/2.0/serving-endpoints/{name}/served-entities/{entity-name}/logs?config_version={n}</code> where <code>n</code> is <code>endpoint.pending_config.config_version</code> for a failed update (the default <code>config_version=0</code> targets the currently active config, not the failed pending one). Databricks CLI: <code>databricks api get "/api/2.0/serving-endpoints/{name}/served-entities/{entity-name}/logs?config_version={n}"</code>.</li>
+</ul>
+</li>
+<li><strong>Stale <code>sys.modules</code> cache causes <code>ModuleNotFoundError</code> after out-of-order cell execution.</strong> When cells run out of order across multiple kernel executions, a partial import of a bundled package can persist in <code>sys.modules</code>. Subsequent runs resolve submodule lookups against the stale cached object rather than the freshly staged code bundle.<ul>
+<li><em>How to avoid</em>: Purge <code>package.*</code> entries from <code>sys.modules</code> in <strong>two places</strong>: (a) at cell level before any <code>from &lt;package&gt; import ...</code> statement in the notebook, and (b) at the top of <code>load_context</code> inside the PyFunc wrapper. The cell-level purge catches notebook re-execution issues; the <code>load_context</code> purge makes the dry-load test cell safe (it imports the package in the same kernel as the class cell). The serving container starts clean, so the <code>load_context</code> purge is a no-op there — but it costs nothing and prevents a class of hard-to-debug failures. Also re-insert the bundle path at position 0 in <code>sys.path</code> after purging.</li>
+</ul>
+</li>
+<li><strong><code>pd.read_json</code> treats a literal JSON string as a file path in newer pandas.</strong> Pandas 2.1+ deprecated passing a raw JSON string directly and may raise <code>FileNotFoundError</code> treating the content as a path.<ul>
+<li><em>How to avoid</em>: Always wrap with <code>io.StringIO</code>: <code>pd.read_json(io.StringIO(json_string), orient="split")</code>. Import <code>io</code> explicitly inside the PyFunc class cell.</li>
+</ul>
+</li>
+<li><strong><code>serving_endpoints.query()</code> uses <code>extra_params</code>, not <code>params</code>.</strong> The Databricks Python SDK's <code>serving_endpoints.query()</code> signature uses <code>extra_params: Optional[Dict[str, str]]</code>, not <code>params</code>. Values must be strings.<ul>
+<li><em>How to avoid</em>: Pass <code>extra_params={"max_seq_len": "2048", "pooling": "mean"}</code> (string values). The PyFunc <code>predict</code> method should cast on receipt: <code>int(params.get("max_seq_len", 2048))</code>, <code>str(params.get("pooling", "mean"))</code>.</li>
+</ul>
+</li>
+<li><strong>Use a <code>run_go</code> widget gate for expensive operations.</strong> Endpoint creation, model deployment, and VS index creation cost real money. A widget gate (<code>dbutils.widgets.dropdown("run_go", "false", ["false", "true"])</code>) prevents accidental execution in shared notebooks.<ul>
+<li><em>How to implement</em>: Read <code>RUN_GO = dbutils.widgets.get("run_go") == "true"</code> early; wrap all side-effect cells with <code>if not RUN_GO: print("run-gate off"); ...</code>.</li>
+</ul>
+</li>
+<li><strong>Use sentinel files for idempotent re-runs.</strong> Downloads and copies to UC Volumes should be idempotent — check for a sentinel file (e.g. <code>.copy_complete</code>, <code>.snapshot_complete</code>) before repeating expensive operations.<ul>
+<li><em>How to implement</em>: Write a sentinel after successful completion; check for it at the start of the cell.</li>
+</ul>
+</li>
+<li><strong>Use adaptive storage paths.</strong> <code>/local_disk0</code> is unavailable on Serverless compute. Detect the environment at runtime and fall back to <code>/tmp</code>.<ul>
+<li><em>How to implement</em>: <code>try: os.makedirs("/local_disk0/tmp", exist_ok=True); TMP_DIR = "/local_disk0/tmp" except (PermissionError, OSError): TMP_DIR = "/tmp"</code>.</li>
+</ul>
+</li>
+<li><strong>Write a provenance manifest alongside the model.</strong> Record model name, source URL, code URL, license, download date, compute type, and runtime requirements in a YAML manifest stored next to the model weights in the UC Volume.</li>
+<li><strong><code>flash-attn</code> requires GPU at import time.</strong> Models that depend on <code>flash-attn</code> (e.g. scGPT) cannot be imported on CPU-only compute. Both the registration notebook and the serving container must have GPU access.<ul>
+<li><em>How to avoid</em>: Use GPU compute for registration notebooks; specify <code>GPU_SMALL</code> for serving endpoints.</li>
+</ul>
+</li>
+<li><strong><code>cloudpickle.load()</code> fails with <code>ModuleNotFoundError</code> for non-pip code bundles.</strong> When <code>python_model=&lt;instance&gt;</code> is used with <code>code_paths</code>, cloudpickle serialises the wrapper and captures <code>import &lt;package&gt;</code> references. At load time in the serving container, <code>cloudpickle.load()</code> runs <strong>before</strong> MLflow places <code>code_paths</code> on <code>sys.path</code>, so any import of a bundled (non-pip) package raises <code>ModuleNotFoundError</code>. The error appears in service logs as <code>[mlflow_parse] ModuleNotFoundError: No module named '&lt;package&gt;'</code> with <code>category: user_dep_missing</code>. A local dry-load test will NOT catch this because the notebook kernel already has the package on <code>sys.path</code>.<ul>
+<li><em>How to avoid</em>: Use file-based logging: write the PyFunc class to a standalone <code>.py</code> file, add <code>mlflow.models.set_model(MyWrapper())</code> at module level, and pass <code>python_model=&lt;path_to_file&gt;</code> to <code>log_model</code>. See Best Practices §12.</li>
+</ul>
+</li>
+<li><strong>Google Drive downloads via <code>gdown</code> may be unreliable.</strong> <code>gdown</code> depends on Google Drive sharing permissions and rate limits. Verify downloads by checking file size and presence of sentinel files.<ul>
+<li><em>How to avoid</em>: Use sentinel files; implement file-size checks after download; consider mirroring to a UC Volume for CI reliability.</li>
+</ul>
+</li>
+<li><strong>C++/CUDA library required at import time but cannot build on Serverless.</strong> Some models depend on libraries that require a full CUDA toolkit for source compilation (e.g. NVIDIA TransformerEngine for BioNeMo Geneformer). These fail with a CMake/wheel build error on Serverless GPU (no dev toolchain) and in Model Serving containers.<ul>
+<li><em>How to avoid</em>: Inspect the library's usage in the model code. If it provides standard PyTorch modules (Linear, LayerNorm, MultiheadAttention), write <strong>functional <code>nn.Module</code> stubs</strong> that match the constructor signature and weight-key names from the safetensors state dict, then inject them into <code>sys.modules</code> before <code>from_pretrained</code>. Install stubs in <strong>both</strong> the notebook setup cell and inside <code>load_context</code> (the serving container has no prior kernel state). Mark stubs with <code>__version__ = "0.0.0-stub"</code> so they can be distinguished from the real library. See <code>references/models/geneformer.md</code> for a complete worked example.</li>
+</ul>
+</li>
+<li><strong><code>sys.stdout.isatty()</code> crash in Model Serving containers.</strong> The serving container replaces <code>sys.stdout</code> with <code>StreamToLogger</code>, which lacks <code>isatty()</code>. Libraries like <code>transformers</code> call <code>sys.stdout.isatty()</code> during model loading and crash with <code>AttributeError</code>.<ul>
+<li><em>How to avoid</em>: In <code>load_context</code>, before any model loading: <code>for stream in (sys.stdout, sys.stderr): if stream is not None and not hasattr(stream, "isatty"): stream.isatty = lambda: False</code>.</li>
+</ul>
+</li>
+<li><strong>Inference table name conflict blocks endpoint creation.</strong> Model Serving auto-generates an inference table named <code>&lt;endpoint&gt;_payload</code>. If that table already exists from a prior failed deploy (even if the endpoint was deleted), <code>create_endpoint</code> fails with a conflict error.<ul>
+<li><em>How to avoid</em>: Use a timestamped inference table prefix in <code>AiGatewayInferenceTableConfig</code>. <strong>Always</strong> use <code>AiGatewayConfig</code> (not the deprecated <code>AutoCaptureConfigInput</code>) when creating endpoints:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">databricks.sdk.service.serving</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">AiGatewayConfig</span><span class="p">,</span> <span class="n">AiGatewayInferenceTableConfig</span><span class="p">,</span> <span class="n">AiGatewayUsageTrackingConfig</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">ai_gateway</span> <span class="o">=</span> <span class="n">AiGatewayConfig</span><span class="p">(</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">inference_table_config</span><span class="o">=</span><span class="n">AiGatewayInferenceTableConfig</span><span class="p">(</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">catalog_name</span><span class="o">=</span><span class="n">CATALOG</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="n">SCHEMA</span><span class="p">,</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="n">table_name_prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">endpoint_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="si">:</span><span class="s2">%Y%m%d%H%M</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="p">),</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">usage_tracking_config</span><span class="o">=</span><span class="n">AiGatewayUsageTrackingConfig</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="p">)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="n">w</span><span class="o">.</span><span class="n">serving_endpoints</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">endpoint_name</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">endpoint_config</span><span class="p">,</span> <span class="n">ai_gateway</span><span class="o">=</span><span class="n">ai_gateway</span><span class="p">)</span>
+</code></pre></div></li>
+</ul>
+</li>
+<li><strong>Endpoint provisioning timeout with no early failure detection.</strong> GPU endpoints (A10G) routinely take 15–25 min to provision. A naïve polling loop with a fixed timeout wastes time waiting on already-failed deployments.<ul>
+<li><em>How to avoid</em>: Poll with a 1800 s timeout (30 min) and check <code>ServedModelStateDeployment.DEPLOYMENT_FAILED</code> on each iteration. Raise immediately with the deployment state message instead of waiting for the full timeout.</li>
+</ul>
+</li>
+<li><strong>Model forward output keys differ from documentation or expected conventions.</strong> Custom HLS models may return pre-pooled embeddings under non-standard dict keys (e.g. <code>cell_emb</code> instead of <code>all_embs</code> or <code>last_hidden_state</code>). The wrapper’s embedding extraction silently returns <code>None</code>, which surfaces later as <code>unsupported operand type(s) for *: 'NoneType' and 'Tensor'</code> in the pooling step.<ul>
+<li><em>How to avoid</em>: <strong>Always run a runtime diagnostic</strong> before writing the extraction logic: call <code>model(**fwd_kwargs)</code> once and print <code>type(outputs)</code>, <code>outputs.keys()</code> (for dicts), and shape/dim of each value. Check the model reference (<code>references/models/&lt;model&gt;.md</code>) for the verified output key. If the output is already 2D (pre-pooled), skip external pooling with a <code>dim() == 2</code> guard. Also verify which parameters <code>forward()</code> actually accepts via <code>inspect.signature(model.forward).parameters.keys()</code> — unused kwargs are silently filtered but worth documenting.</li>
+<li><em>Discovered</em>: oss-002 v2 (2026-10-01). TEDDY 70M returns <code>{"cell_emb": tensor(cells, d_model)}</code>. See <code>references/models/teddy.md</code> §Forward output key.</li>
+</ul>
+</li>
+<li><strong><code>artifacts=</code> dict in <code>log_model</code> only accepts file/directory paths.</strong> Passing a literal string value (e.g. <code>artifacts={"vocab_version": "v1"}</code>) causes <code>MlflowException: No such artifact: 'v1'</code> because MLflow treats every value in the <code>artifacts</code> dict as a local filesystem path to upload. Non-path metadata silently becomes a broken artifact reference.<ul>
+<li><em>How to avoid</em>: Only put file or directory paths in the <code>artifacts=</code> dict. For scalar metadata (version strings, config flags), either hardcode them inside the wrapper class, write them to a JSON/text file and pass that file path, or log them as MLflow tags/params.</li>
+<li><em>Discovered</em>: oss-005 (2026-10-03). Geneformer <code>vocab_version="v1"</code> passed as artifact value.</li>
+</ul>
+</li>
+<li><strong><code>workload_size</code> required alongside <code>workload_type</code> for GPU served entities.</strong> Some workspace/API combinations reject a <code>ServedEntityInput</code> that specifies only <code>workload_type</code> (e.g. <code>GPU_SMALL</code>) without also setting <code>workload_size</code>. The error is <code>InvalidParameterValue: workloadSizeId is undefined</code>.<ul>
+<li><em>How to avoid</em>: Always pass both fields: <code>workload_type=ServingModelWorkloadType.GPU_SMALL, workload_size="Small"</code>. The <code>workload_size</code> string values are <code>"Small"</code>, <code>"Medium"</code>, <code>"Large"</code>.</li>
+<li><em>Discovered</em>: oss-005 (2026-10-03). Geneformer endpoint creation failed without <code>workload_size</code>.</li>
+</ul>
+</li>
+<li><strong><code>serving_endpoints.query()</code> returns a typed <code>QueryEndpointResponse</code>, not a dict.</strong> Calling <code>.get("predictions")</code> or other dict methods on the response raises <code>AttributeError: 'QueryEndpointResponse' object has no attribute 'get'</code>.<ul>
+<li><em>How to avoid</em>: Use attribute access: <code>response.predictions</code>. If you need to handle both SDK objects and raw dicts (e.g. from <code>requests.post</code>), use <code>getattr(response, "predictions", None) or response["predictions"]</code>.</li>
+<li><em>Discovered</em>: oss-005 (2026-10-03). Geneformer endpoint smoke test.</li>
+</ul>
+</li>
+</ol>
+<h2 id="workflow">Workflow<a class="headerlink" href="#workflow" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Identify the model and execution boundary.</strong> Record upstream source, revisions, weight source, licenses, input/output modalities, dependencies, and the required inference mode (see Key Concepts).</li>
+<li><strong>Inspect the model reference.</strong> Load the matching file under <code>references/models/</code>. If there is none, use <code>references/model-template.md</code> and create a proposed adapter plan before writing code. Do not invent model APIs, tensor shapes, tokenizer names, database paths, or license terms.</li>
+<li><strong>Choose Jobs versus Model Serving.</strong> Apply the Decision Framework above; a hybrid is often best.</li>
+<li><strong>Define the serving contract before the wrapper.</strong> Build the <code>input_example</code>, signature, and documented SDK + HTTP examples (see Best Practices §1).</li>
+<li><strong>Package for reproducibility.</strong> Pin and manifest all provenance-controlled inputs. Read <code>pip_requirements</code> from the model's own dependency specification (<code>pyproject.toml</code>, <code>requirements.txt</code>, or <code>setup.cfg</code>) rather than inferring them from PyFunc class imports — the PyFunc imports miss the bundled package's full import chain (see Best Practices §9). Test an offline startup path (see Best Practices §2–3).</li>
+<li><strong>Implement and register.</strong> Use the standard custom PyFunc pattern, add only the HLS adapter behavior, and register to Unity Catalog with a versioning/promotion strategy (see Best Practices §4–5).</li>
+<li><strong>Validate scientifically and operationally.</strong> Run at minimum: import/dependency smoke test; offline artifact and checksum test; wrapper initialization test; signature and <code>input_example</code> test; Python SDK and HTTP payload tests; a small known-input regression test; malformed-input and resource-limit tests; a serving or Job deployment test in the target runtime; and output sanity checks for the model family.</li>
+</ol>
+<h2 id="model-family-references">Model-family references<a class="headerlink" href="#model-family-references" title="Permanent link">&para;</a></h2>
+<p>Load only the relevant reference:</p>
+<ul>
+<li><code>references/models/geneformer.md</code></li>
+<li><code>references/models/scgpt.md</code></li>
+<li><code>references/models/scimilarity.md</code></li>
+<li><code>references/models/alphafold-openfold.md</code></li>
+<li><code>references/models/boltz.md</code></li>
+<li><code>references/models/teddy.md</code></li>
+<li><code>references/models/midnight.md</code></li>
+</ul>
+<p>Add new families by copying <code>references/model-template.md</code>, adding one row to <code>references/models/index.md</code>, and documenting tests before changing this core file.</p>
+<h2 id="ai-gateway-and-inference-tables">AI Gateway and inference tables<a class="headerlink" href="#ai-gateway-and-inference-tables" title="Permanent link">&para;</a></h2>
+<p>Inference tables are a <strong>best-practice default</strong> for HLS model endpoints — enable them proactively during endpoint creation, not only when the user explicitly asks. Scientific models handle sensitive biological data (gene expression profiles, protein sequences, patient-derived cell metadata) where observability, audit trails, and payload governance are essential. Include the <code>ai_gateway</code> configuration with <code>inference_table_config.enabled=True</code> and <code>usage_tracking_config.enabled=True</code> in the <code>serving_endpoints.create()</code> call. For the implementation pattern (SDK classes, existing-gateway preservation, payload verification), load <code>machine-learning/ai-gateway-deployment.md</code> from the official model-serving sub-skill. For existing endpoints that lack an inference table, attach one via <code>serving_endpoints.put_ai_gateway()</code>.</p>
+<p>The generic <code>databricks-model-serving</code> skill says "do not add AI Gateway features automatically" — that conservative default is appropriate for ordinary sklearn/XGBoost deployments but <strong>does not apply to HLS models</strong> covered by this skill. When there is a tension between the generic skill and this domain-specific guidance, this skill takes precedence for models in scope.</p>
+<p>Before enabling inference tables, apply the data-minimization rules in Best Practices §6: classify sequence, structure, patient, donor, and compound data in the payload; minimize or redact sensitive fields; log a hash, metadata record, or governed URI instead of raw inputs; define retention, access, and masking rules; and confirm the inference-table catalog is backed by external storage (default-storage catalogs are not supported). Document the data-governance review alongside the endpoint configuration.</p>
+<h2 id="maintenance-and-updates">Maintenance and updates<a class="headerlink" href="#maintenance-and-updates" title="Permanent link">&para;</a></h2>
+<p>See <code>references/maintenance.md</code> for update triggers, official-skill synchronization, versioning, CI checks, model-family onboarding, ownership, and review cadence. Keep model-specific facts in the reference file; keep reusable Databricks mechanics in the official generic skills. Update the model reference and changelog when upstream behavior changes; update this core file only when the shared routing or contract changes.</p>
+<h2 id="protocol-guidelines">Protocol Guidelines<a class="headerlink" href="#protocol-guidelines" title="Permanent link">&para;</a></h2>
+<p>Every new model reference should include:</p>
+<ol>
+<li>Upstream and weight sources.</li>
+<li>Immutable revision and license fields.</li>
+<li>Input/output contract with examples.</li>
+<li>Artifact and cache layout.</li>
+<li>Dependency and accelerator requirements.</li>
+<li>Serving-versus-Jobs recommendation.</li>
+<li>Wrapper boundary and serialization rules.</li>
+<li>Registration and deployment path.</li>
+<li>Smoke, regression, and negative tests.</li>
+<li>Open questions requiring deeper exploration.</li>
+<li>Date reviewed and upstream version.</li>
+</ol>
+<h2 id="related-skills">Related Skills<a class="headerlink" href="#related-skills" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>databricks-ml-training</code> — generic custom PyFunc, signatures, dependency packaging, and Unity Catalog registration this guide builds on.</li>
+<li><code>databricks-model-serving</code> — endpoint lifecycle, routing, AI Gateway configuration, and vLLM-based custom LLM serving.</li>
+<li><code>databricks-mlflow-evaluation</code> — evaluation mechanics for validating model outputs.</li>
+<li><code>vector-search</code> — AI Search endpoint and index lifecycle for embedding-based retrieval.</li>
+<li><a href="https://docs.databricks.com/aws/en/machine-learning/model-serving/serve-custom-llms/">Databricks: Custom LLM serving (vLLM)</a> — vLLM engine, no PyFunc.</li>
+<li><a href="https://docs.databricks.com/aws/en/machine-learning/model-serving/bring-your-own-container">Databricks: Bring your own container</a> — Docker (NVIDIA NIM / Triton).</li>
+<li><a href="https://docs.nvidia.com/nim/">NVIDIA NIM</a> — pre-built inference microservices for BioNeMo models.</li>
+<li><a href="https://docs.vllm.ai/">vLLM docs</a> — continuous batching, PagedAttention, OpenAI-compatible serving.</li>
+</ul>
+<h2 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Pin every provenance-controlled input — code, weights, tokenizer, scientific database, and configuration — to an immutable commit SHA or content-addressed release with a recorded checksum; never trust a git tag, <code>latest</code> URL, or mutable branch, since tags can be re-pointed.</li>
+<li>Download weights, tokenizers, and reference databases at build time into a governed Volume or model artifact location; never fetch them at request time, and test an offline / network-restricted startup path.</li>
+<li>Never log raw sensitive payloads — patient, donor, sequence, structure, or compound data — to inference tables; classify and minimize/redact first, and log a hash, metadata record, or governed URI instead of the raw input.</li>
+<li>Honor and record both the model AND the dataset/weights licenses in the manifest before packaging or distributing; treat an unknown license as blocking, not as a default-permit.</li>
+<li>Validate the exact serving serializer against the deployed endpoint before depending on an SDK <code>params=</code> path, arrays, or nested lists; prefer explicit fields/columns for controls.</li>
+<li>When a model name is ambiguous, stop and ask for the exact upstream project (repository, package, model card) rather than guessing tensor shapes, tokenizer names, database paths, or APIs.</li>
+<li>Never treat a green technical deployment as scientific or clinical validity; report technical validation separately and defer scientific, clinical, and regulatory sign-off to the appropriate review.</li>
+</ol>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://github.com/databricks/devhub/blob/main/.databricks/aitools/skills/databricks-ml-training/references/custom-pyfunc.md">Databricks custom PyFunc reference</a></li>
+<li><a href="https://docs.databricks.com/aws/en/agent-skills">Databricks Agent Skills documentation</a></li>
+<li><a href="https://github.com/databricks-industry-solutions/genesis-workbench">Genesis Workbench solution accelerator</a></li>
+<li><a href="https://mlflow.org/docs/latest/ml/model/python_model/">MLflow custom Python model documentation</a></li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright vs-copyright">
+  <a class="vs-footer-logo" href="https://www.databricks.com/" target="_blank" rel="noopener" title="Databricks">
+    <img src="../../assets/databricks-logo.svg" alt="Databricks" width="24" height="24">
+  </a>
+  <div>
+    
+      <div class="md-copyright__highlight">
+        Licensed under the Databricks License
+      </div>
+    
+    
+      Made with
+      <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+        Material for MkDocs
+      </a>
+    
+  </div>
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.suggest", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

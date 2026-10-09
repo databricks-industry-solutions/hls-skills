@@ -1,0 +1,1968 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Cohort builder for structured coded clinical data (OMOP/FHIR-flattened conditions, labs, meds, procedures) AND free-text clinical notes. Turns a natural-language patient-population description — e.g. 'type 2 diabetics with uncontrolled HbA1c', 'how many patients qualify for X', 'define a sepsis cohort' — into a defensible, reproducible, feasibility-checked cohort. Grounds codes in the data (no hallucinated ICD/LOINC), ascertains the diagnosis from notes via ai_query (negation- and subject-aware, span-grounded), SURFACES ambiguous clinical thresholds and how to combine coded vs note evidence (code_only/note_only/union/intersection) for the user to choose, reports feasibility N before building, materializes a verified cohort plus a reproducible phenotype definition, and never fabricates literature citations. Run by calling the vetted entrypoints in scripts/cohort_run.py — do not hand-write cohort SQL. For PHI de-identification of the result use phi-deidentifier.">
+      
+      
+      
+        <link rel="canonical" href="https://databricks-industry-solutions.github.io/hls-skills/guide/skills/cohort-builder/">
+      
+      
+        <link rel="prev" href="../sc-rnaseq/">
+      
+      
+        <link rel="next" href="../rwe-cohortstudy/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/databricks-logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>cohort-builder - Vital Skills</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=DM+Sans:300,300i,400,400i,700,700i%7CDM+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"DM Sans";--md-code-font:"DM Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hls-clinical-cohort-builder-literature-informed-feasibility-aware" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../" title="Vital Skills" class="md-header__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vital Skills
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              cohort-builder
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../evaluation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../links/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Links
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../CHANGELOG/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="Vital Skills" class="md-nav__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    Vital Skills
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bulk-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../open-weight-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    open-weight-models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pathway-enrichment-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pathway-enrichment-analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sc-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sc-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cohort-builder
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cohort-builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-ground-the-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Ground the codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-optional-ascertain-the-diagnosis-from-free-text-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: (Optional) Ascertain the diagnosis from free-text notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-surface-the-choices-threshold-combine-then-stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Surface the choices (threshold + combine), then STOP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-build-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Build + verify
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-literature-separate-verified-never-fabricated-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Literature (separate, verified — never fabricated; optional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuring-the-notes-extractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring the notes extractor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bundled-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bundled Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rwe-cohortstudy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rwe-cohortstudy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../payer-provider-measure-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    payer-provider-measure-catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phi-deidentifier/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    phi-deidentifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../accelerators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    accelerators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skill-eval/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    skill-eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../links/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Links
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CHANGELOG/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-ground-the-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Ground the codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-optional-ascertain-the-diagnosis-from-free-text-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: (Optional) Ascertain the diagnosis from free-text notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-surface-the-choices-threshold-combine-then-stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Surface the choices (threshold + combine), then STOP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-build-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Build + verify
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-literature-separate-verified-never-fabricated-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Literature (separate, verified — never fabricated; optional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuring-the-notes-extractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring the notes extractor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bundled-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bundled Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="hls-clinical-cohort-builder-literature-informed-feasibility-aware">HLS Clinical Cohort Builder — Literature-Informed, Feasibility-Aware<a class="headerlink" href="#hls-clinical-cohort-builder-literature-informed-feasibility-aware" title="Permanent link">&para;</a></h1>
+<div class="admonition abstract">
+<p class="admonition-title">Skill details</p>
+<p><strong>Version</strong> 0.5 · <strong>Author</strong> Zachary Phillips · <strong>License</strong> Databricks License</p>
+<p><a href="https://github.com/databricks-industry-solutions/hls-skills/tree/main/skills/cohort-builder">Browse on GitHub</a> · <a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/cohort-builder/SKILL.md">Raw SKILL.md</a></p>
+</div>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Turns an analyst's natural-language description of a patient population into a
+<strong>defensible, reproducible, feasibility-checked cohort</strong> over structured clinical data
+<strong>and free-text clinical notes</strong>. It grounds codes in what is actually in the data,
+ascertains the diagnosis from note text when a notes source is supplied, surfaces
+ambiguous thresholds and the code-vs-note combine choice for the user to decide, checks
+feasibility before building, and emits a verified cohort table plus a machine-readable
+phenotype definition. The output is a <code>&lt;table&gt;_cohort</code> of qualifying <code>patient_id</code>s, a
+reproducible phenotype definition (codes + comparators + combine mode), and a verification
+line confirming membership matches the definition exactly.</p>
+<p>It runs on the <strong>execution model</strong>: Genie Code calls the vetted entrypoints in
+<code>scripts/cohort_run.py</code> and reports their output — it does not hand-write cohort SQL and
+does not pick a clinical threshold or a combine mode itself. Those are the user's choices,
+surfaced by a read-only preview.</p>
+<h2 id="when-to-use">When to Use<a class="headerlink" href="#when-to-use" title="Permanent link">&para;</a></h2>
+<ul>
+<li>"Build a cohort of type 2 diabetics with uncontrolled HbA1c on metformin."</li>
+<li>"How many patients would qualify for a heart-failure readmission study?" (feasibility N).</li>
+<li>"Define a sepsis cohort and check it against the literature."</li>
+<li>"Build the diabetes cohort using both the coded records and the clinical notes" (free-text).</li>
+<li>"Build the cohort from the coded records AND the clinical documents (PDFs/scans) in this Volume" — unstructured documents are parsed with <code>ai_parse_document</code> and ascertained via the same span-grounded path (<code>documents_source</code>).</li>
+<li>"Give me the result as a notebook / just show it here / as a table" — the delivery choice (<code>output_delivery</code>) is surfaced.</li>
+<li>"Is this cohort feasible, or is N too small?" (attrition + minimum-N heuristics).</li>
+<li>"Refine the phenotype — the codes miss patients documented only in notes" (note recovery).</li>
+</ul>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Compute</strong>: a Databricks SQL warehouse (the entrypoints run SQL via the Databricks SDK;
+    ambient auth in-workspace, or a CLI <code>profile=</code> locally).</li>
+<li><strong>Inputs</strong>: a coded clinical table (<code>catalog.schema.table</code>, OMOP CDM or FHIR-flattened —
+    conditions/labs/meds/procedures) with a <code>patient_id</code>. Optionally a free-text notes table
+    (<code>patient_id</code>, <code>note_text</code>) to ascertain the diagnosis from narrative.</li>
+<li><strong>Model endpoint</strong> (only for the notes path): a serving endpoint <code>ai_query</code> can call
+    (defaults to a Foundation Model API pay-per-token endpoint,
+    <code>databricks-meta-llama-3-3-70b-instruct</code>).</li>
+<li><strong>MCP (optional)</strong>: a terminology MCP (e.g. BioPortal) to expand a concept into a code
+    set; a literature MCP (PubMed / Europe PMC / ClinicalTrials.gov) for citation candidates.</li>
+</ul>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">'&lt;this-skill-dir&gt;/scripts'</span><span class="p">)</span>   <span class="c1"># the scripts/ folder next to this SKILL.md</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cohort_run</span><span class="w"> </span><span class="kn">import</span> <span class="n">preview_cohort_options</span><span class="p">,</span> <span class="n">build_confirmed_cohort</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># STEP 1 — READ-ONLY preview. Grounds codes in the data and returns real cohort-size</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># options for the ambiguous threshold. Builds NOTHING. Show its output to the user.</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">preview_cohort_options</span><span class="p">(</span><span class="s2">"&lt;catalog.schema.table&gt;"</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                             <span class="n">intent_text</span><span class="o">=</span><span class="s2">"&lt;the user's exact phrasing&gt;"</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                             <span class="n">condition_codes</span><span class="o">=</span><span class="p">[(</span><span class="s2">"ICD10CM"</span><span class="p">,</span><span class="s2">"E11.9"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"ICD10CM"</span><span class="p">,</span><span class="s2">"E11.65"</span><span class="p">)]))</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># STEP 2 — ONLY after the user picks a threshold. Materializes + verifies the cohort.</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nb">print</span><span class="p">(</span><span class="n">build_confirmed_cohort</span><span class="p">(</span><span class="s2">"&lt;catalog.schema.table&gt;"</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                            <span class="n">intent_text</span><span class="o">=</span><span class="s2">"&lt;same phrasing&gt;"</span><span class="p">,</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                            <span class="n">condition_codes</span><span class="o">=</span><span class="p">[(</span><span class="s2">"ICD10CM"</span><span class="p">,</span><span class="s2">"E11.9"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"ICD10CM"</span><span class="p">,</span><span class="s2">"E11.65"</span><span class="p">)],</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                            <span class="n">threshold_value</span><span class="o">=</span><span class="mf">9.0</span><span class="p">,</span> <span class="n">threshold_op</span><span class="o">=</span><span class="s2">"&gt;="</span><span class="p">))</span>   <span class="c1"># e.g. user chose HEDIS</span>
+</code></pre></div>
+<h2 id="workflow">Workflow<a class="headerlink" href="#workflow" title="Permanent link">&para;</a></h2>
+<p><strong>⛔ EXECUTE, DO NOT REIMPLEMENT.</strong> Call the two named entrypoints and report their output.
+Do NOT write your own cohort SQL, and do NOT pick a threshold or combine mode yourself. The
+two names make intent unmistakable to a permission reviewer: <code>preview_cohort_options</code> is
+READ-ONLY (surfaces choices, builds nothing); <code>build_confirmed_cohort</code> requires the user's
+chosen threshold. The steps below document what the entrypoints do internally — they are
+for review, not a recipe to re-code by hand.</p>
+<h3 id="step-1-ground-the-codes">Step 1: Ground the codes<a class="headerlink" href="#step-1-ground-the-codes" title="Permanent link">&para;</a></h3>
+<p>The proposed <code>(vocabulary, code)</code> set — from a terminology MCP, clinical-notes parsing, or
+the model — is checked against the actual table. Codes not present are excluded and reported,
+so a bad source cannot inject a hallucinated code.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">preview_cohort_options</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">intent_text</span><span class="p">,</span> <span class="n">condition_codes</span><span class="o">=</span><span class="p">[(</span><span class="s2">"ICD10CM"</span><span class="p">,</span><span class="s2">"E11.9"</span><span class="p">)],</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>                       <span class="n">code_source</span><span class="o">=</span><span class="s2">"BioPortal MCP"</span><span class="p">)</span>   <span class="c1"># provenance recorded in the readout</span>
+</code></pre></div>
+<h3 id="step-2-optional-ascertain-the-diagnosis-from-free-text-notes">Step 2: (Optional) Ascertain the diagnosis from free-text notes<a class="headerlink" href="#step-2-optional-ascertain-the-diagnosis-from-free-text-notes" title="Permanent link">&para;</a></h3>
+<p>When a <code>notes_table</code> is supplied, <code>ai_query</code> runs over the notes with a <strong>negation- and
+subject-aware</strong> prompt. A note-asserted diagnosis is kept only when the model returns a
+verbatim span that is actually in the note (<strong>span-grounding</strong> — the notes analogue of
+code-grounding), and the evidence is materialized to <code>&lt;notes_table&gt;_note_evidence</code> so the
+phenotype is reproducible. See <code>references/freetext_notes.md</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">preview_cohort_options</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">intent_text</span><span class="p">,</span> <span class="n">condition_codes</span><span class="o">=</span><span class="p">[(</span><span class="s2">"ICD10CM"</span><span class="p">,</span><span class="s2">"E11.9"</span><span class="p">)],</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>                       <span class="n">notes_table</span><span class="o">=</span><span class="s2">"&lt;catalog.schema.clinical_notes&gt;"</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>                       <span class="n">note_col</span><span class="o">=</span><span class="s2">"note_text"</span><span class="p">,</span> <span class="n">note_condition</span><span class="o">=</span><span class="s2">"type 2 diabetes"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="step-3-surface-the-choices-threshold-combine-then-stop">Step 3: Surface the choices (threshold + combine), then STOP<a class="headerlink" href="#step-3-surface-the-choices-threshold-combine-then-stop" title="Permanent link">&para;</a></h3>
+<p>For a term with more than one standard definition (e.g. "uncontrolled HbA1c" → &gt;8.0% vs
+≥9.0%) the preview returns BOTH options with the real cohort N for each. When notes are
+present it also returns <code>code_only</code> / <code>note_only</code> / <code>union</code> / <code>intersection</code> sizes plus the
+disagreement set (patients notes recovered that codes missed; coded patients with no note
+assertion). <strong>Present these to the user and get their choice — never pick for them.</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>1. &gt;8.0% (common clinical 'uncontrolled') → cohort N = 84
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>2. &gt;=9.0% (HEDIS 'poor control')          → cohort N = 68
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>code_only 84 | note_only 98 | union 118 | intersection 64  (notes recover 34)
+</code></pre></div>
+<h3 id="step-4-build-verify">Step 4: Build + verify<a class="headerlink" href="#step-4-build-verify" title="Permanent link">&para;</a></h3>
+<p>After the user chooses, <code>build_confirmed_cohort</code> materializes the cohort and re-checks that
+membership matches the definition exactly (anti-joins for 0 false positives / 0 false
+negatives), then emits the reproducible phenotype definition JSON.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">build_confirmed_cohort</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">intent_text</span><span class="p">,</span> <span class="n">condition_codes</span><span class="o">=</span><span class="p">[(</span><span class="s2">"ICD10CM"</span><span class="p">,</span><span class="s2">"E11.9"</span><span class="p">)],</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>                       <span class="n">notes_table</span><span class="o">=</span><span class="s2">"&lt;...clinical_notes&gt;"</span><span class="p">,</span> <span class="n">note_condition</span><span class="o">=</span><span class="s2">"type 2 diabetes"</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                       <span class="n">combine_mode</span><span class="o">=</span><span class="s2">"union"</span><span class="p">,</span> <span class="n">threshold_value</span><span class="o">=</span><span class="mf">8.0</span><span class="p">,</span> <span class="n">threshold_op</span><span class="o">=</span><span class="s2">"&gt;"</span><span class="p">)</span>
+</code></pre></div>
+<p>The cohort table carries a light, <strong>non-PHI <code>ascertainment</code> column</strong> (<code>code</code> | <code>note</code> | <code>both</code>)
+so you can see which source placed each patient. When notes contribute, the build also
+materializes a separate <strong>provenance / "delta" table</strong> <code>&lt;cohort&gt;_provenance</code>
+(<code>patient_id, ascertainment, in_codes, note_asserts_dx, evidence_span, &lt;measure&gt;</code>) and prints
+its <strong>first 20 rows</strong> — leading with the note-recovered and note-silent-coded cases so you can
+audit <em>why</em> each patient qualified. Raw note text is <strong>never</strong> copied into the shareable cohort
+table; the verbatim span lives only in the provenance table, governed like the notes source
+(PHI). See Guardrails.</p>
+<h3 id="step-5-literature-separate-verified-never-fabricated-optional">Step 5: Literature (separate, verified — never fabricated; optional)<a class="headerlink" href="#step-5-literature-separate-verified-never-fabricated-optional" title="Permanent link">&para;</a></h3>
+<p>Citations are resolved through <code>scripts/literature.py</code>: PMIDs an agent retrieves from a
+connected literature MCP are verified against PubMed (kept only if they resolve), with a
+direct-PubMed floor that distills the phenotype from the intent and relevance-ranks results.
+It fails closed — no verified source, no citation. Pass candidates via <code>mcp_citations=[...]</code>;
+never state a PMID/NCT id the tool did not return verified. <strong>Set <code>include_literature=False</code>
+to skip this step entirely</strong> for air-gapped workspaces with no PubMed/MCP egress (avoids the
+network round-trip; the step already fails closed either way).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>| Table | N | Verified | Definition |
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>|-------|---|----------|------------|
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>| catalog.schema.cohort | 118 | 0 FP / 0 FN | {codes, comparators, combine_mode} |
+</code></pre></div>
+<h2 id="key-parameters">Key Parameters<a class="headerlink" href="#key-parameters" title="Permanent link">&para;</a></h2>
+<p><code>preview_cohort_options(table, intent_text, condition_codes, code_source="model-proposed", notes_table=None, note_col="note_text", note_id_col="patient_id", note_endpoint=..., note_condition=None, ...)</code>
+<code>build_confirmed_cohort(table, intent_text, condition_codes, threshold_value, threshold_op=None, cohort_table=None, mcp_citations=None, notes_table=None, note_condition=None, combine_mode=None, ...)</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Range / Options</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>table</code></td>
+<td>— (required)</td>
+<td><code>catalog.schema.table</code></td>
+<td>Coded clinical records (OMOP/FHIR-flattened). The spine — every patient (incl. note-only) has a row here for the measure column.</td>
+</tr>
+<tr>
+<td><code>intent_text</code></td>
+<td>— (required)</td>
+<td>the user's phrasing</td>
+<td>Scanned for ambiguous terms (e.g. "uncontrolled") that trigger the threshold-choice gate.</td>
+</tr>
+<tr>
+<td><code>condition_codes</code></td>
+<td>— (required)</td>
+<td><code>[(vocab, code)]</code></td>
+<td>Proposed concept set from any source; grounded against the data (absent codes excluded).</td>
+</tr>
+<tr>
+<td><code>code_source</code></td>
+<td><code>"model-proposed"</code></td>
+<td>e.g. <code>"BioPortal MCP"</code></td>
+<td>Provenance recorded in the readout. Preview-only.</td>
+</tr>
+<tr>
+<td><code>threshold_value</code></td>
+<td>— (build)</td>
+<td>numeric</td>
+<td>The threshold the user chose after preview. Never pick this yourself.</td>
+</tr>
+<tr>
+<td><code>threshold_op</code></td>
+<td><code>None</code></td>
+<td><code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>=</code></td>
+<td>Comparator — part of the user's choice. For an ambiguous term the tool recovers it from the chosen option; it never silently assumes <code>&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>notes_table</code></td>
+<td><code>None</code></td>
+<td><code>catalog.schema.table</code></td>
+<td>Free-text notes source; when set, the diagnosis is also ascertained from note text and the combine choice is surfaced.</td>
+</tr>
+<tr>
+<td><code>note_condition</code></td>
+<td><code>None</code> (→ <code>intent_text</code>)</td>
+<td>e.g. <code>"type 2 diabetes"</code></td>
+<td>What the note extractor looks for — the diagnosis, not the whole phenotype.</td>
+</tr>
+<tr>
+<td><code>note_endpoint</code></td>
+<td><code>databricks-meta-llama-3-3-70b-instruct</code></td>
+<td>any serving endpoint</td>
+<td>The model <code>ai_query</code> calls to read the notes. Override to point at a provisioned-throughput or fine-tuned clinical model.</td>
+</tr>
+<tr>
+<td><code>note_prompt</code></td>
+<td><code>None</code> (built-in template)</td>
+<td>a prompt string</td>
+<td>Override the extraction prompt. If it contains <code>{condition}</code> it's formatted with the condition, else used verbatim. Must still reply <code>YES:&lt;verbatim span&gt;</code> / <code>NO</code> for span-grounding. The resolved prompt is pinned in the definition.</td>
+</tr>
+<tr>
+<td><code>documents_source</code></td>
+<td><code>None</code></td>
+<td>a Volume glob, e.g. <code>/Volumes/cat/sch/docs/*.pdf</code></td>
+<td><strong>Unstructured documents (PDF/image).</strong> Parsed with <code>ai_parse_document</code> (GA); the diagnosis is ascertained from the extracted text via the SAME negation-/subject-aware, span-grounded path as notes. Source-grounding holds (the cited quote must be a substring of the parsed document). If <code>notes_table</code> is also given, the two text sources are UNIONed. <code>patient_id</code> is recovered from the filename by default (<code>documents_id_regex</code>).</td>
+</tr>
+<tr>
+<td><code>output_delivery</code></td>
+<td><code>uc_table</code></td>
+<td><code>uc_table</code>/<code>notebook</code>/<code>conversation</code></td>
+<td>How the result is delivered — a materialized governed UC table, a generated re-runnable notebook, or shown in the conversation only (nothing persisted). Surfaced for the user to choose; never assumed.</td>
+</tr>
+<tr>
+<td><code>source_confidence</code></td>
+<td><code>None</code></td>
+<td>0.0–1.0</td>
+<td>Min confidence to accept an LLM-ascertained (note/document) diagnosis. Surfaced; pinned in the definition.</td>
+</tr>
+<tr>
+<td><code>source_priority</code></td>
+<td><code>None</code></td>
+<td><code>code</code>/<code>note</code></td>
+<td>Which source wins when a coded dx and a note/document dx disagree. Surfaced; pinned in the definition.</td>
+</tr>
+<tr>
+<td><code>combine_mode</code></td>
+<td><code>None</code></td>
+<td><code>code_only</code>/<code>note_only</code>/<code>union</code>/<code>intersection</code></td>
+<td>The user's choice for combining coded + note/document-derived diagnoses. REQUIRED for build once <code>notes_table</code> or <code>documents_source</code> is given; never guessed.</td>
+</tr>
+<tr>
+<td><code>include_literature</code></td>
+<td><code>True</code></td>
+<td><code>True</code>/<code>False</code></td>
+<td>Set <code>False</code> to skip the PubMed/MCP citation step (air-gapped workspaces).</td>
+</tr>
+<tr>
+<td><code>mcp_citations</code></td>
+<td><code>None</code></td>
+<td><code>[PMID, ...]</code></td>
+<td>Candidate PMIDs retrieved from a literature MCP; verified (kept only if they resolve).</td>
+</tr>
+</tbody>
+</table>
+<p>Feasibility thresholds (engine defaults, not arguments): warn when eligible <strong>N &lt; 100</strong>,
+hard-warn when <strong>N &lt; 20</strong>. The preview reports N before anything is built.</p>
+<h3 id="configuring-the-notes-extractor">Configuring the notes extractor<a class="headerlink" href="#configuring-the-notes-extractor" title="Permanent link">&para;</a></h3>
+<p>The LLM <strong>endpoint</strong> and <strong>prompt</strong> are plain function parameters (<code>note_endpoint</code>,
+<code>note_prompt</code>), with the defaults as clearly-named module constants at the top of
+<code>scripts/cohort_run.py</code> (<code>DEFAULT_NOTE_ENDPOINT</code>, <code>_NOTE_EXTRACT_PROMPT</code>). Change them per call
+without touching code, or edit the constants to change the default. This is deliberately <em>not</em>
+a YAML/config-file layer — a Genie Code skill is invoked by function call, so overridable params
+plus a documented default are the discoverable, single-source-of-truth pattern.</p>
+<h2 id="expected-outputs">Expected Outputs<a class="headerlink" href="#expected-outputs" title="Permanent link">&para;</a></h2>
+<ul>
+<li>A <strong>cohort table</strong> (<code>&lt;table&gt;_cohort</code>) of qualifying <code>patient_id</code>s + a non-PHI <code>ascertainment</code>
+    column (<code>code</code> | <code>note</code> | <code>both</code>).</li>
+<li>When notes contribute, a <strong>provenance / "delta" table</strong> (<code>&lt;cohort&gt;_provenance</code>) with per-member
+    source + the verbatim note span, and a 20-row preview in the readout. (Governed like the notes
+    source — the shareable cohort table stays free of raw note text.)</li>
+<li>A <strong>machine-readable phenotype definition</strong> (codes + comparators + combine mode + pinned
+    note-extraction prompt/endpoint) stored with it — reproducible and auditable, not just a list.</li>
+<li>A <strong>verification line</strong> confirming membership matches the definition exactly (0 FP / 0 FN).</li>
+<li><strong>Verified citations</strong>, or an honest "no citation — none fabricated" when none resolve.</li>
+<li>A clean hand-off: Genie Code <em>builds</em> the cohort; a Genie <em>Space</em> explores it in NL.</li>
+</ul>
+<h2 id="evaluation">Evaluation<a class="headerlink" href="#evaluation" title="Permanent link">&para;</a></h2>
+<p>Measured <strong>skill vs no-skill</strong> (Genie Code baseline) against seeded synthetic gold, so scores
+are exact. Objective = <code>0.45·membership_F1 + 0.20·conceptset_F1 + 0.20·feasibility + 0.15·citation − 0.50·hallucination</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Metric</th>
+<th>No skill (baseline)</th>
+<th>Skill</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Coded cohort</td>
+<td>Membership F1</td>
+<td>0.911 (silent stricter threshold; fabricated citations)</td>
+<td><strong>1.000</strong></td>
+</tr>
+<tr>
+<td>Free-text cohort (union)</td>
+<td>Membership F1 (live)</td>
+<td>0.620 (silently chose ≥9.0 + intersection; recall 0.449)</td>
+<td><strong>1.000</strong></td>
+</tr>
+<tr>
+<td>Free-text cohort</td>
+<td>Note-trap specificity</td>
+<td>0.44 (negation/family-history mentions leak in)</td>
+<td><strong>1.00</strong> (0 leaked)</td>
+</tr>
+<tr>
+<td>Free-text cohort</td>
+<td>Composite objective</td>
+<td>0.573</td>
+<td><strong>1.000</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Root cause the skill removes: the un-guided baseline <strong>silently makes definitional choices</strong>
+(threshold, code/note combine) the analyst never sees. Reproduce with <code>eval/mlflow_eval.py</code>
+(scenarios <code>cohort-baseline/skill</code>, <code>cohort-freetext-baseline/skill</code>), which logs each arm to an
+MLflow experiment. Unit tests: <code>tests/</code> (component scorers incl. <code>note_trap_specificity</code>); the
+repo's <code>tests/test_skill_quality.py</code> validates this SKILL.md. See the eval harness in the source
+repo for the full A/B protocol and the live Genie-Code capture.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Preview returns fewer codes than requested</td>
+<td>Some proposed codes aren't in the data (grounding excluded them)</td>
+<td>Expected — the readout lists which were dropped. Use a hierarchy-expanded concept set for descendants.</td>
+</tr>
+<tr>
+<td>It refuses to build and returns a choice prompt</td>
+<td>Ambiguous threshold and/or a notes source with no <code>combine_mode</code></td>
+<td>The confirm-gate working. Show the options + N to the user, get their choice, call <code>build_confirmed_cohort</code>.</td>
+</tr>
+<tr>
+<td>A harmless preview is blocked by a permission reviewer</td>
+<td>Overloaded <code>run_cohort(...)</code> where preview vs build differ only by an argument</td>
+<td>Call the explicitly-named <code>preview_cohort_options</code> (read-only, no threshold arg).</td>
+</tr>
+<tr>
+<td>No citations attached</td>
+<td>No literature MCP connected and/or PubMed unreachable</td>
+<td>Correct fail-closed behavior — never fabricate a PMID. You may still name a guideline (ADA/HEDIS) in prose.</td>
+</tr>
+<tr>
+<td>Note evidence looks too small/large</td>
+<td><code>note_condition</code> too broad/narrow, or the endpoint under/over-calls</td>
+<td>Set <code>note_condition</code> to the diagnosis (not the phenotype); inspect <code>&lt;notes_table&gt;_note_evidence</code> (span-grounded verdicts).</td>
+</tr>
+<tr>
+<td>Cohort N far smaller than expected</td>
+<td>A stricter threshold or missing OR-criteria</td>
+<td>Re-check the threshold choice and whether criteria should be OR-combined.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Execute, do not reimplement</strong> — call the entrypoints; never hand-write cohort SQL. The
+    baseline silently substituted a stricter HbA1c threshold and fabricated citations; this
+    path prevents both.</li>
+<li><strong>Never pick a threshold or combine mode for the user</strong> — surface options with N impact
+    and let them choose (both the value AND the operator; both parts of the choice).</li>
+<li><strong>Reproducibility over convenience</strong> — always emit the coded phenotype definition, never
+    just a patient-id list.</li>
+<li><strong>Never fabricate a citation</strong> — state only PMIDs/NCT ids the resolver returned verified;
+    naming a guideline (ADA/HEDIS) in prose is fine, asserting an unverified resolvable id is not.</li>
+<li><strong>Feasibility gate is not optional</strong> — never hand over a cohort without reporting N and
+    per-criterion attrition.</li>
+<li><strong>Respect PHI governance</strong> — the cohort inherits UC access controls; if the source is raw
+    PHI and the consumer is an analyst, run <code>phi-deidentifier</code> on the output or build on a
+    de-identified source.</li>
+<li><strong>Keep raw notes out of the shareable cohort table</strong> — verbatim note spans (PHI) live only in
+    the separate <code>&lt;cohort&gt;_provenance</code> table, governed like the notes source; the cohort table
+    carries just <code>patient_id</code> + the non-PHI <code>ascertainment</code> column.</li>
+</ol>
+<h2 id="bundled-resources">Bundled Resources<a class="headerlink" href="#bundled-resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>scripts/cohort_run.py</code> — the entrypoints: <code>preview_cohort_options</code> (read-only grounding +
+    threshold/combine surfacing) and <code>build_confirmed_cohort</code> (materialize + verify). Contains
+    <code>extract_note_evidence</code> (ai_query, negation-/subject-aware, span-grounded).</li>
+<li><code>scripts/literature.py</code> — citation resolver: MCP-verify + direct-PubMed floor, fail-closed.</li>
+<li><code>references/ontology_crosswalks.md</code> — SNOMED/ICD-10/RxNorm/LOINC + OMOP concept-set guidance.</li>
+<li><code>references/phenotype_standards.md</code> — PheKB/eMERGE/OHDSI conventions + minimum-N heuristics.</li>
+<li><code>references/mcp_literature_servers.md</code> — discovering &amp; calling literature/terminology MCP servers.</li>
+<li><code>references/freetext_notes.md</code> — the ai_query note-extraction prompt, negation/subject rules,
+    span-grounding, combine modes, and cost notes.</li>
+<li><code>tests/scorers.py</code>, <code>tests/objective.py</code>, <code>tests/test_cohort_scorers.py</code>, <code>tests/test_cohort_multimodal.py</code> — the objective function,
+    component scorers (membership F1, concept-set F1, feasibility, citation validity, note-trap
+    specificity), and their pure-Python unit tests.</li>
+</ul>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://phekb.org">PheKB</a> — validated electronic phenotype algorithms.</li>
+<li><a href="https://www.ohdsi.org/software-tools/">OHDSI / ATLAS</a> — OMOP concept-set + cohort-definition standard.</li>
+<li><a href="https://www.ncqa.org/hedis/">NCQA HEDIS — Comprehensive Diabetes Care (NQF #0059)</a> — "poor HbA1c control" ≥ 9.0%.</li>
+<li><a href="https://diabetesjournals.org/care">ADA Standards of Care in Diabetes</a> — glycemic targets.</li>
+<li><a href="https://docs.databricks.com/en/large-language-models/ai-functions.html">Databricks AI Functions — <code>ai_query</code></a> — LLM inference from SQL.</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright vs-copyright">
+  <a class="vs-footer-logo" href="https://www.databricks.com/" target="_blank" rel="noopener" title="Databricks">
+    <img src="../../assets/databricks-logo.svg" alt="Databricks" width="24" height="24">
+  </a>
+  <div>
+    
+      <div class="md-copyright__highlight">
+        Licensed under the Databricks License
+      </div>
+    
+    
+      Made with
+      <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+        Material for MkDocs
+      </a>
+    
+  </div>
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.suggest", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
