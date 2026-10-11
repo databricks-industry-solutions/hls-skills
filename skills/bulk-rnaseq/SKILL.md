@@ -1,7 +1,7 @@
 ---
 name: bulk-rnaseq
 description: >
-  Bulk RNA-seq, RNA-seq, RNAseq, RNA sequencing, transcriptome, differential
+  Bulk RNA-seq, RNAseq, RNA sequencing, transcriptome, differential
   expression (DE, DGE, DEG), DESeq2, PyDESeq2, gene expression counts. Default
   skill for any bulk (not single-cell) RNA-seq analysis — always load it when
   the user asks to analyze, process, or run bulk RNA-seq, even if they also
@@ -16,7 +16,7 @@ description: >
 category: Bioinformatics
 summary: Find top differentially expressed genes from bulk RNA-seq counts.
 author: Yen Low
-version: 0.7
+version: 0.6
 license: Databricks
 ---
 
