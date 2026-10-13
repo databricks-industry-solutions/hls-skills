@@ -47,13 +47,23 @@ surfaced by a read-only preview.
 - "Build the diabetes cohort using both the coded records and the clinical notes" (free-text).
 - "Build the cohort from the coded records AND the clinical documents (PDFs/scans) in this Volume" — unstructured documents are parsed with `ai_parse_document` and ascertained via the same span-grounded path (`documents_source`).
 - "Give me the result as a notebook / just show it here / as a table" — the delivery choice (`output_delivery`) is surfaced.
+- "Hypertensives with uncontrolled BP", "members with high LDL", "stage 3+ CKD by eGFR" — the
+  measure threshold generalizes beyond HbA1c; the measure *column* is grounded from the schema
+  and the standard cutoffs are surfaced (BP, LDL, BMI, eGFR, …). For a measure the registry
+  doesn't know, pass `measure_col` + `threshold_value` + `threshold_op`.
+- "Women 65+ with heart failure", "adults 18–64 in these regions" — demographic/attribute
+  criteria (`age_min`/`age_max`, `sex`, and generic `filters`) are grounded against the schema,
+  attrition-reported per criterion, and pinned in the reproducible definition.
 - "Is this cohort feasible, or is N too small?" (attrition + minimum-N heuristics).
 - "Refine the phenotype — the codes miss patients documented only in notes" (note recovery).
 
 ## Prerequisites
 
-- **Compute**: a Databricks SQL warehouse (the entrypoints run SQL via the Databricks SDK;
-  ambient auth in-workspace, or a CLI `profile=` locally).
+- **Compute: Python-enabled compute (serverless or a cluster) — NOT a SQL-only warehouse.** The
+  entrypoints are **Python** functions (they import `cohort_run` and call the Databricks SDK), so in
+  Genie Code select **serverless (Python)** compute from the start; a SQL warehouse alone cannot run
+  them. The SDK then executes the generated SQL against a SQL warehouse on your behalf
+  (auto-selected, or pass `warehouse_id=`). Auth is ambient in-workspace, or a CLI `profile=` locally.
 - **Inputs**: a coded clinical table (`catalog.schema.table`, OMOP CDM or FHIR-flattened —
   conditions/labs/meds/procedures) with a `patient_id`. Optionally a free-text notes table
   (`patient_id`, `note_text`) to ascertain the diagnosis from narrative.
@@ -179,8 +189,12 @@ network round-trip; the step already fails closed either way).
 | `intent_text` | — (required) | the user's phrasing | Scanned for ambiguous terms (e.g. "uncontrolled") that trigger the threshold-choice gate. |
 | `condition_codes` | — (required) | `[(vocab, code)]` | Proposed concept set from any source; grounded against the data (absent codes excluded). |
 | `code_source` | `"model-proposed"` | e.g. `"BioPortal MCP"` | Provenance recorded in the readout. Preview-only. |
-| `threshold_value` | — (build) | numeric | The threshold the user chose after preview. Never pick this yourself. |
+| `threshold_value` | — (build) | numeric | The threshold the user chose after preview. Never pick this yourself. **The surfaced cutoffs are suggestions — the user may supply ANY value**, not just a listed one. |
 | `threshold_op` | `None` | `>`, `>=`, `<`, `<=`, `=` | Comparator — part of the user's choice. For an ambiguous term the tool recovers it from the chosen option; it never silently assumes `>`. |
+| `measure_col` | `None` (grounded) | a numeric column | The clinical-value column the threshold applies to. Omitted → grounded from the registry's candidates against the schema (`hba1c_value`, `systolic_bp`, `ldl`, `bmi`, `egfr`, …). Supply it for a custom/unregistered measure. If an out-of-range term is detected but no column grounds, the skill asks rather than silently dropping the criterion. |
+| `age_min` / `age_max` | `None` | numeric | Age bounds. Applied to a grounded `age` column, or DERIVED from a birth-date column (`datediff`). Grounded + attrition-reported + pinned. |
+| `sex` | `None` | scalar or list | Sex/gender filter on a grounded `sex`/`gender` column (`=` for a scalar, `IN` for a list). |
+| `filters` | `None` | `[{column, op, value[, label]}]` | Arbitrary structured-attribute criteria ("other variables") — each column grounded against the schema, ANDed in, attrition-reported, and pinned in the definition. |
 | `notes_table` | `None` | `catalog.schema.table` | Free-text notes source; when set, the diagnosis is also ascertained from note text and the combine choice is surfaced. |
 | `note_condition` | `None` (→ `intent_text`) | e.g. `"type 2 diabetes"` | What the note extractor looks for — the diagnosis, not the whole phenotype. |
 | `note_endpoint` | `databricks-meta-llama-3-3-70b-instruct` | any serving endpoint | The model `ai_query` calls to read the notes. Override to point at a provisioned-throughput or fine-tuned clinical model. |
@@ -273,15 +287,23 @@ repo for the full A/B protocol and the live Genie-Code capture.
 - `scripts/cohort_run.py` — the entrypoints: `preview_cohort_options` (read-only grounding +
   threshold/combine surfacing) and `build_confirmed_cohort` (materialize + verify). Contains
   `extract_note_evidence` (ai_query, negation-/subject-aware, span-grounded).
+- `scripts/criteria.py` — pure (SDK-free) generalization layer: the clinical-threshold registry
+  (`CLINICAL_THRESHOLDS` — HbA1c, BP, LDL, BMI, eGFR, …) with schema-grounded measure columns, the
+  fail-loud detection of unregistered out-of-range terms, and the demographic/attribute filter
+  compiler (ages, genders, arbitrary grounded columns). This is what makes the skill condition-agnostic.
+- `scripts/interactions.py` — the surface-and-choose decision sheet (confidence/priority/delivery) + notebook artifact.
 - `scripts/literature.py` — citation resolver: MCP-verify + direct-PubMed floor, fail-closed.
+- `references/clinical_thresholds.md` — the measure-threshold registry (terms → measure, candidate
+  columns, standard cutoffs) and how to extend it to new measures.
 - `references/ontology_crosswalks.md` — SNOMED/ICD-10/RxNorm/LOINC + OMOP concept-set guidance.
 - `references/phenotype_standards.md` — PheKB/eMERGE/OHDSI conventions + minimum-N heuristics.
 - `references/mcp_literature_servers.md` — discovering & calling literature/terminology MCP servers.
 - `references/freetext_notes.md` — the ai_query note-extraction prompt, negation/subject rules,
   span-grounding, combine modes, and cost notes.
-- `tests/scorers.py`, `tests/objective.py`, `tests/test_cohort_scorers.py`, `tests/test_cohort_multimodal.py` — the objective function,
-  component scorers (membership F1, concept-set F1, feasibility, citation validity, note-trap
-  specificity), and their pure-Python unit tests.
+- `tests/scorers.py`, `tests/objective.py`, `tests/test_cohort_scorers.py`,
+  `tests/test_cohort_criteria.py` — the objective function, component scorers (membership F1,
+  concept-set F1, feasibility, citation validity, note-trap specificity), the generalized-criteria
+  unit tests (registry, measure grounding, demographic filters), and their pure-Python tests.
 
 ## References
 

@@ -28,6 +28,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Pure interaction layer (no SDK) — the surface-and-choose decision sheet + notebook artifact.
 from interactions import (normalize_delivery, cohort_decisions, format_decisions,  # noqa: E402
                           surfaced_keys, cohort_notebook_source)
+# Pure criteria layer (no SDK) — generalized measure-threshold registry + demographic filters,
+# so the skill works across conditions/measures/ages/genders, not just the seeded diabetes case.
+from criteria import (detect_threshold_term, looks_like_threshold, ground_measure_column,  # noqa: E402
+                      compile_demographics, filters_predicate, Filter)
 
 
 # --- SQL runner (ambient auth in-workspace; optional profile locally) ---------
@@ -66,6 +70,18 @@ def _split_fqn(fqn: str):
 def _sql_lit(s: str) -> str:
     """Single-quote + escape a string for safe inlining into SQL."""
     return "'" + str(s).replace("'", "''") + "'"
+
+
+def _table_columns(q: Q, tbl: str) -> list:
+    """Return the column names of a table/view via DESCRIBE (stops at the partition/detail
+    section DESCRIBE appends). Drives measure-column + demographic-filter grounding."""
+    cols = []
+    for r in q(f"DESCRIBE {tbl}"):
+        name = (r[0] or "").strip()
+        if not name or name.startswith("#"):
+            break                       # DESCRIBE's '# Partition Information' etc. — stop
+        cols.append(name)
+    return cols
 
 
 # --- Free-text notes: extract phenotype evidence with Databricks AI Functions --
@@ -217,24 +233,11 @@ def _dx_predicate(combine_mode: str, code_col: str, code_list: str, evi_alias: s
 
 
 # --- Ambiguity registry -------------------------------------------------------
-# Known clinical terms that map to MORE THAN ONE defensible operational threshold.
-# The skill must SURFACE these, never silently pick one (the baseline's failure).
-THRESHOLD_AMBIGUITIES = {
-    "uncontrolled hba1c": {
-        "measure": "HbA1c",
-        "options": [
-            {"label": ">8.0% (common clinical 'uncontrolled')", "op": ">", "value": 8.0},
-            {"label": ">=9.0% (HEDIS 'poor control')", "op": ">=", "value": 9.0},
-        ],
-    },
-    "poorly controlled hba1c": {
-        "measure": "HbA1c",
-        "options": [
-            {"label": ">=9.0% (HEDIS 'poor control')", "op": ">=", "value": 9.0},
-            {"label": ">8.0% (broader)", "op": ">", "value": 8.0},
-        ],
-    },
-}
+# The registry of ambiguous "out-of-range" terms (uncontrolled HbA1c/BP, high LDL, obesity,
+# CKD/eGFR, ...) lives in criteria.CLINICAL_THRESHOLDS, keyed by term -> measure, candidate
+# COLUMNS (grounded against the table schema), and the >1 defensible cutoff OPTIONS the skill
+# surfaces. This replaced the former diabetes-only, hba1c_value-hardcoded dict so the skill
+# generalizes across conditions and clinical values. See criteria.py.
 
 
 @dataclass
@@ -243,10 +246,13 @@ class CohortDefinition:
     condition_codes: list                 # [(vocab, code)], grounded in the data
     condition_col: str = "condition_code"
     condition_vocab_col: str = "condition_vocab"
-    obs_measure_col: str = "hba1c_value"  # numeric measure column
+    obs_measure_col: str = "hba1c_value"  # numeric measure column (grounded; default is the demo A1c)
+    obs_measure_label: str = ""           # human label for the measure (e.g. "Systolic BP (mmHg)")
     obs_op: str | None = None             # ">", ">=", None if no measure criterion
     obs_value: float | None = None
     label: str = ""
+    # --- demographic / attribute filters (age, sex, any grounded column) ---
+    demographic_filters: list = field(default_factory=list)  # [Filter.to_dict()] — pinned + reproducible
     # --- free-text notes (optional) ---
     combine_mode: str = "code_only"       # code_only | note_only | union | intersection
     note_evidence_table: str | None = None  # materialized ai_query evidence (patient_id, asserts_current_dx)
@@ -273,6 +279,10 @@ class CohortPreview:
     total_patients: int = 0
     combine: dict | None = None                          # code/note/union/intersection N + disagreement
     note_evidence: NoteEvidence | None = None            # handle to the materialized evidence table
+    measure_col: str | None = None                       # grounded measure column (None = none applies)
+    demographics: list = field(default_factory=list)     # grounded Filter objects (age/sex/other)
+    demographic_attrition: list = field(default_factory=list)  # [(label, N_after_this_filter)]
+    unresolved: list = field(default_factory=list)       # criteria that could NOT ground -> fail loud
 
 
 def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "",
@@ -280,7 +290,9 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
                    note_id_col: str = "patient_id", note_endpoint: str = DEFAULT_NOTE_ENDPOINT,
                    note_condition: str | None = None, note_prompt: str | None = None,
                    note_prefilter=None, documents_source: str | None = None,
-                   documents_id_regex: str = r"([^/]+)\\.[^.]+$") -> CohortPreview:
+                   documents_id_regex: str = r"([^/]+)\\.[^.]+$",
+                   measure_col: str | None = None, age_min=None, age_max=None,
+                   sex=None, filters=None) -> CohortPreview:
     """Ground the codes in the data and surface any threshold ambiguity with N impact.
 
     condition_codes: [(vocab, code)] the caller proposes (from NL intent).
@@ -289,11 +301,23 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
         ascertained from the note text via ai_query (negation-/subject-aware, span-grounded),
         and the preview surfaces code-only / note-only / union / intersection cohort sizes with
         the disagreement set — a SECOND choice the user must make (never combined silently).
+    measure_col: OPTIONAL explicit numeric measure column for an out-of-range term; if omitted
+        it is grounded from the registry's candidates against the table schema.
+    age_min/age_max/sex/filters: demographic & attribute criteria (ages, genders, any grounded
+        column) — grounded against the schema, ANDed into every N, pinned in the definition.
 
     Returns a preview to SHOW THE USER. Does not build the cohort.
     """
     catalog, schema, tbl = _split_fqn(table)
     total = int(q(f"SELECT COUNT(DISTINCT patient_id) FROM {tbl}")[0][0])
+    available_cols = _table_columns(q, tbl)
+
+    # Demographic / attribute criteria (age, sex, any grounded column). Grounded against the
+    # schema; the predicate is ANDed into EVERY N below so the surfaced counts are consistent.
+    demographics, demo_unresolved = compile_demographics(
+        available_cols, age_min=age_min, age_max=age_max, sex=sex, filters=filters)
+    demo_pred = filters_predicate(demographics, alias="t")
+    and_demo = f" AND {demo_pred}" if demo_pred else ""
 
     # Unstructured documents (PDF/image): parse to a (patient_id, note_text) table via
     # ai_parse_document, then feed the SAME span-grounded note path (documents are just another
@@ -321,7 +345,8 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
 
     code_list = ", ".join(f"'{code}'" for _, code in grounded) or "NULL"
     base_n = int(q(
-        f"SELECT COUNT(DISTINCT patient_id) FROM {tbl} WHERE condition_code IN ({code_list})")[0][0])
+        f"SELECT COUNT(DISTINCT patient_id) FROM {tbl} t "
+        f"WHERE t.condition_code IN ({code_list}){and_demo}")[0][0])
 
     # Free-text notes: extract note-asserted diagnosis and compute the combine options.
     combine = None
@@ -333,10 +358,11 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
             prompt_template=note_prompt, prefilter=note_prefilter)
         evi = note_evidence.evidence_table
         # Set arithmetic done in SQL against the materialized evidence table (scales past IN-lists).
+        # Demographic predicate is ANDed in so combine Ns reflect the full criteria set.
         def _c(pred: str) -> int:
             return int(q(f"""SELECT COUNT(DISTINCT t.patient_id)
                 FROM {tbl} t LEFT JOIN {evi} e ON t.patient_id = e.patient_id
-                WHERE {pred}""")[0][0])
+                WHERE ({pred}){and_demo}""")[0][0])
         coded = f"t.condition_code IN ({code_list})"
         noted = "e.asserts_current_dx"
         combine = {
@@ -348,32 +374,62 @@ def preview_cohort(q: Q, table: str, condition_codes: list, intent_text: str = "
             "code_not_noted": _c(f"({coded} AND NOT ({noted}))"),   # coded, note silent/absent
         }
 
-    # Detect threshold ambiguity from the intent text. In notes mode the threshold options are
-    # computed against the UNION diagnosis set (most inclusive) so the user sees the full impact;
-    # in code-only mode they are computed against the coded set exactly as before.
+    # Detect an out-of-range THRESHOLD term from the intent (generalized registry, any measure).
+    # The measure COLUMN is grounded against the schema (explicit measure_col > registry
+    # candidate present). In notes mode the per-option N is computed over the UNION dx set (most
+    # inclusive) so the user sees full impact; in code-only mode over the coded set.
     ambiguity = None
-    for term, spec in THRESHOLD_AMBIGUITIES.items():
-        if term in intent_text.lower():
+    unresolved = list(demo_unresolved)
+    spec = detect_threshold_term(intent_text)
+    mcol = ground_measure_column(available_cols, spec, explicit=measure_col)
+    if spec is not None:
+        if mcol is None:
+            # Registered term but no column to measure it on -> fail loud, don't drop the criterion.
+            cand = ", ".join(f"`{c}`" for c in spec.measure_candidates)
+            unresolved.append(
+                f"'{spec.term}' ({spec.measure_label}) — no measure column found in the table "
+                f"(looked for {cand}). Pass measure_col=<the column> to apply this cutoff.")
+        else:
             opts = []
-            for opt in spec["options"]:
+            for opt in spec.options:
                 if note_evidence is not None:
                     evi = note_evidence.evidence_table
                     n = int(q(f"""SELECT COUNT(DISTINCT t.patient_id)
                         FROM {tbl} t LEFT JOIN {evi} e ON t.patient_id = e.patient_id
                         WHERE (t.condition_code IN ({code_list}) OR e.asserts_current_dx)
-                          AND t.hba1c_value {opt['op']} {opt['value']}""")[0][0])
+                          AND t.{mcol} {opt['op']} {opt['value']}{and_demo}""")[0][0])
                 else:
-                    n = int(q(f"""SELECT COUNT(DISTINCT patient_id) FROM {tbl}
-                        WHERE condition_code IN ({code_list})
-                          AND hba1c_value {opt['op']} {opt['value']}""")[0][0])
+                    n = int(q(f"""SELECT COUNT(DISTINCT patient_id) FROM {tbl} t
+                        WHERE t.condition_code IN ({code_list})
+                          AND t.{mcol} {opt['op']} {opt['value']}{and_demo}""")[0][0])
                 opts.append({**opt, "cohort_n": n})
-            ambiguity = {"term": term, "measure": spec["measure"], "options": opts,
+            ambiguity = {"term": spec.term, "measure": spec.measure_label, "measure_col": mcol,
+                         "options": opts,
                          "computed_over": "union (code OR note)" if note_evidence else "coded dx"}
-            break
+    elif looks_like_threshold(intent_text) and measure_col is None:
+        # An out-of-range phrase with no registered term and no explicit column -> ask, don't guess.
+        unresolved.append(
+            "the intent implies an out-of-range measure, but no registered cutoff matched and no "
+            "measure_col was given. Supply measure_col + threshold_value + threshold_op "
+            "(e.g. measure_col='ldl', threshold_value=130, threshold_op='>=').")
+
+    # Demographic attrition: cumulative N as each grounded filter is applied on top of the
+    # condition set, so the user sees which criterion costs how many patients.
+    demographic_attrition = []
+    if demographics:
+        applied = []
+        for f in demographics:
+            applied.append(f)
+            pred = filters_predicate(applied, alias="t")
+            n = int(q(f"SELECT COUNT(DISTINCT patient_id) FROM {tbl} t "
+                      f"WHERE t.condition_code IN ({code_list}) AND {pred}")[0][0])
+            demographic_attrition.append((f.label, n))
 
     return CohortPreview(grounded_codes=grounded, missing_codes=missing, ambiguity=ambiguity,
                          base_condition_n=base_n, total_patients=total,
-                         combine=combine, note_evidence=note_evidence)
+                         combine=combine, note_evidence=note_evidence,
+                         measure_col=mcol, demographics=demographics,
+                         demographic_attrition=demographic_attrition, unresolved=unresolved)
 
 
 def format_preview(preview: CohortPreview) -> str:
@@ -385,6 +441,18 @@ def format_preview(preview: CohortPreview) -> str:
     lines.append(f"**Patients meeting the condition criteria:** {preview.base_condition_n} "
                  f"of {preview.total_patients}")
     lines.append("")
+    if preview.demographics:
+        lines.append("**👥 Demographic / attribute filters applied** (grounded against the schema; "
+                     "cumulative N after each):")
+        for label, n in preview.demographic_attrition:
+            lines.append(f"  - {label} → N = **{n}**")
+        lines.append("")
+    if preview.unresolved:
+        lines.append("**🛑 Could not ground these criteria — tell me how to proceed "
+                     "(they were NOT silently dropped):**")
+        for u in preview.unresolved:
+            lines.append(f"  - {u}")
+        lines.append("")
     if preview.combine:
         c = preview.combine
         ne = preview.note_evidence
@@ -400,7 +468,9 @@ def format_preview(preview: CohortPreview) -> str:
         lines.append(f"  4. **intersection** → dx N = **{c['intersection']}** (code AND note — chart-confirmed)")
         lines.append(f"  • Notes RECOVER **{c['note_recovered']}** patient(s) with no coding; "
                      f"**{c['code_not_noted']}** coded patient(s) have no note assertion.")
-        lines.append(f"  *(These are diagnosis counts before the HbA1c threshold below.)*")
+        if preview.ambiguity:
+            lines.append(f"  *(These are diagnosis counts before the "
+                         f"{preview.ambiguity['measure']} threshold below.)*")
         lines.append("")
     if preview.ambiguity:
         a = preview.ambiguity
@@ -470,6 +540,14 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
     measure_clause = ""
     if definition.obs_op and definition.obs_value is not None:
         measure_clause = f"AND t.{definition.obs_measure_col} {definition.obs_op} {definition.obs_value}"
+
+    # Demographic / attribute filters (age, sex, any grounded column), pinned on the definition.
+    # ANDed into the qualifying set, the create query, AND the verification so membership is
+    # verified against the FULL criteria set (0 FP / 0 FN still holds with demographics applied).
+    demo_filters = [Filter.from_dict(d) for d in (definition.demographic_filters or [])]
+    demo_pred = filters_predicate(demo_filters, alias="t")
+    if demo_pred:
+        measure_clause = f"{measure_clause} AND {demo_pred}".strip()
 
     # Diagnosis ascertainment: code-only (default) or, if a notes evidence table is bound,
     # the chosen combine mode over coded + note-asserted dx. LEFT JOIN so note-only members
@@ -549,12 +627,19 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
     provenance_preview = ""
     if evi:
         prov = f"{cohort_table}_provenance"
+        # The measure column is included ONLY when it actually exists in the table — a code-only
+        # cohort on a table with no such measure (any non-diabetes phenotype) must not reference a
+        # phantom hba1c_value. Falls back to NULL AS measure so the schema is stable either way.
+        mcol = definition.obs_measure_col
+        measure_present = mcol in _table_columns(q, tbl)
+        measure_sel = f"MAX(t.{mcol}) AS {mcol}" if measure_present else "CAST(NULL AS DOUBLE) AS measure"
+        measure_name = mcol if measure_present else "measure"
         q(f"""CREATE OR REPLACE TABLE {prov} AS
             SELECT c.patient_id, c.ascertainment,
                    {_any_code} = 1 AS in_codes,
                    COALESCE({_any_note} = 1, false) AS note_asserts_dx,
                    MAX(e.evidence_span) AS evidence_span,
-                   MAX(t.{definition.obs_measure_col}) AS {definition.obs_measure_col}
+                   {measure_sel}
             FROM {cohort_table} c
               JOIN {tbl} t ON c.patient_id = t.patient_id
               LEFT JOIN {evi} e ON c.patient_id = e.patient_id
@@ -563,7 +648,7 @@ def build_cohort(q: Q, table: str, definition: CohortDefinition,
         # Lead with the most audit-worthy rows: note-recovered (note) and note-silent-coded
         # (code) before the concordant (both), so the preview shows the disagreement, not 20 easy cases.
         rows = q(f"""SELECT patient_id, ascertainment, in_codes, note_asserts_dx,
-                       {definition.obs_measure_col}, substr(evidence_span, 1, 80)
+                       {measure_name}, substr(evidence_span, 1, 80)
                      FROM {prov} ORDER BY ascertainment DESC, patient_id LIMIT 20""")
         provenance_preview = _format_provenance_preview(rows, provenance_table, ascertainment_summary)
 
@@ -636,6 +721,8 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
                output_delivery: str | None = None, source_confidence: float | None = None,
                source_priority: str | None = None, documents_source: str | None = None,
                documents_id_regex: str = r"([^/]+)\\.[^.]+$",
+               measure_col: str | None = None, age_min=None, age_max=None,
+               sex=None, filters: list | None = None,
                profile: str | None = None, warehouse_id: str | None = None) -> str:
     """ONE call. Genie should call this and report its output — nothing else.
 
@@ -650,7 +737,14 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
         table: catalog.schema.table of coded clinical records.
         intent_text: the user's exact phrasing (scanned for ambiguous terms).
         condition_codes: [(vocab, code)] proposed from the NL intent (grounded here).
-        threshold_value / threshold_op: supply ONLY after the user has chosen.
+        threshold_value / threshold_op: supply ONLY after the user has chosen. The surfaced
+            options are SUGGESTIONS — the user may pass ANY value/op, not just a listed one.
+        measure_col: explicit numeric measure column for an out-of-range term (e.g. 'ldl').
+            Omit to ground it from the registry's candidates; supply it for a measure the
+            registry doesn't know (fully custom cutoff).
+        age_min/age_max/sex/filters: demographic & attribute criteria (ages, genders, any
+            grounded column) — ANDed into the cohort and pinned in the reproducible definition.
+            `filters` is a list of {column, op, value[, label]} for arbitrary structured attributes.
         notes_table: OPTIONAL free-text notes source; when given the diagnosis is also
             ascertained from note text (negation-/subject-aware, span-grounded via ai_query).
         combine_mode: how to combine coded + note-derived dx — code_only | note_only |
@@ -665,11 +759,22 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
                              note_condition=note_condition, note_prompt=note_prompt,
                              note_prefilter=note_prefilter, documents_source=documents_source,
-                             documents_id_regex=documents_id_regex)
+                             documents_id_regex=documents_id_regex,
+                             measure_col=measure_col, age_min=age_min, age_max=age_max,
+                             sex=sex, filters=filters)
 
     # The Phase-1 decision sheet (confidence / priority / output-delivery) is surfaced ALONGSIDE
     # the existing threshold + combine gates so the analyst sees every choice at once.
     decision_appendix = format_decisions(cohort_decisions(has_notes=bool(preview.combine)))
+
+    # Fail-loud gate: a criterion the user asked for could not be grounded (an out-of-range term
+    # with no measure column, or a demographic/attribute column not in the table). Do NOT silently
+    # drop it — surface it and stop so the user can supply the column/cutoff.
+    if preview.unresolved:
+        return (format_preview(preview) +
+                "\n\n**STOP: one or more criteria could not be grounded (listed above). They were "
+                "NOT applied. Re-call supplying the missing measure_col / threshold / filter column "
+                "so the criterion is honored, or confirm it should be dropped.**")
 
     # Confirm-gate 1: notes present but no combine mode chosen -> refuse to build, ask.
     if preview.combine and combine_mode is None:
@@ -707,13 +812,19 @@ def run_cohort(table: str, intent_text: str, condition_codes: list,
     ne = preview.note_evidence
     surfaced = sorted(surfaced_keys(has_notes=bool(preview.combine),
                                     has_ambiguity=preview.ambiguity is not None))
+    # Grounded measure column (registry candidate or explicit); keep the dataclass default when a
+    # threshold was supplied with no groundable column context (back-compat with the demo path).
+    measure_label = preview.ambiguity["measure"] if preview.ambiguity else ""
     definition = CohortDefinition(condition_codes=preview.grounded_codes,
+                                  obs_measure_col=preview.measure_col or CohortDefinition.obs_measure_col,
+                                  obs_measure_label=measure_label,
                                   obs_op=op, obs_value=val,
                                   label=intent_text[:80],
                                   combine_mode=combine_mode or "code_only",
                                   note_evidence_table=ne.evidence_table if ne else None,
                                   note_endpoint=ne.endpoint if ne else None,
                                   note_prompt=ne.prompt if ne else None,
+                                  demographic_filters=[f.to_dict() for f in preview.demographics],
                                   output_delivery=normalize_delivery(output_delivery),
                                   source_confidence=source_confidence,
                                   source_priority=source_priority,
@@ -759,10 +870,16 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
                            note_condition: str | None = None, note_prompt: str | None = None,
                            note_prefilter=None, documents_source: str | None = None,
                            documents_id_regex: str = r"([^/]+)\\.[^.]+$",
+                           measure_col: str | None = None, age_min=None, age_max=None,
+                           sex=None, filters: list | None = None,
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """READ-ONLY grounding + surfacing. Grounds codes in the data and returns real cohort-size
     options for any ambiguous threshold. Takes NO threshold and NO combine-mode argument — it
     only SURFACES the choices. Call this FIRST; show its output to the user; get their choice(s).
+
+    measure_col / age_min / age_max / sex / filters: generalized criteria (any clinical measure,
+    ages, genders, arbitrary grounded columns). The measure column is grounded from the registry
+    or taken from measure_col; demographic/attribute filters are grounded + attrition-reported.
 
     condition_codes: [(vocab, code)] from ANY source. This is the skill's INPUT CONTRACT —
     whether the codes came from a terminology MCP (BioPortal), clinical-notes parsing, or
@@ -783,7 +900,9 @@ def preview_cohort_options(table: str, intent_text: str, condition_codes: list,
                              note_id_col=note_id_col, note_endpoint=note_endpoint,
                              note_condition=note_condition, note_prompt=note_prompt,
                              note_prefilter=note_prefilter, documents_source=documents_source,
-                             documents_id_regex=documents_id_regex)
+                             documents_id_regex=documents_id_regex,
+                             measure_col=measure_col, age_min=age_min, age_max=age_max,
+                             sex=sex, filters=filters)
     src = code_source if not (notes_table or documents_source) else f"{code_source}; text via {note_endpoint}"
     out = f"*Code source: {src} (all codes grounded against the data below).*\n\n" + format_preview(preview)
     out += format_decisions(cohort_decisions(has_notes=bool(preview.combine)))
@@ -805,12 +924,16 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                            output_delivery: str | None = None, source_confidence: float | None = None,
                            source_priority: str | None = None, documents_source: str | None = None,
                            documents_id_regex: str = r"([^/]+)\\.[^.]+$",
+                           measure_col: str | None = None, age_min=None, age_max=None,
+                           sex=None, filters: list | None = None,
                            profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Materialize + verify a cohort with the choices the USER has ALREADY made.
     threshold_value is REQUIRED — this function is only called after preview_cohort_options
     surfaced the choice and the user picked. threshold_op defaults to None (NOT ">") so that,
     for an ambiguous term, run_cohort recovers the correct operator from the chosen option
-    instead of silently forcing ">"; pass it explicitly to override.
+    instead of silently forcing ">"; pass it explicitly to override. The surfaced cutoffs are
+    SUGGESTIONS — the user may supply any threshold_value/op, and measure_col lets them target a
+    measure the registry doesn't know. age_min/age_max/sex/filters add demographic/attribute criteria.
 
     When notes_table is given, combine_mode (code_only | note_only | union | intersection) is
     REQUIRED — it is the user's choice for how coded and note-derived diagnoses combine, and is
@@ -829,6 +952,8 @@ def build_confirmed_cohort(table: str, intent_text: str, condition_codes: list,
                       output_delivery=output_delivery, source_confidence=source_confidence,
                       source_priority=source_priority, documents_source=documents_source,
                       documents_id_regex=documents_id_regex,
+                      measure_col=measure_col, age_min=age_min, age_max=age_max,
+                      sex=sex, filters=filters,
                       profile=profile, warehouse_id=warehouse_id)
 
 

@@ -54,7 +54,10 @@ re-identifiable). The entrypoint treats every quasi-identifier as in-scope and v
 
 ## Prerequisites
 
-- **Compute**: a Databricks SQL warehouse (ambient auth in-workspace, or a CLI `profile=` locally).
+- **Compute: Python-enabled compute (serverless or a cluster) — NOT a SQL-only warehouse.** The
+  entrypoints are **Python** (they call the Databricks SDK), so in Genie Code select **serverless
+  (Python)** compute from the start; the SDK then executes the generated SQL against a SQL warehouse
+  on your behalf (auto-selected, or pass `warehouse_id=`). Auth is ambient in-workspace, or a CLI `profile=` locally.
 - **Inputs**: a fully-qualified structured table (`catalog.schema.table`) with typed columns.
 - **Consumer role**: the group/role that should read the de-identified view (governance is role-driven).
 - **Environment (optional)**: a Databricks secret scope for the tokenization salt (never a literal);
