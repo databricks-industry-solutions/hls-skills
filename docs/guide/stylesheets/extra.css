@@ -126,19 +126,18 @@
     width: min(45rem, calc(100vw - 26rem));
     max-width: min(45rem, calc(100vw - 26rem));
     opacity: 1; overflow: visible; padding: 0.1rem 0;
+    top: 2px;
   }
   [data-md-toggle="search"]:checked ~ .md-header .md-header__button[for="__search"] { display: none; }
 
   /* The inner sets the capped width; force the form and the results panel to follow it
      so none render wider via Material's own fixed widths. overscroll-behavior:contain
-     keeps the wheel inside the panel instead of chaining to the page. min-height makes
-     the EMPTY 'Type to start searching' panel tall enough to cover the nav-tabs row;
-     with results the panel is already taller and scrolls normally. */
+     keeps the wheel inside the panel instead of chaining to the page. */
   [data-md-toggle="search"]:checked ~ .md-header .md-search__form {
     width: 100%; max-width: 100%;
   }
   [data-md-toggle="search"]:checked ~ .md-header .md-search__output {
-    width: 100%; max-width: 100%; overscroll-behavior: contain; min-height: 4rem;
+    width: 100%; max-width: 100%; overscroll-behavior: contain;
   }
   [data-md-toggle="search"]:checked ~ .md-header .md-search__scrollwrap {
     width: 100%; max-width: 100%; overscroll-behavior: contain;
