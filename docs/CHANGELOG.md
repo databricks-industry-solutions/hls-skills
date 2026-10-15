@@ -7,6 +7,9 @@ site) are recorded here. Format follows
 ## [Unreleased]
 
 ### Added
+- Light/dark theme choice now carries between the landing page and the docs
+  pages — a single stored preference seeds both before first paint
+  (`docs/overrides/main.html`).
 - Guide overview: a UMAP cell-type comparison screenshot logged to an MLflow
   experiment (`docs/guide/assets/umap.png`).
 - `docs/hooks/repo_sections.py`: a guide page can copy a repository Markdown
@@ -22,6 +25,15 @@ site) are recorded here. Format follows
   `category` and `summary` frontmatter (`docs/hooks/skill_catalog.py`).
 
 ### Changed
+- Docs header and footer use one solid navy (#0B2026) in both light and dark
+  (the footer was previously a translucent near-black in dark mode).
+- Docs search collapses to a single magnifier icon that opens on click; when
+  open it widens leftward over the page, reads clearly in dark mode, and its
+  results scroll within the panel. The theme toggle reuses the landing page's
+  sun/moon icons and sits far-right, grouped tightly with the repository link.
+- Landing hero video fills its frame without cropping when enlarged
+  (`object-fit: contain`); the play overlay adapts to light/dark and the play
+  button is icon-only (keeps its screen-reader label).
 - Links page: external links open in a new tab.
 - The `oss-models` skill is renamed `open-weight-models` (its guide page moves
   from `/guide/skills/oss-models/` to `/guide/skills/open-weight-models/`; the
