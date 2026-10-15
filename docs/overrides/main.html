@@ -3,9 +3,9 @@
 {#
   Theme sync between the hand-built landing page and these MkDocs Material docs pages.
   - Landing (docs/index.html): localStorage "vs-theme" (light|dark) + data-theme on <html>.
-  - Docs (Material): a per-directory-scoped "<scope>.__palette" key + data-md-color-scheme
-    on <body>, where scope = new URL("..", location).pathname -> it differs by page depth,
-    so it cannot be shared from the landing with a single write.
+  - Docs (Material): a "<site root>.__palette" key + data-md-color-scheme on <body>.
+    Material scopes __palette to the SITE ROOT (its __md_scope is new URL(base_url,
+    location), i.e. "..", "../..", ... by page depth), so every docs page shares one key.
   "vs-theme" is origin-wide and unscoped, so it is the one shared source of truth. This
   override bridges both directions without changing any styling or either toggle.
 #}
@@ -19,14 +19,15 @@
         light: { index: 0, color: { media: "(prefers-color-scheme: light)", scheme: "default", primary: "custom", accent: "custom" } },
         dark:  { index: 1, color: { media: "(prefers-color-scheme: dark)",  scheme: "slate",   primary: "custom", accent: "custom" } }
       };
-      // Material namespaces the key as __md_scope.pathname + ".__palette" with
-      // __md_scope = new URL("..", location); compute the identical key for THIS page.
-      var key = new URL("..", location).pathname + ".__palette";
+      // Material namespaces the key as __md_scope.pathname + ".__palette", where
+      // __md_scope = new URL(base_url, location) = the site root at every page depth.
+      // base_url renders the same per-page relative path, so this is Material's exact key.
+      var key = new URL("{{ base_url }}", location).pathname + ".__palette";
 
       var vs = null;
       try { vs = localStorage.getItem("vs-theme"); } catch (e) {}
 
-      // landing -> docs: if the landing set a theme, seed this page's scoped __palette
+      // landing -> docs: if the landing set a theme, seed the site-root __palette
       // before Material's own reader (which runs early in <body>) applies it, so the
       // page loads in the shared scheme with no extra flash beyond Material's native one.
       if (vs === "dark" || vs === "light") {
