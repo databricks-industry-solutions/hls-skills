@@ -9,11 +9,20 @@
   --md-primary-bg-color--light: #D3DBDD;
   --md-accent-fg-color: #FF3621;
   --md-accent-fg-color--transparent: rgba(255, 54, 33, 0.1);
+  /* Footer text stays AA-readable on the navy footer, both themes. (The footer
+     BACKGROUND is set directly below; see the note on the .md-footer rule.) */
+  --md-footer-bg-color: #0B2026;
+  --md-footer-bg-color--dark: #0B2026;
+  --md-footer-fg-color: #FFFFFF;
+  --md-footer-fg-color--light: #D3DBDD;
+  --md-footer-fg-color--lighter: #B3C0C4;
 }
 
 [data-md-color-scheme="default"] {
   --md-default-bg-color: #F9F7F4;
   --md-typeset-a-color: #BD1C08;
+  /* Light-mode header matches the footer navy (slate already uses #0B2026). */
+  --md-primary-fg-color: #0B2026;
 }
 
 [data-md-color-scheme="slate"] {
@@ -67,4 +76,120 @@
 
 [data-md-color-scheme="slate"] .md-typeset .abstract > .admonition-title::before {
   background-color: #D3DBDD;
+}
+
+/* Footer == header: solid deep navy #0B2026, flat/full-bleed, both themes. Set on the
+   element (not via --md-footer-bg-color) so it beats Material's slate scheme, which
+   sets that var on <body> and would otherwise win by cascade proximity. No border-radius
+   -- any rounding at the very bottom is the OS window corner, not CSS. */
+[data-md-color-scheme="slate"] .md-footer,
+[data-md-color-scheme="slate"] .md-footer-meta,
+[data-md-color-scheme="default"] .md-footer,
+[data-md-color-scheme="default"] .md-footer-meta {
+  background-color: #0B2026;
+}
+
+/* Right cluster: repo badge then the moon/sun toggle at the far-right edge. */
+.md-header__inner > .md-header__source { order: 9; }
+.md-header__inner > .md-header__option { order: 10; }
+
+@media screen and (min-width: 60em) {
+  /* Repo badge hugs its content so the toggle sits ~6px after the visible text
+     (Material pins .md-header__source to a fixed 11.7rem, leaving trailing empty
+     space; max-content collapses it). .md-source is display:block so it needs the
+     same cap; lifting the repository's calc() max-width keeps the full name visible. */
+  .md-header__inner { padding-inline-end: 0.5rem; }
+  .md-header__inner > .md-header__source {
+    margin-inline-start: 0; margin-inline-end: 6px;
+    width: auto; max-width: max-content; flex: 0 0 auto;
+  }
+  .md-header__inner > .md-header__source .md-source { width: auto; max-width: max-content; }
+  .md-header__inner > .md-header__source .md-source__repository { max-width: none; }
+
+  /* Collapse the desktop search to just the native magnifier, joined to the right
+     cluster (left of the repo badge). Re-show Material's trigger button (it hides it
+     at >=60em); clicking it is wired by Material's own JS (`header [for=__search]` ->
+     focus query) and the <label> checks #__search, so it genuinely opens + focuses.
+     The field collapses to zero width until open. */
+  .md-header__inner > .md-header__button[for="__search"] { order: 8; margin-inline-end: 6px; }
+  .md-header__inner > .md-search { order: 8; }
+  .md-header__button[for="__search"] { display: inline-block; }
+  .md-search__inner { width: 0; opacity: 0; overflow: hidden; padding: 0; }
+
+  /* Open state keys off Material's native checked toggle. The field keeps Material's
+     natural right anchor (it floats right in the cluster) and widens leftward -- only
+     the left edge grows, the RHS stays put (no position:absolute). 45rem lands the left
+     edge near the Skills<->Evaluation midpoint; the calc(100vw - 26rem) guard reserves
+     room on the left so, as the window narrows, the field never covers the brand/logo.
+     Hide the collapsed trigger so only the in-field magnifier shows (no double icon). */
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__inner {
+    width: min(45rem, calc(100vw - 26rem));
+    max-width: min(45rem, calc(100vw - 26rem));
+    opacity: 1; overflow: visible; padding: 0.1rem 0;
+  }
+  [data-md-toggle="search"]:checked ~ .md-header .md-header__button[for="__search"] { display: none; }
+
+  /* The inner sets the capped width; force the form and the results panel to follow it
+     so none render wider via Material's own fixed widths. overscroll-behavior:contain
+     keeps the wheel inside the panel instead of chaining to the page. min-height makes
+     the EMPTY 'Type to start searching' panel tall enough to cover the nav-tabs row;
+     with results the panel is already taller and scrolls normally. */
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__form {
+    width: 100%; max-width: 100%;
+  }
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__output {
+    width: 100%; max-width: 100%; overscroll-behavior: contain; min-height: 4rem;
+  }
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__scrollwrap {
+    width: 100%; max-width: 100%; overscroll-behavior: contain;
+  }
+
+  /* Open field reads a lighter navy than the #0B2026 header so it stands out, in both
+     themes (the header is navy in light and dark); text/placeholder/icon stay light.
+     The results-panel surface + text are relit for dark mode just below. */
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__form {
+    background-color: #2C4751;
+  }
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__form:hover {
+    background-color: #355560;
+  }
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__input {
+    color: #FFFFFF;
+  }
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__input::placeholder {
+    color: rgba(255, 255, 255, 0.72);
+  }
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__form .md-search__icon {
+    color: #FFFFFF;
+  }
+
+  /* Dark mode only: the open results panel surface is #0B2026 (near-black) and
+     Material's dimmed text vars lose contrast on it. Lift the panel to a lighter navy
+     and brighten the result text to AA. Light mode keeps its readable light panel.
+     (Contrast on #1B3139: #FFFFFF ~13:1, #D3DBDD ~9:1.) */
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search__output,
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search__scrollwrap {
+    background-color: #1B3139;
+  }
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result__meta,
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result__more[open] > summary {
+    background-color: #2C4751;
+    color: #D3DBDD;
+  }
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result,
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result .md-typeset h1,
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result .md-typeset h2,
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result__terms {
+    color: #FFFFFF;
+  }
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result .md-typeset,
+  [data-md-color-scheme="slate"] [data-md-toggle="search"]:checked ~ .md-header .md-search-result__icon {
+    color: #D3DBDD;
+  }
+
+  /* Light dim: open the full search without darkening the page too much. */
+  .md-search__overlay,
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__overlay {
+    background-color: rgba(0, 0, 0, 0.22);
+  }
 }

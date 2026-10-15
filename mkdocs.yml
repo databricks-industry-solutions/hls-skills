@@ -42,14 +42,14 @@ theme:
       primary: custom
       accent: custom
       toggle:
-        icon: material/weather-night
+        icon: vital/moon
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: custom
       accent: custom
       toggle:
-        icon: material/weather-sunny
+        icon: vital/sun
         name: Switch to light mode
   features:
     - content.code.copy

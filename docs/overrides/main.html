@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{#
+  Theme sync between the hand-built landing page and these MkDocs Material docs pages.
+  - Landing (docs/index.html): localStorage "vs-theme" (light|dark) + data-theme on <html>.
+  - Docs (Material): a per-directory-scoped "<scope>.__palette" key + data-md-color-scheme
+    on <body>, where scope = new URL("..", location).pathname -> it differs by page depth,
+    so it cannot be shared from the landing with a single write.
+  "vs-theme" is origin-wide and unscoped, so it is the one shared source of truth. This
+  override bridges both directions without changing any styling or either toggle.
+#}
+{% block extrahead %}
+  {{ super() }}
+  <script>
+    (function () {
+      // Exactly how Material persists this site's two palette options:
+      // #__palette_0 = default (light, index 0), #__palette_1 = slate (dark, index 1).
+      var PALETTE = {
+        light: { index: 0, color: { media: "(prefers-color-scheme: light)", scheme: "default", primary: "custom", accent: "custom" } },
+        dark:  { index: 1, color: { media: "(prefers-color-scheme: dark)",  scheme: "slate",   primary: "custom", accent: "custom" } }
+      };
+      // Material namespaces the key as __md_scope.pathname + ".__palette" with
+      // __md_scope = new URL("..", location); compute the identical key for THIS page.
+      var key = new URL("..", location).pathname + ".__palette";
+
+      var vs = null;
+      try { vs = localStorage.getItem("vs-theme"); } catch (e) {}
+
+      // landing -> docs: if the landing set a theme, seed this page's scoped __palette
+      // before Material's own reader (which runs early in <body>) applies it, so the
+      // page loads in the shared scheme with no extra flash beyond Material's native one.
+      if (vs === "dark" || vs === "light") {
+        try { localStorage.setItem(key, JSON.stringify(PALETTE[vs])); } catch (e) {}
+      }
+
+      // docs -> landing: when the user flips Material's palette toggle, mirror the choice
+      // back to the shared "vs-theme" key so the landing page follows on its next load.
+      addEventListener("change", function (e) {
+        var t = e.target;
+        if (t && t.name === "__palette" && t.checked) {
+          var dark = t.getAttribute("data-md-color-scheme") === "slate";
+          try { localStorage.setItem("vs-theme", dark ? "dark" : "light"); } catch (e) {}
+        }
+      });
+    })();
+  </script>
+{% endblock %}
