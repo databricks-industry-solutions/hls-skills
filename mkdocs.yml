@@ -17,6 +17,7 @@ exclude_docs: |
   hooks/
   overrides/
   requirements.txt
+  CHANGELOG.md
 
 hooks:
   - docs/hooks/skill_pages.py
@@ -89,4 +90,3 @@ nav:
   - Contributing: guide/contributing.md
   - FAQ: guide/faq.md
   - Links: guide/links.md
-  - Changelog: CHANGELOG.md

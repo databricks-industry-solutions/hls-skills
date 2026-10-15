@@ -6,6 +6,28 @@ site) are recorded here. Format follows
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-10-15
+
+### Added
+- Light/dark theme choice now carries between the landing page and the docs
+  pages — a single stored preference seeds both before first paint
+  (`docs/overrides/main.html`).
+
+### Changed
+- The Changelog is no longer a page in the published site navigation; this file
+  remains in the repository as the record of docs-site changes.
+- Docs header and footer use one solid navy (#0B2026) in both light and dark
+  (the footer was previously a translucent near-black in dark mode).
+- Docs search collapses to a single magnifier icon that opens on click; when
+  open it widens leftward over the page, reads clearly in dark mode, and its
+  results scroll within the panel. The theme toggle reuses the landing page's
+  sun/moon icons and sits far-right, grouped tightly with the repository link.
+- Landing hero video fills its frame without cropping when enlarged
+  (`object-fit: contain`); the play overlay adapts to light/dark and the play
+  button is icon-only (keeps its screen-reader label).
+
+## [0.1.2] — 2026-10-14
+
 ### Added
 - Guide overview: a UMAP cell-type comparison screenshot logged to an MLflow
   experiment (`docs/guide/assets/umap.png`).
@@ -42,6 +64,8 @@ site) are recorded here. Format follows
 - Guide header shows the Vital Skills logo; the Databricks logo moves to the
   footer, next to the license line (`docs/overrides/partials/copyright.html`).
   `vitalskills.png` moves from the repo root to `docs/guide/assets/`.
+- The overview video (`vitalskills.mp4`) moves from the repo root to
+  `docs/guide/assets/` and is updated (the dark-flash-trimmed cut).
 - `docs/hooks/repo_links.py`: link rewriting shared by both hooks. Relative
   images now point at the raw file so they render.
 - `.github/workflows/pages.yml`: PRs that change root Markdown files also build
