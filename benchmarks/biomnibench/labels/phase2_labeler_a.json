@@ -1,0 +1,22 @@
+{
+ "da-10-1": {"skills": [], "reason": "Protein phase-separation predictor benchmarking; no skill covers protein sequence features or classifier evaluation."},
+ "da-10-3": {"skills": [], "reason": "Same predictor-screening domain across organelle datasets; no matching skill."},
+ "da-13-3": {"skills": [], "reason": "Reading pre-computed Olink proteomics associations; not RNA-seq, not a cohort or causal study."},
+ "da-13-6": {"skills": [], "reason": "Cross-table consistency of proteomics effects; no matching skill."},
+ "da-14-3": {"skills": [], "reason": "Subgroup proportions from pre-computed sepsis scores; no matching skill."},
+ "da-14-8": {"skills": [], "reason": "Gene-gene correlation inside fixed gene sets; not differential expression or enrichment."},
+ "da-17-3": {"skills": ["sc-rnaseq"], "reason": "Differential expression in a cell type from a scRNA-seq h5ad."},
+ "da-17-5": {"skills": ["sc-rnaseq"], "reason": "Immune cell composition differences by ancestry from a scRNA-seq h5ad."},
+ "da-18-1": {"skills": [], "reason": "Somatic mutation and CNA landscape from cBioPortal files; no matching skill."},
+ "da-19-3": {"skills": [], "reason": "ChIP-seq peak occupancy change; no epigenomics skill."},
+ "da-19-4": {"skills": [], "reason": "Differential H3K27ac ChIP-seq regions; no epigenomics skill."},
+ "da-19-6": {"skills": [], "reason": "ATAC-seq accessibility change; no epigenomics skill."},
+ "da-24-3": {"skills": [], "reason": "GWAS summary statistics and shared genetics; no matching skill."},
+ "da-26-4": {"skills": [], "reason": "Synthetic-lethality ranking from dependency scores, lasso and mutual exclusivity; no matching skill."},
+ "da-3-4": {"skills": [], "reason": "Association test of mutational load with response; not a comparative-effectiveness or cohort-building study."},
+ "da-5-1": {"skills": [], "reason": "Target prioritization from supplementary overexpression and CRISPR tables; no matching skill."},
+ "da-5-3": {"skills": [], "reason": "Phosphosite prioritization from supplementary tables; no matching skill."},
+ "da-8-1": {"skills": [], "reason": "Metabolite-blood pressure partial correlation within a subgroup; no matching skill."},
+ "da-8-3": {"skills": [], "reason": "Differential metabolites and mediation analysis; metabolomics, not RNA-seq."},
+ "da-9-7": {"skills": [], "reason": "CyTOF frequency vs Olink protein correlation in a trial; no matching skill."}
+}
