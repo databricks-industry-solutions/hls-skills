@@ -133,6 +133,11 @@ def test_relative_links_and_images_point_at_github():
     assert "[c](code.py)" in out
 
 
+def test_links_out_of_the_source_folder_are_folded():
+    out = absolute_links("![d](../../docs/a.svg) [r](../README.md)", "benchmarks/x")
+    assert f"![d]({REPO}/raw/main/docs/a.svg)" in out and f"[r]({REPO}/blob/main/benchmarks/README.md)" in out
+
+
 def test_nested_lists_get_four_spaces_per_level():
     md = (
         "1. **Pitfall.** Text.\n   - *How to avoid*: Fix.\n2. Next.\n"

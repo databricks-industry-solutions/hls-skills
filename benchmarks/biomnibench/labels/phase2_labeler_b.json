@@ -1,0 +1,82 @@
+{
+  "da-10-1": {
+    "skills": [],
+    "reason": "Protein sequence analysis and phase-separation predictor benchmarking do not fit available HLS skills."
+  },
+  "da-10-3": {
+    "skills": [],
+    "reason": "Phase-separation predictor performance evaluation across datasets is a bioinformatics classification task outside HLS skill scope."
+  },
+  "da-13-3": {
+    "skills": [],
+    "reason": "Plasma proteome correlation analysis from Olink data does not fit available HLS skills."
+  },
+  "da-13-6": {
+    "skills": [],
+    "reason": "Proteomics association comparison between GAHT and menopause cohorts does not fit available HLS skills."
+  },
+  "da-14-3": {
+    "skills": [],
+    "reason": "Sepsis subgroup classification by immune dysregulation scores is a descriptive analysis task, not cohort building."
+  },
+  "da-14-8": {
+    "skills": [],
+    "reason": "Gene expression correlation analysis within sepsis gene sets does not match comparative effectiveness or transcriptomics skill scope."
+  },
+  "da-17-3": {
+    "skills": ["sc-rnaseq"],
+    "reason": "Single-cell RNA-seq analysis of lupus monocytes from h5ad file; identifying differentially expressed genes in cell type."
+  },
+  "da-17-5": {
+    "skills": ["sc-rnaseq"],
+    "reason": "Single-cell RNA-seq analysis comparing immune cell changes by ancestry in lupus patients from h5ad file."
+  },
+  "da-18-1": {
+    "skills": [],
+    "reason": "Genomic profiling (mutations, CNV, tumor subtypes) is not covered by available HLS skills."
+  },
+  "da-19-3": {
+    "skills": [],
+    "reason": "ChIP-seq analysis of RUNX1 chromatin occupancy changes is a genomic assay outside HLS skill scope."
+  },
+  "da-19-4": {
+    "skills": [],
+    "reason": "ChIP-seq analysis of H3K27ac enhancer signals is a genomic assay outside HLS skill scope."
+  },
+  "da-19-6": {
+    "skills": [],
+    "reason": "ATAC-seq chromatin accessibility analysis is a genomic assay outside HLS skill scope."
+  },
+  "da-24-3": {
+    "skills": [],
+    "reason": "Neonatal metabolites GWAS genetic correlation analysis does not fit available HLS skills."
+  },
+  "da-26-4": {
+    "skills": [],
+    "reason": "Synthetic lethal partner prediction for BRCA combines regression and network analysis but is not model deployment or clinical cohort work."
+  },
+  "da-3-4": {
+    "skills": [],
+    "reason": "Tumor mutational load and immunotherapy response association is biomarker-outcome analysis, not comparative treatment group study."
+  },
+  "da-5-1": {
+    "skills": [],
+    "reason": "Drug target prioritization using proteomics and CRISPR dependencies does not fit available HLS skills."
+  },
+  "da-5-3": {
+    "skills": [],
+    "reason": "Phosphosite abundance analysis on druggable proteins is phosphoproteomics outside HLS skill scope."
+  },
+  "da-8-1": {
+    "skills": [],
+    "reason": "Metabolomics correlation with blood pressure in glycemic phenotypes does not fit available HLS skills."
+  },
+  "da-8-3": {
+    "skills": [],
+    "reason": "Metabolomics differential abundance and lipid-mediated association analysis does not fit available HLS skills."
+  },
+  "da-9-7": {
+    "skills": [],
+    "reason": "CyTOF immune cell frequency and Olink proteomics correlation is biomarker validation analysis outside HLS skill scope."
+  }
+}

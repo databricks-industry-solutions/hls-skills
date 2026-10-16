@@ -1,0 +1,22 @@
+{
+  "da-16-1": {
+    "skills": ["bulk-rnaseq"],
+    "reason": "Task requires unsupervised clustering and PCA on bulk hepatic RNA-seq to identify NAFLD molecular subtypes."
+  },
+  "da-15-2": {
+    "skills": ["bulk-rnaseq"],
+    "reason": "Task requires WGCNA analysis on bulk RNA-seq count data to identify co-expressed gene modules in ALS spinal cord."
+  },
+  "da-17-1": {
+    "skills": ["sc-rnaseq"],
+    "reason": "Task analyzes single-cell scRNA-seq data (h5ad) from PBMC to identify immune cell frequency differences in lupus."
+  },
+  "da-20-1": {
+    "skills": ["bulk-rnaseq"],
+    "reason": "Task compares baseline transcriptional signatures across primary cell types using bulk 3'-end RNA-seq."
+  },
+  "da-4-1": {
+    "skills": ["sc-rnaseq"],
+    "reason": "Task applies NMF to single-cell immune scRNA-seq data to classify patients by tumor microenvironment."
+  }
+}

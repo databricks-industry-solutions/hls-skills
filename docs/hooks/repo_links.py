@@ -5,6 +5,7 @@ folder. Those targets are not part of the site, so they must link to GitHub.
 Nested lists also need wider indentation for MkDocs than GitHub requires.
 """
 
+import posixpath
 import re
 
 REPO = "https://github.com/databricks-industry-solutions/hls-skills"
@@ -68,7 +69,8 @@ def absolute_links(markdown, rel_dir=""):
         if EXTERNAL.match(target):
             return m.group(0)
         view = "raw" if m.group(1).startswith("!") else "blob"
-        url = f"{REPO}/{view}/{BRANCH}/{prefix}{target.removeprefix('./')}"
+        # normpath folds `../` so a link out of the source's folder stays a clean URL.
+        url = f"{REPO}/{view}/{BRANCH}/{posixpath.normpath(prefix + target)}"
         return f"{m.group(1)}{url}{m.group(3)}"
 
     lines, fenced = [], False

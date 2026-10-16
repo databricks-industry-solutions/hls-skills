@@ -1,0 +1,38 @@
+{
+  "labels": {
+    "skills_sha": "576d170ef9315ada8e903033a65629d0153be3af",
+    "method": "Two blind labelers saw only each task's instruction.md and the skill descriptions at skills_sha. These labels predate label.py; rerun it to relabel at a newer skills commit.",
+    "labeler_files": [
+      "labels/phase2_labeler_a.json",
+      "labels/phase2_labeler_b.json",
+      "labels/phase2_reused_labeler_b.json"
+    ]
+  },
+  "tasks": [
+    {"task_id": "da-3-4", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-4-1", "topic": "NMF patient classes from tumor immune composition", "coverage": "covered", "hls_skills": ["sc-rnaseq"]},
+    {"task_id": "da-5-1", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-5-3", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-8-1", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-8-3", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-9-7", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-10-1", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-10-3", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-13-3", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-13-6", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-14-3", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-14-8", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-15-2", "topic": "WGCNA co-expression modules in ALS spinal cord", "coverage": "covered", "hls_skills": ["bulk-rnaseq"]},
+    {"task_id": "da-16-1", "topic": "NAFLD subtypes by clustering hepatic transcriptomes", "coverage": "covered", "hls_skills": ["bulk-rnaseq"]},
+    {"task_id": "da-17-1", "topic": "Circulating immune cell frequencies in SLE vs controls", "coverage": "covered", "hls_skills": ["sc-rnaseq"]},
+    {"task_id": "da-17-3", "coverage": "covered", "hls_skills": ["sc-rnaseq"]},
+    {"task_id": "da-17-5", "coverage": "covered", "hls_skills": ["sc-rnaseq"]},
+    {"task_id": "da-18-1", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-19-3", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-19-4", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-19-6", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-20-1", "topic": "Baseline transcriptional signatures of four primary cell types", "coverage": "covered", "hls_skills": ["bulk-rnaseq"]},
+    {"task_id": "da-24-3", "coverage": "control", "hls_skills": []},
+    {"task_id": "da-26-4", "coverage": "control", "hls_skills": []}
+  ]
+}

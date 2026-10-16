@@ -6,6 +6,12 @@ site) are recorded here. Format follows
 
 ## [Unreleased]
 
+### Added
+- The Evaluation page now explains how to test skills against BiomniBench-DA,
+  with a diagram of the pipeline (`docs/guide/assets/biomnibench-eval.svg`, from
+  the editable `biomnibench-eval.excalidraw`). The text comes from
+  `benchmarks/biomnibench/README.md`.
+
 ## [0.1.3] — 2026-10-15
 
 ### Added
