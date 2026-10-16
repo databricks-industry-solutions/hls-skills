@@ -36,6 +36,17 @@ def save(doc: dict, path: Path = TASKS_JSON) -> None:
     path.write_text(f'{{\n  "labels": {labels},\n  "tasks": [\n{rows}\n  ]\n}}\n')
 
 
+def merge(doc: dict, rows: list[dict], labels: dict) -> dict:
+    """tasks.json after a labeling run. Relabeling every task replaces the labels; labeling some tasks replaces or
+    adds those rows and records the run under labels.updates, so the other frozen labels are kept."""
+    if {t["task_id"] for t in doc["tasks"]} <= {r["task_id"] for r in rows}:
+        return {"labels": labels, "tasks": rows}
+    new = {r["task_id"]: r for r in rows}
+    tasks = [new.pop(t["task_id"], t) for t in doc["tasks"]] + list(new.values())
+    updates = [*doc["labels"].get("updates", []), {**labels, "tasks": [r["task_id"] for r in rows]}]
+    return {"labels": {**doc["labels"], "updates": updates}, "tasks": tasks}
+
+
 def select(tasks: list[dict], skill: str | None = None, controls: int | None = None, seed: int = 0) -> list[str]:
     """Task ids to run: the tasks covered by `skill` (every covered task if None), plus `controls` control tasks
     drawn with `seed` (every control task if None)."""

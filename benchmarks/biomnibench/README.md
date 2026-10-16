@@ -79,6 +79,9 @@ uv run label.py da-12-2 da-20-3 --skills-ref main --name new --profile <profile>
 uv run label.py --labeled --skills-ref main --name main --profile <profile> --write   # relabel all, update tasks.json
 ```
 
+With `--write`, relabeling every task replaces the labels in `tasks.json`. Labeling only some tasks updates or adds
+those rows and records the run under `labels.updates`, so the other labels stay frozen.
+
 Each labeler's answers and reasons go to `labels/<name>_labeler_{a,b}.json`, and the endpoints, skills commit and
 prompt hash go to `labels/<name>_meta.json`. Read the disputed tasks and the reasons before you commit.
 
@@ -108,7 +111,7 @@ before the first run, and keep every run in the analysis.
 ## Guardrails
 
 - **No answer key in reach.** Rubrics stay in `OSB_GRADING`. `judge.py` flags any run whose events mention the
-  grading folder.
+  grading folder, and `analyze.py` leaves those runs out and lists them.
 - **No leakage between arms.** Genie runs with the profile `biomnibench`, which turns off your personal skills and
   memories. Genie's bundled Databricks skills stay on in every arm, as they ship with the product. Skills are
   installed without their `eval/` and `tests/` folders.
@@ -116,15 +119,18 @@ before the first run, and keep every run in the analysis.
 - **Infrastructure failures are not scores.** A run still rate-limited after all retries is left out of the
   analysis and listed. A lost connection or an IP ACL block is moved to `infra-failed/`, and rerunning the same
   command reruns it. A timeout or a missing answer is the agent's failure and scores 0.
-- **Resumable grading.** Each graded run is cached. If grading stalls or fails, rerun the same command; it stops with
-  an error if any run is left ungraded.
+- **Resumable runs and grading.** Rerunning the same `run.py` command keeps the skills commits pinned the first time,
+  skips finished runs and retries runs that were still rate-limited. `judge.py` grades only finished runs, caches
+  each grade per judge, and stops with an error if any finished run is left ungraded.
+- **Your own skills stay out.** `run.py` stops if one of your personal skills has the same name as an HLS skill,
+  because turning it off by name would turn off the HLS skill too.
 
 ## Limits
 
 - Few public tasks fall within a skill's scope: about 10% of the BiomniBench-DA tasks we labeled. With a handful of
   covered tasks, only large effects can be detected.
-- The judge reads the agent's trace, and an LLM judge is not a domain expert. Use `--judge claude_sonnet_5_5` or
-  `--judge-endpoint` for a second opinion, and compare arms only within one judge.
+- The judge reads the agent's trace, and an LLM judge is not a domain expert. For a second opinion, grade again with
+  `--judge claude_sonnet_5_5` or `--judge-endpoint` into a new `--out`, and compare arms only within one judge.
 - Agents can read the whole disk. Run each study in its own `OSB_HOME`.
 
 ## Tests

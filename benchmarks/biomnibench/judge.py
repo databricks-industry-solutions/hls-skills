@@ -39,7 +39,7 @@ JUDGES = {"gemini_3_8_flash": "databricks-gemini-3-8-flash", "claude_sonnet_5_5"
 PRIMARY_JUDGE = "gemini_3_8_flash"
 OPENSCIENCE_REPO = "synthetic-sciences/benchmarks-openscience"
 # A run that touched any of these may have read the answer key.
-LEAK_MARKERS = ("osb-grading", "rubric.txt", "llm_judge")
+LEAK_MARKERS = tuple(dict.fromkeys((str(OSB_GRADING), OSB_GRADING.name, "osb-grading", "rubric.txt", "llm_judge")))
 
 PROMPT = """You are an expert evaluator for a data analysis task.
 
@@ -95,15 +95,20 @@ def parse_rubric_levels(rubric_text: str) -> dict[str, dict[str, int]]:
 
 
 def first_json_object(text: str) -> dict:
+    """The first complete JSON object in the text. Braces inside JSON strings do not count."""
+    decoder = json.JSONDecoder()
     start = text.find("{")
     if start == -1:
         return json.loads(text)
-    depth = 0
-    for i, char in enumerate(text[start:], start):
-        depth += {"{": 1, "}": -1}.get(char, 0)
-        if depth == 0:
-            return json.loads(text[start : i + 1])
-    raise ValueError("unbalanced JSON object in judge response")
+    while start != -1:
+        try:
+            obj, _ = decoder.raw_decode(text, start)
+            if isinstance(obj, dict):
+                return obj
+        except ValueError:
+            pass
+        start = text.find("{", start + 1)
+    raise ValueError("no complete JSON object in judge response")
 
 
 def score_response(rubric: str, response_text: str) -> dict:
@@ -197,6 +202,11 @@ def prompt_sha() -> str:
     return hashlib.sha256((PROMPT + BEHAVIOR_PROMPT).encode()).hexdigest()
 
 
+def cache_key(endpoint: str, repeats: int, outputs: dict, expectations: dict) -> str:
+    """A cached grade is reused only for the same judge, prompts, repeats and redacted inputs."""
+    return hashlib.sha256(json.dumps([prompt_sha(), endpoint, repeats, outputs, expectations]).encode()).hexdigest()
+
+
 def openscience_published(task: str) -> dict[str, str]:
     """OpenScience's counted trial for a task: its trace.md and answer.txt."""
 
@@ -213,7 +223,11 @@ def collect_rows(run_ids: list[str], calibrate: bool) -> list[dict]:
     rows = []
     for run_id in run_ids:
         for workdir in sorted((OSB_HOME / "runs" / run_id).glob("*/*/rep*")):
-            meta = json.loads(read(workdir / "run.json") or "{}")
+            if not (workdir / "run.json").exists():
+                # Crashed, killed or still running: run.py redoes it on the next call, so it is not a result yet.
+                print(f"skipping unfinished run {workdir.relative_to(OSB_HOME / 'runs')}", flush=True)
+                continue
+            meta = json.loads(read(workdir / "run.json"))
             rows.append({
                 "run_id": run_id, "task": workdir.parent.parent.name, "arm": workdir.parent.name,
                 "rep": int(workdir.name.removeprefix("rep")), "leaks": leaked(workdir), "skills": meta.get("skills", []),
@@ -270,7 +284,7 @@ def main() -> None:
     def rubric_judge(inputs, outputs, expectations) -> Feedback:
         key = (inputs["run_id"], inputs["task"], inputs["arm"], inputs["rep"])
         cache_path = cache_dir / ("__".join(map(str, key)) + ".json")
-        inputs_sha = hashlib.sha256(json.dumps([prompt_sha(), args.repeats, outputs, expectations]).encode()).hexdigest()
+        inputs_sha = cache_key(endpoint, args.repeats, outputs, expectations)
         cached = json.loads(read(cache_path) or "{}")
         if cached.get("inputs_sha") == inputs_sha:
             results[key] = cached["result"]

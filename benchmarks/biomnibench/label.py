@@ -9,7 +9,8 @@ Two labelers, each a different LLM on Foundation Model APIs, work independently.
 instruction.md and the name and description of every published skill at --skills-ref, never the rubric, the data
 or any score. taskset.combine turns their two answers into `covered` (a shared skill), `control` (no skill from
 either) or `disputed`. Each labeler's answers go to labels/<name>_labeler_{a,b}.json, the settings to
-labels/<name>_meta.json, and with --write the result replaces the tasks in tasks.json.
+labels/<name>_meta.json. With --write, the labels go into tasks.json: relabeling every task there replaces the
+labels; labeling some tasks updates or adds just those, and records the run under `labels.updates`.
 
 Freeze the labels (commit them) before the first scored run. When the skills change, relabel at the new commit.
 
@@ -30,6 +31,7 @@ from pathlib import Path
 import yaml
 
 import taskset
+from judge import complete
 from run import OSB_GRADING, git, skill_bundles
 
 HERE = Path(__file__).resolve().parent
@@ -75,17 +77,6 @@ def parse(response: str, known: set[str]) -> dict:
     return out
 
 
-def ask(client, endpoint: str, prompt: str) -> str:
-    # No temperature: some FMAPI models reject it. Labels are frozen once written, so the run, not the sampling,
-    # is what gets reproduced.
-    resp = client.chat.completions.create(model=endpoint, messages=[{"role": "user", "content": prompt}],
-                                          max_tokens=2048)
-    content = resp.choices[0].message.content
-    if isinstance(content, list):  # content blocks, e.g. reasoning + text
-        content = "".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
-    return content
-
-
 def main() -> None:
     from databricks.sdk import WorkspaceClient
 
@@ -97,7 +88,7 @@ def main() -> None:
     ap.add_argument("--profile", required=True, help="Databricks CLI profile for Foundation Model APIs")
     ap.add_argument("--labeler-a", default=LABELERS["a"], help="serving endpoint of labeler A")
     ap.add_argument("--labeler-b", default=LABELERS["b"], help="serving endpoint of labeler B")
-    ap.add_argument("--write", action="store_true", help="replace the tasks in tasks.json with these labels")
+    ap.add_argument("--write", action="store_true", help="write these labels into tasks.json")
     args = ap.parse_args()
 
     doc = taskset.load()
@@ -117,7 +108,7 @@ def main() -> None:
     labels: dict[str, dict[str, dict]] = {}
     for key, endpoint in endpoints.items():
         with ThreadPoolExecutor(max_workers=4) as pool:
-            answers = pool.map(lambda t: parse(ask(client, endpoint, prompts[t]), set(skills)), tasks)
+            answers = pool.map(lambda t: parse(complete(client, endpoint, prompts[t]), set(skills)), tasks)
             labels[key] = dict(zip(tasks, answers))
         path = HERE / "labels" / f"{args.name}_labeler_{key}.json"
         path.write_text(json.dumps(labels[key], indent=1) + "\n")
@@ -146,7 +137,7 @@ def main() -> None:
         raise SystemExit(f"unparseable answers, tasks.json not written: {unparseable}")
     if args.write:
         files = [f"labels/{args.name}_labeler_{k}.json" for k in endpoints]
-        taskset.save({"labels": {**meta, "method": "label.py", "labeler_files": files}, "tasks": rows})
+        taskset.save(taskset.merge(doc, rows, {**meta, "method": "label.py", "labeler_files": files}))
         print(f"wrote {taskset.TASKS_JSON}")
 
 

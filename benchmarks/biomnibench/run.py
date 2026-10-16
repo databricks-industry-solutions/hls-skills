@@ -18,8 +18,9 @@ hard-linked and read-only) and its own Python. The prompt is the task's instruct
 so the agent writes ./trace.md and ./answer.txt.
 
 Runs go in a schedule written to schedule-*.json before the first run starts. Runs are grouped by replicate, and
-within a replicate the task order and arm order are shuffled with --seed. Runs are resumable: a workdir with
-run.json is skipped. A run whose turn fails on the network (the workspace IP ACL blocks this machine, or the
+within a replicate the task order and arm order are shuffled with --seed. Runs are resumable: rerunning the same
+command keeps the SHAs pinned in that schedule and skips every workdir with run.json, except runs that were still
+rate-limited after all retries, which run again. A run whose turn fails on the network (the workspace IP ACL blocks this machine, or the
 connection to the model is lost) is an infrastructure failure: it is moved to $OSB_HOME/infra-failed/, the rest of
 the batch is skipped, and rerunning the same command once the network is back starts those runs again.
 
@@ -72,8 +73,9 @@ NETWORK_FAILURES = {
     "connection_lost": ("stream disconnected before completion: error sending request",),
 }
 network_blocked = threading.Event()
-# Files the agent leaves behind above this size are deleted after a run; grading never reads them.
+# Files the agent leaves behind above this size are deleted after a run, except the run's own record.
 MAX_KEPT_FILE_BYTES = 100 * 1024**2
+RUN_RECORD = {"events.jsonl", "stderr.log", "trace.md", "answer.txt"}
 GENIE_HOME = Path(os.environ.get("GENIE_HOME", Path.home() / ".genie"))
 GENIE_PROFILE = "biomnibench"
 # User-scope skill roots Genie scans; their skills would leak into every arm.
@@ -282,8 +284,9 @@ def clean_workdir(wd: Path) -> list[str]:
         shutil.rmtree(wd / name, ignore_errors=True)
     removed = []
     for path in wd.rglob("*"):
-        # Hard links into the shared task data cost no disk and stay.
-        if path.is_file() and not path.is_symlink() and path.stat().st_nlink == 1 and path.stat().st_size > MAX_KEPT_FILE_BYTES:
+        # Hard links into the shared task data cost no disk and stay; grading and the leak check need RUN_RECORD.
+        if path.is_file() and not path.is_symlink() and path.stat().st_nlink == 1 and path.stat().st_size > MAX_KEPT_FILE_BYTES \
+                and str(path.relative_to(wd)) not in RUN_RECORD:
             removed.append(str(path.relative_to(wd)))
             path.unlink()
     return removed
@@ -293,7 +296,10 @@ def run_one(run_dir: Path, item: dict, arms: dict[str, dict], provenance: dict) 
     task, arm, rep = item["task"], item["arm"], item["rep"]
     wd = run_dir / task / arm / f"rep{rep}"
     if (wd / "run.json").exists():
-        return json.loads((wd / "run.json").read_text())
+        meta = json.loads((wd / "run.json").read_text())
+        if not meta.get("rate_limited"):
+            return meta
+        print(f"{task}/{arm}/rep{rep}: was rate-limited, running it again", flush=True)
     if free_gb(OSB_HOME) < MIN_FREE_GB:
         print(f"{task}/{arm}/rep{rep}: skipped, under {MIN_FREE_GB} GB free", flush=True)
         return {**item, "skipped": "low_disk"}
@@ -352,6 +358,27 @@ def run_one(run_dir: Path, item: dict, arms: dict[str, dict], provenance: dict) 
     return meta
 
 
+def resume_or_pin(schedule_path: Path, arms: dict[str, dict], schedule: list[dict]) -> dict[str, dict]:
+    """A rerun of the same command keeps the SHAs the first call pinned, even if a ref has moved since."""
+    if not schedule_path.exists():
+        return arms
+    prev = json.loads(schedule_path.read_text())
+    if list(prev["arms"]) != list(arms) or prev["schedule"] != schedule:
+        sys.exit(f"{schedule_path} has other arms or tasks; resume with the same command, or use a new --run-id")
+    for name, arm in prev["arms"].items():
+        if arm["sha"] != arms[name]["sha"]:
+            print(f"arm {name}: keeping pinned {arm['sha'][:7]} ({arm['ref']} is now {arms[name]['sha'][:7]})")
+    return prev["arms"]
+
+
+def check_user_skills(arms: dict[str, dict]) -> None:
+    """Personal skills are turned off by name, which would also turn off a project skill with the same name."""
+    hls = {name for arm in arms.values() if arm["sha"] for name in skill_bundles(arm["sha"])}
+    if clash := sorted(set(user_skill_names()) & hls):
+        sys.exit(f"Personal skills named like HLS skills would turn those off in every arm: {clash}. "
+                 f"Remove them from {', '.join(map(str, USER_SKILL_DIRS))} for the study.")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run-id", required=True)
@@ -388,9 +415,14 @@ def main() -> None:
         "labels_skills_sha": labeled["labels"].get("skills_sha"),
     }
     schedule_path = run_dir / f"schedule-rep{reps[0]}-{reps[-1]}.json"
-    schedule_path.write_text(json.dumps({"seed": args.seed, "skill": args.skill, "arms": arms, "provenance": provenance,
-                                         "written_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-                                         "schedule": schedule}, indent=2))
+    resumed = schedule_path.exists()
+    arms = resume_or_pin(schedule_path, arms, schedule)
+    if not resumed:
+        schedule_path.write_text(json.dumps({"seed": args.seed, "skill": args.skill, "arms": arms,
+                                             "provenance": provenance,
+                                             "written_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                                             "schedule": schedule}, indent=2))
+    check_user_skills(arms)
     print(f"Genie profile: {write_genie_profile()} ({len(user_skill_names())} user skills disabled)")
     print(f"Schedule: {schedule_path} ({len(schedule)} runs)", flush=True)
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:

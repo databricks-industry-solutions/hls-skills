@@ -14,6 +14,7 @@ import analyze  # noqa: E402
 import label  # noqa: E402
 import run  # noqa: E402
 import taskset  # noqa: E402
+import judge  # noqa: E402
 from judge import first_json_object, parse_rubric_levels, redact, score_response  # noqa: E402
 from run import install_skills, token_usage  # noqa: E402
 
@@ -288,7 +289,7 @@ def test_decision_rules():
 
 def test_token_rise_is_per_task_so_the_task_mix_cannot_drive_it():
     def run_(task, arm, tokens):
-        return {"task": task, "arm": arm, "infra_failure": False, "meta": {"input_tokens": tokens, "output_tokens": 0}}
+        return {"task": task, "arm": arm, "excluded": False, "meta": {"input_tokens": tokens, "output_tokens": 0}}
 
     # Arm a costs the same as b on each task, but has fewer runs of the cheap task.
     runs = [run_("cheap", "b", 100)] * 3 + [run_("big", "b", 1000)] * 3
@@ -367,3 +368,97 @@ def test_label_parse_keeps_only_known_skills():
     out = label.parse('Sure: {"skills": ["bulk-rnaseq", "made-up"], "reason": "DE"}', known)
     assert out == {"skills": ["bulk-rnaseq"], "reason": "DE", "unknown_skills": ["made-up"]}
     assert label.parse("no json here", known)["unparseable"]
+
+
+def test_json_braces_inside_strings_do_not_break_parsing():
+    text = 'Here: {"criteria": {"criterion_1": {"level": "A", "reason": "used the set {CD4, CD8"}}} done'
+    assert first_json_object(text)["criteria"]["criterion_1"]["level"] == "A"
+    assert first_json_object('noise {not json} {"a": 1}') == {"a": 1}
+
+
+def test_grade_cache_depends_on_the_judge():
+    args = (3, {"trace": "t", "answer": "a"}, {"rubric": "r"})
+    assert judge.cache_key("gemini", *args) != judge.cache_key("claude", *args)
+    assert judge.cache_key("gemini", *args) == judge.cache_key("gemini", *args)
+
+
+def test_unfinished_runs_are_not_graded(tmp_path, monkeypatch):
+    monkeypatch.setattr(judge, "OSB_HOME", tmp_path)
+    done, partial = (tmp_path / "runs" / "r" / "t" / arm / "rep1" for arm in ("a", "b"))
+    for wd in (done, partial):
+        wd.mkdir(parents=True)
+        (wd / "events.jsonl").write_text("")
+    (done / "run.json").write_text(json.dumps({"skills": []}))
+    assert [r["arm"] for r in judge.collect_rows(["r"], calibrate=False)] == ["a"]
+
+
+def test_leak_check_follows_the_configured_grading_folder():
+    assert str(judge.OSB_GRADING) in judge.LEAK_MARKERS and "rubric.txt" in judge.LEAK_MARKERS
+
+
+def test_cleanup_never_deletes_the_run_record(tmp_path, monkeypatch):
+    monkeypatch.setattr(run, "MAX_KEPT_FILE_BYTES", 10)
+    for name in ("events.jsonl", "answer.txt", "big.csv"):
+        (tmp_path / name).write_text("x" * 50)
+    assert run.clean_workdir(tmp_path) == ["big.csv"]
+    assert (tmp_path / "events.jsonl").exists() and (tmp_path / "answer.txt").exists()
+
+
+def test_rate_limited_run_is_run_again(tmp_path, monkeypatch):
+    wd = tmp_path / "t" / "no_skills" / "rep1"
+    wd.mkdir(parents=True)
+    (wd / "run.json").write_text(json.dumps({"rate_limited": True}))
+    monkeypatch.setattr(run, "free_gb", lambda _path: 1.0)  # stops right after the resume check
+    assert run.run_one(tmp_path, {"task": "t", "arm": "no_skills", "rep": 1}, {}, {})["skipped"] == "low_disk"
+    (wd / "run.json").write_text(json.dumps({"rate_limited": False, "done": True}))
+    assert run.run_one(tmp_path, {"task": "t", "arm": "no_skills", "rep": 1}, {}, {})["done"]
+
+
+def test_resume_keeps_the_pinned_skills_commit(tmp_path):
+    schedule = run.build_schedule(["t"], ["skills"], [1], seed=1)
+    pinned = {"skills": {"ref": "main", "sha": "a" * 40, "skills_tree": "x"}}
+    path = tmp_path / "schedule-rep1-1.json"
+    assert run.resume_or_pin(path, pinned, schedule) == pinned  # first call: nothing to resume
+    path.write_text(json.dumps({"arms": pinned, "schedule": schedule}))
+    moved = {"skills": {"ref": "main", "sha": "b" * 40, "skills_tree": "y"}}
+    assert run.resume_or_pin(path, moved, schedule)["skills"]["sha"] == "a" * 40
+    with pytest.raises(SystemExit):
+        run.resume_or_pin(path, {"other": moved["skills"]}, run.build_schedule(["t"], ["other"], [1], seed=1))
+
+
+def test_personal_skill_named_like_an_hls_skill_stops_the_study(tmp_path, monkeypatch):
+    (tmp_path / "sc-rnaseq").mkdir()
+    (tmp_path / "sc-rnaseq" / "SKILL.md").write_text("---\nname: sc-rnaseq\n---\n")
+    monkeypatch.setattr(run, "USER_SKILL_DIRS", (tmp_path,))
+    arms = {"no_skills": {"sha": None}, "skills": {"sha": run.git("rev-parse", "HEAD")}}
+    with pytest.raises(SystemExit, match="sc-rnaseq"):
+        run.check_user_skills(arms)
+    monkeypatch.setattr(run, "USER_SKILL_DIRS", ())
+    run.check_user_skills(arms)
+
+
+def test_leaked_runs_are_excluded_and_left_out_tasks_listed(tmp_path, monkeypatch):
+    monkeypatch.setattr(analyze, "OSB_HOME", tmp_path)
+    grades = [{"run_id": "x", "task": t, "arm": arm, "rep": 1, "score": score, "behavior": {}}
+              for t, arm, score in (("c1", "a", 90), ("c1", "b", 50), ("c2", "b", 50), ("k1", "a", 0), ("k1", "b", 50))]
+    task_sets = {"covered": ["c1", "c2"], "control": ["k1"], "all": ["c1", "c2", "k1"]}
+    result = analyze.analyze(grades, task_sets, analyze.comparisons_for("a", "b"),
+                             {"c1": ["s"], "c2": ["s"], "k1": []}, leaked=frozenset({"x/k1/a/rep1"}))
+    by_set = {c["set"]: c for c in result["comparisons"]}
+    assert "control" not in by_set  # k1's only arm-a run read the grader files, so no control task is left
+    assert by_set["covered"]["tasks"] == ["c1"] and by_set["covered"]["left_out"] == ["c2"]
+    assert by_set["all"]["left_out"] == ["c2", "k1"]
+    assert result["leaks"] == ["x/k1/a/rep1"] and "touched the grader files, excluded: x/k1/a/rep1" in analyze.to_markdown(result)
+
+
+def test_partial_relabel_keeps_the_other_labels():
+    doc = {"labels": {"skills_sha": "old"}, "tasks": [
+        {"task_id": "t1", "coverage": "control", "hls_skills": []},
+        {"task_id": "t2", "coverage": "control", "hls_skills": []}]}
+    new = [{"task_id": "t2", "coverage": "covered", "hls_skills": ["s"]},
+           {"task_id": "t3", "coverage": "control", "hls_skills": []}]
+    out = taskset.merge(doc, new, {"skills_sha": "new"})
+    assert [t["task_id"] for t in out["tasks"]] == ["t1", "t2", "t3"] and out["tasks"][1]["coverage"] == "covered"
+    assert out["labels"]["skills_sha"] == "old" and out["labels"]["updates"][0]["tasks"] == ["t2", "t3"]
+    full = taskset.merge(doc, new + [{"task_id": "t1", "coverage": "control", "hls_skills": []}], {"skills_sha": "new"})
+    assert full["labels"] == {"skills_sha": "new"} and len(full["tasks"]) == 3

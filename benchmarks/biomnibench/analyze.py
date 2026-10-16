@@ -8,8 +8,10 @@ and does it hold up where none does?
 Run score = mean of the judge repeats. Cell = mean over a (task, arm)'s runs. For a comparison
 A - B on a task set, d_t = cell(A) - cell(B) and the effect is the unweighted mean of d_t over tasks.
 The 95% CI comes from a two-level bootstrap: resample tasks, then resample runs within each cell.
-Runs that failed for infrastructure reasons (rate limit after all retries, skipped for disk) are
-excluded and listed. Agent failures (timeout, no answer) keep the judge's score, which is 0.
+Runs still rate-limited after all retries, and runs judge.py flagged for touching the grader files, are excluded
+and listed. A task left without runs in either arm drops out of a comparison and is listed with it. Runs skipped for
+low disk leave no folder; rerun run.py to fill them in. Agent failures (timeout, no answer) keep the judge's score,
+which is 0.
 
 Three comparisons, on the task sets from tasks.json (with --skill, covered means covered by that skill):
 - covered: "improves" if the effect is at least --margin, the CI's low end is above -margin, and no task drops by
@@ -43,20 +45,26 @@ MAX_TASK_DROP = 15.0
 MAX_TOKEN_RISE = 0.30
 
 
-def load_runs(grades: list[dict]) -> list[dict]:
+def run_key(r: dict) -> str:
+    return f"{r['run_id']}/{r['task']}/{r['arm']}/rep{r['rep']}"
+
+
+def load_runs(grades: list[dict], leaked: frozenset[str] = frozenset()) -> list[dict]:
     runs = []
     for g in grades:
         path = OSB_HOME / "runs" / g["run_id"] / g["task"] / g["arm"] / f"rep{g['rep']}" / "run.json"
         meta = json.loads(path.read_text()) if path.exists() else {}
         infra_failure = bool(meta.get("rate_limited")) or "skipped" in meta
-        runs.append({**g, "meta": meta, "infra_failure": infra_failure})
+        leak = run_key(g) in leaked
+        runs.append({**g, "meta": meta, "infra_failure": infra_failure, "leaked": leak,
+                     "excluded": infra_failure or leak})
     return runs
 
 
 def cells(runs: list[dict]) -> dict[tuple[str, str], list[float]]:
     out: dict[tuple[str, str], list[float]] = {}
     for r in runs:
-        if not r["infra_failure"]:
+        if not r["excluded"]:
             out.setdefault((r["task"], r["arm"]), []).append(r["score"])
     return out
 
@@ -103,7 +111,7 @@ def decide(rule: str | None, mean: float, lo: float, diffs: dict[str, float], ma
 
 def median_tokens(runs: list[dict], tasks: list[str], arm: str) -> float | None:
     vals = [r["meta"].get("input_tokens", 0) + r["meta"].get("output_tokens", 0)
-            for r in runs if r["arm"] == arm and r["task"] in tasks and not r["infra_failure"] and r["meta"]]
+            for r in runs if r["arm"] == arm and r["task"] in tasks and not r["excluded"] and r["meta"]]
     return statistics.median(vals) if vals else None
 
 
@@ -132,7 +140,7 @@ def routing(runs: list[dict], task_sets: dict[str, list[str]], expected: dict[st
     hits: dict[str, list[float]] = {}
     false: dict[str, list[float]] = {}
     for r in runs:
-        if r["infra_failure"]:
+        if r["excluded"]:
             continue
         opened = set(r["meta"].get("opened", []))
         if r["task"] in task_sets.get("covered", []):
@@ -151,7 +159,7 @@ def per_protocol(runs: list[dict], tasks: list[str], expected: dict[str, list[st
     for arm in sorted({r["arm"] for r in runs}):
         groups: dict[str, list[float]] = {"opened": [], "not_opened": []}
         for r in runs:
-            if r["arm"] == arm and r["task"] in tasks and not r["infra_failure"] and r["meta"].get("skills"):
+            if r["arm"] == arm and r["task"] in tasks and not r["excluded"] and r["meta"].get("skills"):
                 hit = bool(set(r["meta"].get("opened", [])) & set(expected[r["task"]]))
                 groups["opened" if hit else "not_opened"].append(r["score"])
         if any(groups.values()):
@@ -170,13 +178,14 @@ def comparisons_for(a: str, b: str) -> list[tuple]:
 
 def analyze(grades: list[dict], task_sets: dict[str, list[str]], comparisons: list[tuple],
             expected: dict[str, list[str]], seed: int = BOOTSTRAP_SEED, margin: float = MARGIN,
-            max_drop: float = MAX_TASK_DROP) -> dict:
-    runs = load_runs(grades)
+            max_drop: float = MAX_TASK_DROP, leaked: frozenset[str] = frozenset()) -> dict:
+    runs = load_runs(grades, leaked)
     cell_scores = cells(runs)
     rng = random.Random(seed)
     results = []
     for name, task_set, a, b, rule in comparisons:
         tasks = [t for t in task_sets.get(task_set, []) if (t, a) in cell_scores and (t, b) in cell_scores]
+        left_out = [t for t in task_sets.get(task_set, []) if t not in tasks]
         if not tasks:
             continue
         mean, diffs = effect(cell_scores, tasks, a, b)
@@ -189,10 +198,11 @@ def analyze(grades: list[dict], task_sets: dict[str, list[str]], comparisons: li
             decision = "PASS on score, FAILS cost guardrail"
         results.append({
             "comparison": name, "set": task_set, "a": a, "b": b, "rule": rule, "tasks": tasks,
-            "effect": mean, "ci95": [lo, hi], "per_task": diffs, "ups": ups, "downs": downs, "sign_p": p,
+            "left_out": left_out, "effect": mean, "ci95": [lo, hi], "per_task": diffs, "ups": ups, "downs": downs, "sign_p": p,
             "median_tokens": {a: tok_a, b: tok_b}, "token_rise": rise, "decision": decision,
         })
-    infra = [f"{r['run_id']}/{r['task']}/{r['arm']}/rep{r['rep']}" for r in runs if r["infra_failure"]]
+    infra = [run_key(r) for r in runs if r["infra_failure"]]
+    leaks = [run_key(r) for r in runs if r["leaked"]]
     table = {
         f"{t}|{arm}": {"mean": statistics.fmean(v), "runs": v}
         for (t, arm), v in sorted(cell_scores.items())
@@ -202,7 +212,7 @@ def analyze(grades: list[dict], task_sets: dict[str, list[str]], comparisons: li
         for s, tasks in task_sets.items() for arm in sorted({r["arm"] for r in runs})
     }
     return {
-        "comparisons": results, "cells": table, "behavior": behavior, "infra_failures": infra,
+        "comparisons": results, "cells": table, "behavior": behavior, "infra_failures": infra, "leaks": leaks,
         "routing": routing(runs, task_sets, expected),
         "per_protocol": per_protocol(runs, task_sets.get("covered", []), expected),
         "cost": {arm: {"median_tokens": median_tokens(runs, task_sets["all"], arm),
@@ -214,11 +224,14 @@ def analyze(grades: list[dict], task_sets: dict[str, list[str]], comparisons: li
 
 def to_markdown(result: dict) -> str:
     lines = ["# Analysis", "", "## Comparisons", "",
-             "| Comparison | Tasks | Effect | 95% CI | Up / down | Sign test p | Token change | Decision |",
-             "|---|---|---|---|---|---|---|---|"]
+             "| Comparison | Tasks | Left out (no runs in an arm) | Effect | 95% CI | Up / down | Sign test p "
+             "| Token change | Decision |",
+             "|---|---|---|---|---|---|---|---|---|"]
     for c in result["comparisons"]:
         tr = f"{c['token_rise']:+.0%}" if c["token_rise"] is not None else "n/a"
-        lines.append(f"| {c['comparison']} | {len(c['tasks'])} | {c['effect']:+.1f} | {c['ci95'][0]:+.1f} to {c['ci95'][1]:+.1f} "
+        left_out = ", ".join(c["left_out"]) or "none"
+        lines.append(f"| {c['comparison']} | {len(c['tasks'])} | {left_out} | {c['effect']:+.1f} "
+                     f"| {c['ci95'][0]:+.1f} to {c['ci95'][1]:+.1f} "
                      f"| {c['ups']} / {c['downs']} | {c['sign_p']:.3f} | {tr} | {c['decision']} |")
     lines += ["", "## Cells (mean of runs; each run is the mean of its judge repeats)", "", "| Task | Arm | Mean | Runs |", "|---|---|---|---|"]
     for key, v in result["cells"].items():
@@ -241,7 +254,8 @@ def to_markdown(result: dict) -> str:
     lines += ["", "## Cost (all tasks)", "", "| Arm | Median tokens | Median wall time (s) |", "|---|---|---|"]
     for arm, c in result["cost"].items():
         lines.append(f"| {arm} | {c['median_tokens']} | {c['median_wall_s']} |")
-    lines += ["", f"Infrastructure failures excluded: {', '.join(result['infra_failures']) or 'none'}"]
+    lines += ["", f"Infrastructure failures excluded: {', '.join(result['infra_failures']) or 'none'}",
+              "", f"Runs that touched the grader files, excluded: {', '.join(result['leaks']) or 'none'}"]
     return "\n".join(lines) + "\n"
 
 
@@ -258,6 +272,8 @@ def main() -> None:
     args = ap.parse_args()
     grades = [g for name in args.grades for g in json.loads((OSB_HOME / "grades" / name / "grades.json").read_text())]
     grades = [g for g in grades if g["arm"] != "openscience_published"]
+    leaked = frozenset(k for name in args.grades
+                       for k in json.loads((OSB_HOME / "grades" / name / "meta.json").read_text()).get("leaks", {}))
     tasks = taskset.load()["tasks"]
     if args.skill:
         tasks = [t for t in tasks if t["coverage"] != "covered" or args.skill in t["hls_skills"]]
@@ -265,7 +281,7 @@ def main() -> None:
     task_sets["all"] = task_sets["covered"] + task_sets["control"]
     expected = {t["task_id"]: t["hls_skills"] for t in tasks}
     result = analyze(grades, task_sets, comparisons_for(args.a, args.b), expected, args.seed, args.margin,
-                     args.max_task_drop)
+                     args.max_task_drop, leaked)
     out_dir = OSB_HOME / "analysis" / args.out
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "analysis.json").write_text(json.dumps(result, indent=2))
