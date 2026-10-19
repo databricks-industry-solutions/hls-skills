@@ -1,7 +1,8 @@
 # Output tables
 
 Produced by `parse_837()` and `transaction_checks()` in `scripts/x12_837.py`. `claim_id` is
-`sha2(source_file || '|' || claim position)`, stable when the same file is reprocessed.
+`sha2(source_file || '|' || claim position)`, stable when the same file is reprocessed, by batch
+or Auto Loader (a leading `dbfs:` on the path is stripped first).
 
 ## claims (one row per CLM)
 

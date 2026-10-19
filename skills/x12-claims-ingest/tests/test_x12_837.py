@@ -152,6 +152,19 @@ def test_bad_values_become_null_not_errors(spark, generated):
     assert row["total_charge_amount"] is None
 
 
+def test_claim_id_ignores_dbfs_prefix(spark, generated):
+    """Batch reads report dbfs:/Volumes/..., Auto Loader /Volumes/...: the same file must get the same ids."""
+    import x12_837
+
+    files, _ = generated
+    content = files["prof_basic.x12"]
+    ids = []
+    for path in ["dbfs:/Volumes/c/s/v/837/prof_basic.x12", "/Volumes/c/s/v/837/prof_basic.x12"]:
+        raw = spark.createDataFrame([(path, content)], "file_path string, value string")
+        ids.append(sorted(r["claim_id"] for r in x12_837.parse_837(x12_837.segments(raw))["claims"].collect()))
+    assert ids[0] == ids[1]
+
+
 def test_module_is_serverless_safe():
     """No UDFs, RDDs, SparkContext or Arrow/pandas mapping: these fail or are unsupported on serverless."""
     src = SCRIPT.read_text()

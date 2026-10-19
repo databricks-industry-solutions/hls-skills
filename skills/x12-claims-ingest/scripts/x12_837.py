@@ -96,7 +96,9 @@ def stream_x12(spark, path: str, schema_location: str | None = None) -> DataFram
 def _with_x12_flags(raw: DataFrame) -> DataFrame:
     """Locate the ISA header and read the delimiters it declares (fixed-width ISA = 106 chars)."""
     return (
-        raw.withColumn("_x12", F.expr("substring(value, greatest(instr(value, 'ISA'), 1))"))
+        # batch reads report dbfs:/Volumes/..., Auto Loader /Volumes/...; normalize so claim_id is stable
+        raw.withColumn("file_path", F.regexp_replace("file_path", "^dbfs:", ""))
+        .withColumn("_x12", F.expr("substring(value, greatest(instr(value, 'ISA'), 1))"))
         .withColumn(
             "is_x12",
             (F.instr("value", "ISA") > 0) & (F.length("_x12") >= 106)
