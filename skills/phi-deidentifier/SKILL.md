@@ -64,10 +64,12 @@ re-identifiable). The entrypoint treats every quasi-identifier as in-scope and v
 
 ## Prerequisites
 
-- **Compute: Python-enabled compute (serverless or a cluster) — NOT a SQL-only warehouse.** The
-  entrypoints are **Python** (they call the Databricks SDK), so in Genie Code select **serverless
-  (Python)** compute from the start; the SDK then executes the generated SQL against a SQL warehouse
-  on your behalf (auto-selected, or pass `warehouse_id=`). Auth is ambient in-workspace, or a CLI `profile=` locally.
+- **FIRST, before running anything: select serverless (Python) compute.** Every entrypoint here
+  (structured `run_deid.py` AND document `deid_docs.py`) is **Python** that calls the Databricks
+  SDK — it will NOT run on a SQL-only warehouse. In Genie Code, attach **serverless (Python)**
+  compute (or a Python-enabled cluster) as the first step; do not start on a SQL warehouse and
+  switch mid-run. The SDK then runs the generated SQL against a warehouse on your behalf (auto, or
+  pass `warehouse_id=`). Auth is ambient in-workspace, or a CLI `profile=` locally.
 - **Inputs**: a fully-qualified structured table (`catalog.schema.table`) with typed columns.
 - **Consumer role**: the group/role that should read the de-identified view (governance is role-driven).
 - **Environment (optional)**: a Databricks secret scope for the tokenization salt (never a literal);
@@ -140,6 +142,13 @@ restricted prefixes (`references/restricted_zip3.md`).
 ones (age, LOS). Direct-identifier stripping is table stakes; without this step stripped data is
 still re-identifiable (measured baseline: k=1, ~87% of rows unique). Reports the privacy/utility
 trade explicitly.
+
+**Optional — redaction + tokenization only (skip k-anonymity):** the surfaced `apply_kanon`
+choice (or `apply_deid(..., apply_kanon=False)`) builds the governed view with direct identifiers
+dropped/tokenized and dates reduced to year, but **keeps the quasi-identifiers at full
+granularity** (no generalization or suppression). Use the vetted path for this — do NOT hand-write
+the view. Because nothing is generalized, k is unmeasurable, so the verdict is **REVIEW REQUIRED**
+(re-identification resistance unverified), never a certified de-identification.
 
 ### Step 5: Apply through Unity Catalog governance (no second PHI copy)
 

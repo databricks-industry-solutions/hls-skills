@@ -227,6 +227,7 @@ def _measure_actual_k(q: Q, view: str, generalization) -> tuple[int | None, int]
 def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
              column_overrides: dict | None = None, date_handling: str | None = None,
              utility_priority: list | None = None, output_delivery: str | None = None,
+             apply_kanon: bool = True,
              profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Run the full vetted de-identification pipeline and return the DS readout.
 
@@ -258,13 +259,25 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
     date_year_columns, passthrough = plan.date_year_columns, plan.passthrough
     suppressed_unsafe = plan.suppressed_unsafe
 
+    # apply_kanon=False -> REDACTION + TOKENIZATION ONLY: quasi-identifiers are emitted at full
+    # granularity by build_deid_view (no generalization, no suppression). Direct identifiers are
+    # still dropped/tokenized and dates reduced to year. k is then unmeasurable -> REVIEW-REQUIRED.
+    kept_qi_note = ", ".join(qi.label or qi.column for qi in qis) or "none" if not apply_kanon else ""
+
     # DELIVERY = conversation -> compute the frontier only (count-only search), persist NOTHING
     # (no view, no audit table). Fastest, ephemeral; the analyst just wants to see the plan + k.
     if delivery == "conversation":
+        detected = "\n".join(f"  - {c} -> {klass}" for c, klass in phi_cols) or "  (none)"
+        if not apply_kanon:
+            return ("### De-identification (conversation-only — nothing persisted)\n"
+                    f"**PHI detected (auto):**\n{detected}\n\n"
+                    f"Mode: **redaction + tokenization only, NO k-anonymity**. Quasi-identifiers "
+                    f"kept at full granularity: {kept_qi_note}. Date handling: {date_mode}. "
+                    "Re-identification resistance is UNVERIFIED — Privacy Officer review required. "
+                    "No view or audit table created (output_delivery=conversation).")
         gen = find_minimal_generalization(q, table, qis=qis, k_target=k_target)
         summ = generalization_summary(qis, gen)
         detail = "; ".join(f"{s['quasi_identifier']} L{s['level']}/{s['of']}" for s in summ) or "none"
-        detected = "\n".join(f"  - {c} -> {klass}" for c, klass in phi_cols) or "  (none)"
         return ("### De-identification (conversation-only — nothing persisted)\n"
                 f"**PHI detected (auto):**\n{detected}\n\n"
                 f"At k_target={k_target}: **k_achieved={gen.k_achieved}**, "
@@ -275,7 +288,7 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
     # 3: build the governed view (schema-driven)
     gov = build_deid_view(q, table, view_name, k_target=k_target, qis=qis,
                           id_columns=id_columns, passthrough_columns=passthrough,
-                          date_year_columns=date_year_columns)
+                          date_year_columns=date_year_columns, apply_kanon=apply_kanon)
 
     # 4: verify ACTUAL k over all surviving quasi-identifiers (the gate the live test needed)
     k_actual, unique_rows = _measure_actual_k(q, view_name, gov.generalization)
@@ -322,6 +335,10 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
     if column_overrides or utility_priority or (date_handling and date_mode != "year"):
         out += (f"\n\n*Applied overrides — columns: {column_overrides or 'none'}; "
                 f"utility_priority: {utility_priority or 'default'}; date_handling: {date_mode}.*")
+    if not apply_kanon:
+        out += (f"\n\n*k-anonymity SKIPPED by request (redaction + tokenization only). "
+                f"Quasi-identifiers kept at full granularity: {kept_qi_note}. "
+                f"Re-identification resistance UNVERIFIED — Privacy Officer review required.*")
     if delivery == "notebook":
         nb = deid_notebook_source(raw_fqn, k_target, view_name, column_overrides,
                                   date_handling, utility_priority)
@@ -421,19 +438,22 @@ def preview_deid_options(raw_fqn: str, k_candidates=(2, 5, 10, 20),
 def apply_deid(raw_fqn: str, k_target: int, view_name: str | None = None,
                column_overrides: dict | None = None, date_handling: str | None = None,
                utility_priority: list | None = None, output_delivery: str | None = None,
+               apply_kanon: bool = True,
                profile: str | None = None, warehouse_id: str | None = None) -> str:
     """Apply de-identification at the k the USER chose after preview_deid_options.
 
     k_target is REQUIRED — it is the user's privacy/utility choice, surfaced by the preview and
     never picked for them. The other surfaced choices are optional overrides: column_overrides
     (per-column strategy), utility_priority (which QIs to preserve), date_handling, and
-    output_delivery (uc_view | notebook | conversation). Delegates to the vetted run_deid
-    pipeline (which builds the governed view, verifies actual k over ALL surviving
-    quasi-identifiers, and scans for residual leaks)."""
+    output_delivery (uc_view | notebook | conversation). apply_kanon=False delivers a
+    redaction + tokenization ONLY view (no generalization/suppression of quasi-identifiers) —
+    a surfaced choice; the result is REVIEW-REQUIRED, never a certified de-identification.
+    Delegates to the vetted run_deid pipeline (which builds the governed view, verifies actual k
+    over ALL surviving quasi-identifiers, and scans for residual leaks)."""
     return run_deid(raw_fqn, view_name=view_name, k_target=k_target,
                     column_overrides=column_overrides, date_handling=date_handling,
                     utility_priority=utility_priority, output_delivery=output_delivery,
-                    profile=profile, warehouse_id=warehouse_id)
+                    apply_kanon=apply_kanon, profile=profile, warehouse_id=warehouse_id)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,8 @@ import sys
 from dataclasses import dataclass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from kanon import DEFAULT_QIS, LOS_EXPR, find_minimal_generalization, generalization_summary  # noqa: E402
+from kanon import (DEFAULT_QIS, LOS_EXPR, base_expr, find_minimal_generalization,  # noqa: E402
+                   generalization_summary)
 
 # Direct identifiers to DROP entirely (never surfaced in the view).
 DIRECT_IDENTIFIERS = ["patient_name", "ssn", "email", "phone"]
@@ -76,6 +77,7 @@ def build_deid_view(
     q: Q, raw_table: str, view_name: str,
     k_target: int = 5, salt: str = "DEMO_SALT_USE_SECRET_SCOPE_IN_PROD",
     qis=None, id_columns=None, passthrough_columns=None, date_year_columns=None,
+    apply_kanon: bool = True,
 ) -> GovernanceResult:
     """Create/replace a Safe Harbor de-identification VIEW over raw_table.
 
@@ -86,8 +88,13 @@ def build_deid_view(
       date_year_columns   -> reduced to YEAR() (Safe Harbor permits year)
       passthrough_columns -> analytic columns kept as-is
     Falls back to the demo schema defaults when none are supplied.
+
+    apply_kanon=False builds a REDACTION + TOKENIZATION ONLY view: direct identifiers are
+    dropped/tokenized and dates reduced to year, but quasi-identifiers are NOT generalized or
+    suppressed (they must be supplied in passthrough_columns). k is then unmeasurable, so the
+    caller must surface the result as REVIEW-REQUIRED — never a certified de-identification.
     """
-    qis = qis or DEFAULT_QIS
+    qis = (qis or DEFAULT_QIS) if apply_kanon else (qis or [])
     # Demo-schema fallbacks preserve existing behavior; generic callers pass real lists.
     if id_columns is None and passthrough_columns is None and date_year_columns is None:
         id_columns = ["patient_id"]
@@ -97,8 +104,8 @@ def build_deid_view(
     date_year_columns = date_year_columns or []
     passthrough_columns = passthrough_columns or []
 
-    # 1. Compute minimal generalization to reach k_target.
-    gen = find_minimal_generalization(q, raw_table, qis=qis, k_target=k_target)
+    # 1. Compute minimal generalization to reach k_target (skipped when k-anon is off).
+    gen = find_minimal_generalization(q, raw_table, qis=qis, k_target=k_target) if apply_kanon else None
 
     # 2. Build SELECT list.
     select_parts = []
@@ -108,32 +115,45 @@ def build_deid_view(
         # TRY_CAST so a malformed date STRING (e.g. '2022-09-55') yields NULL year instead of
         # erroring the whole view; no-op on columns already typed DATE.
         select_parts.append(f"YEAR(TRY_CAST({dc} AS DATE)) AS {dc.strip('_')}_year")
-    # generalized quasi-identifiers (exposed, generalized -- includes LOS via __los__)
-    gsummary = generalization_summary(qis, gen)
+    # quasi-identifiers: generalized when k-anon is on (includes LOS via __los__); kept at
+    # full granularity (level-0 expression, incl. the derived LOS) when it's off.
+    gsummary = generalization_summary(qis, gen) if apply_kanon else []
     for item in gsummary:
         select_parts.append(f"{item['expr']} AS {item['column'].strip('_')}_generalized")
+    if not apply_kanon:
+        for qi in qis:
+            select_parts.append(f"{base_expr(qi)} AS {qi.column.strip('_')}")
     # analytic pass-through
     for c in passthrough_columns:
         select_parts.append(c)
-
-    # 3. Suppression filter: remove equivalence classes below k_target.
-    grp = ", ".join(gen.group_by_exprs)
-    # window count over the generalized grouping; keep only rows in classes >= k.
-    inner = f"""SELECT *, COUNT(*) OVER (PARTITION BY {grp}) AS _eq_class_size
-                FROM {raw_table}"""
     select_sql = ",\n  ".join(select_parts)
-    view_sql = f"""CREATE OR REPLACE VIEW {view_name} AS
+
+    if apply_kanon:
+        # 3. Suppression filter: remove equivalence classes below k_target.
+        grp = ", ".join(gen.group_by_exprs)
+        # window count over the generalized grouping; keep only rows in classes >= k.
+        inner = f"""SELECT *, COUNT(*) OVER (PARTITION BY {grp}) AS _eq_class_size
+                FROM {raw_table}"""
+        view_sql = f"""CREATE OR REPLACE VIEW {view_name} AS
 SELECT
   {select_sql}
 FROM ({inner})
 WHERE _eq_class_size >= {k_target}"""
+    else:
+        # redaction + tokenization only: no generalization, no suppression filter.
+        view_sql = f"""CREATE OR REPLACE VIEW {view_name} AS
+SELECT
+  {select_sql}
+FROM {raw_table}"""
 
     q(view_sql)
 
     # 4. Verify achieved k on the actual view output.
     return GovernanceResult(
         view_fqn=f"{q.catalog}.{q.schema}.{view_name}",
-        k_target=k_target, k_achieved=gen.k_achieved, suppressed_rows=gen.suppressed_rows,
+        k_target=k_target,
+        k_achieved=gen.k_achieved if gen else None,
+        suppressed_rows=gen.suppressed_rows if gen else 0,
         generalization=gsummary,
         salt_source="LITERAL (DEMO) -- use dbutils.secrets in production",
     )
