@@ -101,6 +101,11 @@ rows_with_skill, obj_with_skill = arm_rows("with_skill")
 
 # COMMAND ----------
 
+# Score rows one at a time: with parallel rows, MLflow 3.17's per-scorer timeout threads deadlocked
+# and every deterministic scorer "timed out after 300 seconds" (8 rows x 7 scorers is cheap serially).
+import os
+os.environ["MLFLOW_GENAI_EVAL_MAX_WORKERS"] = "1"
+
 with mlflow.start_run(run_name="baseline" + dbutils.widgets.get("run_suffix")):
     baseline_result = mlflow.genai.evaluate(data=rows_baseline, scorers=all_scorers)
 with mlflow.start_run(run_name="with_skill" + dbutils.widgets.get("run_suffix")):
