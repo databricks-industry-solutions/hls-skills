@@ -48,9 +48,19 @@ re-identifiable). The entrypoint treats every quasi-identifier as in-scope and v
 - "Mask PHI but keep length-of-stay so we can still do longitudinal analysis."
 - "De-identify these clinical PDFs / scanned documents before we share them" — unstructured
   documents are handled by the document entrypoints (`preview_document_deid_options` /
-  `apply_document_deid` in `scripts/deid_docs.py`): `ai_parse_document` → detect PHI in the
-  extracted text → redact ALL identifier classes → a governed redacted derivative + a separately-
-  governed, reversible surrogate→raw crosswalk → residual-leak scan.
+  `apply_document_deid` in `scripts/deid_docs.py`): `ai_parse_document` → **layered** redaction →
+  a governed redacted derivative + a separately-governed, reversible surrogate→raw crosswalk →
+  deterministic residual verdict. Layers: (1) **member/relative name** — the patient name is
+  extracted from all patient-name fields (incl. a misspelled surname in a second field) and
+  redacted everywhere, shared-surname relatives ("Robert James Whitfield") and relationship-cue
+  names ("husband Robert") too; **provider names are kept** by design. (2) **model** (`ai_mask`,
+  per line so recall holds on long docs) — addresses, geography, written dates, format-less IDs;
+  no 'person name' label, so providers survive. (3) **regex** — SSN (incl. masked/partial),
+  phone/fax, email, MRN, DEA (incl. dash), labeled IDs (incl. dictation/EMS/accession, digit-gated
+  so prose is safe), URL, IP, dates. **Report the deterministic residual verdict verbatim**
+  (fixed-format / member / employer, each a fixed query) — do NOT improvise a separate LLM
+  re-scan; the model-dependent categories it lists (sub-state geography, narrative org/school
+  names, relatives without a cue or shared surname) always require Privacy-Officer review.
 
 ## Prerequisites
 
