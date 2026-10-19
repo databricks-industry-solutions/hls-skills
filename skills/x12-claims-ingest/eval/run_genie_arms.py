@@ -87,13 +87,17 @@ def summarize(events: list[dict]) -> dict:
 
 
 def upload(local: Path, remote: str, profile: str) -> None:
+    parent = remote.rsplit("/", 1)[0]
+    subprocess.run(["databricks", "fs", "mkdirs", f"dbfs:{parent}", "-p", profile], check=True, capture_output=True)
     subprocess.run(["databricks", "fs", "cp", str(local), f"dbfs:{remote}", "--overwrite", "-p", profile],
                    check=True, capture_output=True, text=True)
 
 
 def run_one(item: dict, args) -> dict:
     wd = Path(args.run_root) / f"r{item['rep']}" / item["task_id"] / item["arm"]
-    if (wd / "run.json").exists():
+    remote = f"{args.runs_dir}/r{item['rep']}/{item['arm']}/{item['task_id']}.json"
+    if (wd / "run.json").exists():  # finished earlier: keep it, (re)upload in case that step failed
+        upload(wd / "session.json", remote, args.profile)
         return json.loads((wd / "run.json").read_text())
     prepare_workdir(wd, item["arm"])
     cmd = ["genie", "exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "--ephemeral",
@@ -114,7 +118,7 @@ def run_one(item: dict, args) -> dict:
     session = wd / "session.json"
     session.write_text(json.dumps({k: meta[k] for k in ("response", "action_log", "returncode", "opened_skill",
                                                         "usage", "wall_s", "prefix")}, indent=2))
-    upload(session, f"{args.runs_dir}/r{item['rep']}/{item['arm']}/{item['task_id']}.json", args.profile)
+    upload(session, remote, args.profile)
     return meta
 
 

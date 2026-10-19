@@ -27,6 +27,8 @@ mlflow.set_tracking_uri("databricks")
 dbutils.widgets.text("experiment", "/Users/raven.mukherjee@databricks.com/skill-eval-x12-claims-ingest")
 dbutils.widgets.text("baseline_prefix", "b_{task}_")
 dbutils.widgets.text("with_skill_prefix", "s_{task}_")
+dbutils.widgets.text("tasks", "")  # comma-separated task ids; empty = all in evalset.json
+dbutils.widgets.text("run_suffix", "")
 dbutils.widgets.text("runs_dir", "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/_runs")
 EXPERIMENT_PATH = dbutils.widgets.get("experiment")
 mlflow.set_experiment(EXPERIMENT_PATH)
@@ -55,7 +57,9 @@ with open(f"{EVAL_DIR}/expectations.json") as f:
 with open(f"{EVAL_DIR}/evalset.json") as f:
     evalset = json.load(f)
 task_queries = {e["task_id"]: e["query"] for e in evalset}
-task_ids = [e["task_id"] for e in evalset]
+_only = [t.strip() for t in dbutils.widgets.get("tasks").split(",") if t.strip()]
+task_ids = [e["task_id"] for e in evalset if not _only or e["task_id"] in _only]
+expectations_list = [e for e in expectations_list if e["task_id"] in task_ids]
 
 expectations_by_task, golds = {}, {}
 for e in expectations_list:
@@ -97,9 +101,9 @@ rows_with_skill, obj_with_skill = arm_rows("with_skill")
 
 # COMMAND ----------
 
-with mlflow.start_run(run_name="baseline"):
+with mlflow.start_run(run_name="baseline" + dbutils.widgets.get("run_suffix")):
     baseline_result = mlflow.genai.evaluate(data=rows_baseline, scorers=all_scorers)
-with mlflow.start_run(run_name="with_skill"):
+with mlflow.start_run(run_name="with_skill" + dbutils.widgets.get("run_suffix")):
     candidate_result = mlflow.genai.evaluate(data=rows_with_skill, scorers=all_scorers)
 
 for result, objs in ((baseline_result, obj_baseline), (candidate_result, obj_with_skill)):
