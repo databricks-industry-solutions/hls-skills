@@ -57,3 +57,15 @@ Judge model `databricks:/databricks-gpt-5-mini` (must differ from Genie Code's m
    (`skill-eval/references/report-template.md`).
 
 Repeat each (task, arm) 3 times if time allows: agent runs are not deterministic.
+
+### Steps 2-3 with Genie Code CLI (`run_genie_arms.py`)
+
+`python3 run_genie_arms.py --reps 1 [--tasks ...]` runs both arms with `genie exec` (same approach as the
+BiomniBench harness): one fresh workdir per (task, arm, rep); the with_skill arm gets the published
+bundle at `./.agents/skills/x12-claims-ingest/` plus a one-line `AGENTS.md`; the baseline arm gets an
+empty folder. `GENIE_HOME` points at an isolated home (default `~/.genie-x12-eval`) whose `config.toml`
+sets the model, the Databricks profile, `approval_policy = "never"`, network on and memories off, with
+no `AGENTS.md` and no personal skills (Genie's bundled `skills/.system` stay on in both arms). The
+runner refuses to start if the home is not isolated. Prefixes carry the replicate (`b_<task>_r1_`), and
+each run's response + action log land in `_runs/r<k>/<arm>/<task_id>.json`; score each replicate with
+the notebook widgets `runs_dir=.../_runs/r<k>`, `baseline_prefix=b_{task}_r<k>_`, `with_skill_prefix=s_{task}_r<k>_`.
