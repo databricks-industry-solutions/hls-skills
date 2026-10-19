@@ -1,12 +1,14 @@
 """Unit tests for the presentation builder — pure, offline, sub-second (no warehouse).
 
-Covers the three invariants that make a generated deck trustworthy:
+Covers the invariants that make a generated deck trustworthy:
   1. The FROZEN framework is emitted verbatim (nav runtime, protocol marker, print CSS),
      so navigation and "Save as PDF" always work.
   2. The layout renderers are deterministic and SAFE: all content is HTML-escaped, the tiny
      inline markup resolves, bars auto-scale, and an unknown layout fails loud.
-  3. The PHI classifier flags direct identifiers and the governance gate blocks sample rows
-     from a table that still carries them (ground.py — the pure parts only).
+  3. The grounding reader shapes figures as the renderers expect (ground.py — the pure part).
+
+PHI handling is NOT the presentation builder's job (it is delegated to phi-deidentifier), so
+there is nothing PHI-related to test here.
 """
 
 from __future__ import annotations
@@ -134,61 +136,21 @@ def test_build_deck_writes_file(tmp_path):
     assert out.exists() and summ["slides"] == 2 and summ["bytes"] > 1000
 
 
-# --- PHI classifier + governance gate (pure parts of ground.py) --------------
+# --- grounding reader shapes figures for the renderers (pure part of ground.py) ---
 
-@pytest.mark.parametrize("col,kind", [
-    ("patient_name", "direct"), ("ssn", "direct"), ("mrn", "direct"),
-    ("member_id", "direct"), ("email_address", "direct"), ("home_phone", "direct"),
-    ("birth_date", "direct"), ("admit_date", "direct"), ("zip_code", "direct"),
-    ("birth_year", "quasi"), ("age", "quasi"), ("sex", "quasi"), ("race", "quasi"),
-    ("hba1c_value", "safe"), ("condition_code", "safe"), ("surrogate_key", "safe"),
-])
-def test_classify_column(col, kind):
-    assert g.classify_column(col)[0] == kind
-
-
-def test_scan_phi_buckets():
-    res = g.scan_phi(["patient_name", "age", "hba1c_value", "ssn"])
-    assert {c for c, _ in res["direct"]} == {"patient_name", "ssn"}
-    assert {c for c, _ in res["quasi"]} == {"age"}
-
-
-class _FakeQ:
-    """Stub SQL runner so the governance gate can be tested offline."""
-    def __init__(self, columns):
-        self._cols = columns
-    def __call__(self, stmt):
-        if stmt.strip().upper().startswith("DESCRIBE"):
-            return [[c, "string", ""] for c in self._cols]
-        if "COUNT(*)" in stmt.upper():
-            return [[42]]
-        return []
-
-
-def test_assert_shareable_blocks_sample_rows_with_phi():
-    q = _FakeQ(["patient_name", "ssn", "hba1c_value"])
-    with pytest.raises(g.PhiLeakError):
-        g.assert_shareable("c.s.t", allow_sample_rows=True, q=q)
-
-
-def test_assert_shareable_allows_aggregates_even_with_phi():
-    q = _FakeQ(["patient_name", "hba1c_value"])
-    prof = g.assert_shareable("c.s.t", allow_sample_rows=False, q=q)
-    assert prof["shareable"]["aggregates_ok"] is True
-    assert prof["shareable"]["sample_rows_ok"] is False
-    assert prof["row_count"] == 42
-
-
-def test_assert_shareable_clean_table_ok():
-    q = _FakeQ(["patient_id", "condition_code", "age_band"])
-    prof = g.assert_shareable("c.s.t", allow_sample_rows=True, q=q)
-    assert prof["shareable"]["sample_rows_ok"] is True
-
-
-def test_column_distribution_suppresses_small_cells():
+def test_column_distribution_shapes_bars():
     class DistQ:
         def __call__(self, stmt):
             return [["A", 100], ["B", 30], ["C", 3], ["D", 1]]
-    out = g.column_distribution("c.s.t", "region", q=DistQ(), small_cell_k=11)
-    labels = [b["label"] for b in out["bars"]]
-    assert labels == ["A", "B"] and out["suppressed"] == 2
+    out = g.column_distribution("c.s.t", "region", q=DistQ())
+    assert [b["label"] for b in out["bars"]] == ["A", "B", "C", "D"]
+    assert [b["value"] for b in out["bars"]] == [100, 30, 3, 1]
+    assert out["source"].startswith("Source: c.s.t")
+
+
+def test_column_distribution_labels_null():
+    class DistQ:
+        def __call__(self, stmt):
+            return [[None, 5]]
+    out = g.column_distribution("c.s.t", "region", q=DistQ())
+    assert out["bars"] == [{"label": "(null)", "value": 5}]

@@ -1,12 +1,16 @@
-# Grounding recipes & governance rules
+# Grounding recipes
 
-A deck is only trustworthy if every number came from the data and no PHI leaks into a file
-that gets emailed around. `scripts/ground.py` enforces both. This is the reference for what
-each helper does, the SQL behind it, and the governance rules.
+A deck is only trustworthy if every number came from the data. `scripts/ground.py` is how
+you pull them. This is the reference for what each helper does and the SQL behind it.
+
+PHI is handled **upstream**, not here: de-identify the source with the `phi-deidentifier`
+skill (or confirm with the user that PHI may be included) *before* grounding — see
+SKILL.md, "De-identify before you present." `ground.py` presents whatever table it is given.
 
 ## The rule: ground, then present
 
-1. **Gate** the table (`assert_shareable`).
+1. **De-identify first** if the source holds patient-level PHI (delegate to
+   `phi-deidentifier`; if it's unavailable, ask the user), then ground the governed view.
 2. **Ground** the figures (`cohort_summary`, `numeric_summary`, `column_distribution`).
 3. Drop the returned values into the spec and the returned `source` string into the slide
    `caption`/`notes`.
@@ -20,8 +24,8 @@ All reads auth like `hls-cohort-builder`: ambient in-workspace, or pass `profile
 ## Helpers → SQL
 
 ### `profile_table(table)`
-`DESCRIBE {table}` for the column schema + `SELECT COUNT(*)`, plus a `scan_phi()` of the
-column names. Returns `{table, row_count, columns:[{name,type}], phi:{direct, quasi}}`.
+`DESCRIBE {table}` for the column schema + `SELECT COUNT(*)`.
+Returns `{table, row_count, columns:[{name,type}]}`.
 
 ### `cohort_summary(table, id_col="patient_id")`
 ```sql
@@ -35,36 +39,25 @@ SELECT COUNT(c), MIN(c), MAX(c), AVG(c), percentile_approx(c, 0.5) FROM {table}
 ```
 Returns `{count, min, max, avg, median, source}`. → a `metrics` tile (pick the stat you want).
 
-### `column_distribution(table, column, top=8, small_cell_k=11)`
+### `column_distribution(table, column, top=8)`
 ```sql
-SELECT CAST(column AS STRING) v, COUNT(*) n FROM {table} GROUP BY 1 ORDER BY n DESC
+SELECT CAST(column AS STRING) v, COUNT(*) n FROM {table} GROUP BY 1 ORDER BY n DESC LIMIT top
 ```
-Returns `{bars:[{label, value}], suppressed, source}` shaped for a `bar_chart`.
-**Cells with `n < small_cell_k` are dropped** and counted in `suppressed`.
+Returns `{bars:[{label, value}], source}` shaped for a `bar_chart`.
 
-## Governance rules
+## PHI is handled upstream (delegated to phi-deidentifier)
 
-### Direct identifiers → no sample rows
-`assert_shareable(table, allow_sample_rows=False)` is always safe (aggregates only).
-With `allow_sample_rows=True`, it raises `PhiLeakError` if the table has any **direct
-identifier** column. HIPAA Safe Harbor §164.514(b)(2) names, matched on column name:
-names, SSN, MRN, member/subscriber/beneficiary IDs, account/policy/claim numbers, email,
-phone/fax, address/street/city/ZIP, dates of birth, fine-grained service dates
-(admit/discharge/death/visit), device/serial IDs, URLs, IPs, biometrics, license/VIN/passport.
+The presentation builder does not detect, classify, or suppress PHI. If the source table
+holds patient-level data:
 
-**This is a name-based guardrail, not a de-identifier.** It catches the common leaks; it does
-not inspect values or enforce k-anonymity. For an actual de-identified, k-anonymous,
-governed view, run `phi-deidentifier` and build the deck from its output.
+1. Run the **`phi-deidentifier`** skill to produce a de-identified, k-anonymous, governed
+   view, then point `ground.py` at that view.
+2. If `phi-deidentifier` is **not available** in the environment (not installed in Genie or
+   whatever agent is running), **ask the user** whether they want PHI included in the
+   presentation or excluded — do not decide silently. See SKILL.md for the exact prompt.
 
-### Quasi-identifiers → flagged, not blocked
-Age, sex/gender, race/ethnicity, year-of-birth, ZIP3 are reported under
-`shareable.quasi_identifiers` for your awareness. In combination they can re-identify;
-suppress small cells and avoid cross-tabs with tiny counts.
-
-### Small cells → suppressed
-Distributions drop any category with fewer than `small_cell_k` (default 11) rows. 11 is the
-common small-cell threshold for public health reporting; raise it for small or sensitive
-populations.
+For the identifier taxonomy, k-anonymity enforcement, and the Safe Harbor disclaimer, see
+the `phi-deidentifier` skill — that is the single source of truth for de-identification.
 
 ## Grounding a model (no table helper needed)
 

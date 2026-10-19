@@ -11,9 +11,11 @@ worst for HLS — raw numbers typed into slides that do not match the data). Thi
   - keeps speaker notes in BOTH the per-slide <aside> and a machine-readable JSON block,
   - validates the spec and FAILS LOUD on an unknown layout or empty deck.
 
-Grounding is a SEPARATE, upstream step: pull real figures from the artifact with ground.py
-(which also PHI-guards sample data), put those numbers into the spec, THEN build. This
-module never invents a figure — it only renders what the spec contains.
+Grounding is a SEPARATE, upstream step: pull real figures from the artifact with ground.py,
+put those numbers into the spec, THEN build. This module never invents a figure — it only
+renders what the spec contains. PHI handling is also upstream and delegated: de-identify the
+source with the phi-deidentifier skill (or confirm with the user) before grounding — see
+SKILL.md.
 
 Deck spec shape (dict, or a path to a JSON file):
     {
