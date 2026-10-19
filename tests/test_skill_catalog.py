@@ -35,6 +35,7 @@ def test_catalog_order_follows_category_then_name():
         "rwe-cohortstudy",
         "payer-provider-measure-catalog",
         "phi-deidentifier",
+        "x12-claims-ingest",
         "accelerators",
         "presentation-builder",
         "skill-eval",
