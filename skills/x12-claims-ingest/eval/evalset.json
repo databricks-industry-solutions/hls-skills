@@ -1,0 +1,22 @@
+[
+  {
+    "task_id": "x12-001",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-001/",
+    "query": "The folder /Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-001/ contains X12 837 claim files. Load them into tables. Write Delta tables in hls_amer_catalog.x12_claims_ingest_test: <PREFIX>claims, one row per claim, with columns patient_control_number, member_id, payer_id, billing_provider_npi, total_charge_amount, principal_diagnosis_code, patient_birth_date, patient_gender; <PREFIX>claim_lines, one row per service line, with columns patient_control_number, line_number, procedure_code, revenue_code, line_charge_amount, service_units, service_date; and <PREFIX>file_checks, one row per input file, with columns file_name and status ('ok', or a short description of the problem). Use serverless compute."
+  },
+  {
+    "task_id": "x12-002",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-002/",
+    "query": "The folder /Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-002/ contains X12 837 professional and institutional claim files from two senders. Load them into tables. Write Delta tables in hls_amer_catalog.x12_claims_ingest_test: <PREFIX>claims, one row per claim, with columns patient_control_number, member_id, payer_id, billing_provider_npi, total_charge_amount, principal_diagnosis_code, patient_birth_date, patient_gender; <PREFIX>claim_lines, one row per service line, with columns patient_control_number, line_number, procedure_code, revenue_code, line_charge_amount, service_units, service_date; and <PREFIX>file_checks, one row per input file, with columns file_name and status ('ok', or a short description of the problem). Use serverless compute. Then tell me the total billed amount by payer ID."
+  },
+  {
+    "task_id": "x12-003",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-003/",
+    "query": "The folder /Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-003/ contains this week's X12 837 claim files. Load only complete, valid claims into the claims and claim lines tables. Write Delta tables in hls_amer_catalog.x12_claims_ingest_test: <PREFIX>claims, one row per claim, with columns patient_control_number, member_id, payer_id, billing_provider_npi, total_charge_amount, principal_diagnosis_code, patient_birth_date, patient_gender; <PREFIX>claim_lines, one row per service line, with columns patient_control_number, line_number, procedure_code, revenue_code, line_charge_amount, service_units, service_date; and <PREFIX>file_checks, one row per input file, with columns file_name and status ('ok', or a short description of the problem). Use serverless compute."
+  },
+  {
+    "task_id": "x12-004",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-004/",
+    "query": "New X12 837 claim files land in /Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-004/. Set up a serverless Lakeflow declarative pipeline named <PREFIX>pipeline that ingests them, then run it once. Write Delta tables in hls_amer_catalog.x12_claims_ingest_test: <PREFIX>claims, one row per claim, with columns patient_control_number, member_id, payer_id, billing_provider_npi, total_charge_amount, principal_diagnosis_code, patient_birth_date, patient_gender; <PREFIX>claim_lines, one row per service line, with columns patient_control_number, line_number, procedure_code, revenue_code, line_charge_amount, service_units, service_date; and <PREFIX>file_checks, one row per input file, with columns file_name and status ('ok', or a short description of the problem). Use serverless compute."
+  }
+]

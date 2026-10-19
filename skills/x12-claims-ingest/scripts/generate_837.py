@@ -236,8 +236,25 @@ class Gen:
         return segs
 
 
-def build(seed: int = 7, claims_per_file: int = 6) -> tuple[dict[str, str], dict]:
-    """Return ({file_name: content}, answer_key)."""
+def default_spec(claims_per_file: int = 6) -> list[dict]:
+    """The file set used by the unit tests: every trap once, plus a truncated and a non-X12 file.
+
+    Each entry is either an interchange {name, kind P|I, style (X12 kwargs), tx: [(subscribers, traps)],
+    ctrl, truncate} or a raw non-X12 file {name, raw}.
+    """
+    n = claims_per_file
+    return [
+        {"name": "prof_basic.x12", "kind": "P", "style": {}, "tx": [(n, True)], "ctrl": 101},
+        {"name": "inst_basic.x12", "kind": "I", "style": {"newline": ""}, "tx": [(n, True)], "ctrl": 102},
+        {"name": "prof_pipe_multi_tx.x12", "kind": "P", "style": {"el": "|", "comp": "^", "newline": "\r\n"},
+         "tx": [(n, True), (max(n // 2, 3), True)], "ctrl": 103},
+        {"name": "prof_truncated.x12", "kind": "P", "style": {}, "tx": [(3, False)], "ctrl": 104, "truncate": True},
+        {"name": "not_x12.txt", "raw": "MEMBER_ID,CLAIM_ID,AMOUNT\nM1,C1,10.00\n"},
+    ]
+
+
+def build(seed: int = 7, claims_per_file: int = 6, spec: list[dict] | None = None) -> tuple[dict[str, str], dict]:
+    """Return ({file_name: content}, answer_key) for `spec` (default_spec() when omitted)."""
     g = Gen(seed)
     files: dict[str, str] = {}
     expected_tx: list[dict] = []
@@ -267,16 +284,17 @@ def build(seed: int = 7, claims_per_file: int = 6) -> tuple[dict[str, str], dict
             out[2] = {"claims": 1, "cob": True}        # COB loop with second payer
         return out
 
-    files["prof_basic.x12"] = interchange(X12(), "prof_basic.x12", "P", [subs(claims_per_file)], 101)
-    files["inst_basic.x12"] = interchange(X12(newline=""), "inst_basic.x12", "I", [subs(claims_per_file)], 102)
-    files["prof_pipe_multi_tx.x12"] = interchange(
-        X12(el="|", comp="^", newline="\r\n"), "prof_pipe_multi_tx.x12", "P",
-        [subs(claims_per_file), subs(max(claims_per_file // 2, 3))], 103)
-    files["prof_truncated.x12"] = interchange(X12(), "prof_truncated.x12", "P", [subs(3, False)], 104, truncate=True)
-    files["not_x12.txt"] = "MEMBER_ID,CLAIM_ID,AMOUNT\nM1,C1,10.00\n"
-    expected_tx.append({"file": "not_x12.txt", "st_control_number": None, "transaction_status": "not_x12"})
+    truncated = set()
+    for f in spec or default_spec(claims_per_file):
+        if "raw" in f:
+            files[f["name"]] = f["raw"]
+            expected_tx.append({"file": f["name"], "st_control_number": None, "transaction_status": "not_x12"})
+            continue
+        if f.get("truncate"):
+            truncated.add(f["name"])
+        files[f["name"]] = interchange(X12(**f.get("style", {})), f["name"], f["kind"],
+                                       [subs(n, traps) for n, traps in f["tx"]], f["ctrl"], f.get("truncate", False))
 
-    truncated = {"prof_truncated.x12"}
     key = {
         "seed": seed,
         "claims": [c for c in g.key if c["file"] not in truncated],

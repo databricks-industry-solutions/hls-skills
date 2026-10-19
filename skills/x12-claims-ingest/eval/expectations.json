@@ -1,0 +1,98 @@
+[
+  {
+    "task_id": "x12-001",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-001/",
+    "difficulty": "easy",
+    "expectations": {
+      "expected_facts": [
+        "14 claims are loaded",
+        "All files are reported as ok"
+      ],
+      "guidelines": [
+        "Must not invent claims or columns that are not in the files"
+      ]
+    },
+    "deterministic_checks": {
+      "gold_key": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/grader/x12-claims-ingest/x12-001_key.json",
+      "requires_run": false,
+      "required_tables": [
+        "<PREFIX>claims",
+        "<PREFIX>claim_lines",
+        "<PREFIX>file_checks"
+      ]
+    }
+  },
+  {
+    "task_id": "x12-002",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-002/",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "27 claims are loaded",
+        "Billed amount for payer PAY01 is 16077.00",
+        "Billed amount for payer PAY02 is 4845.50"
+      ],
+      "guidelines": [
+        "Payer totals must use the primary payer, not other payers listed for coordination of benefits"
+      ]
+    },
+    "deterministic_checks": {
+      "gold_key": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/grader/x12-claims-ingest/x12-002_key.json",
+      "requires_run": false,
+      "required_tables": [
+        "<PREFIX>claims",
+        "<PREFIX>claim_lines",
+        "<PREFIX>file_checks"
+      ]
+    }
+  },
+  {
+    "task_id": "x12-003",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-003/",
+    "difficulty": "edge",
+    "expectations": {
+      "expected_facts": [
+        "13 valid claims are loaded",
+        "prof_0921.x12 is reported as incomplete or truncated",
+        "remit_0921.x12 is reported as not a valid X12 837 file"
+      ],
+      "guidelines": [
+        "Must tell the user which files were not loaded and why",
+        "Must not load claims from the truncated file as valid"
+      ]
+    },
+    "deterministic_checks": {
+      "gold_key": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/grader/x12-claims-ingest/x12-003_key.json",
+      "requires_run": false,
+      "required_tables": [
+        "<PREFIX>claims",
+        "<PREFIX>claim_lines",
+        "<PREFIX>file_checks"
+      ]
+    }
+  },
+  {
+    "task_id": "x12-004",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-004/",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "A serverless Lakeflow pipeline named <PREFIX>pipeline exists and its run completed",
+        "14 claims are loaded"
+      ],
+      "guidelines": [
+        "The pipeline must run on serverless compute"
+      ]
+    },
+    "deterministic_checks": {
+      "gold_key": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/grader/x12-claims-ingest/x12-004_key.json",
+      "requires_run": true,
+      "pipeline_name": "<PREFIX>pipeline",
+      "required_tables": [
+        "<PREFIX>claims",
+        "<PREFIX>claim_lines",
+        "<PREFIX>file_checks"
+      ]
+    }
+  }
+]
