@@ -33,11 +33,14 @@ def pipeline_completed(name: str) -> bool:
     return False
 
 
-def collect(spark, schema: str, prefix: str, requires_run: bool = False, pipeline_name: str | None = None) -> dict:
+def collect(spark, schema: str, prefix: str, requires_run: bool = False, pipeline_name: str | None = None,
+            claim_extras: tuple = (), line_extras: tuple = (), quality: bool = False) -> dict:
     claims = _rows(spark, f"{schema}.{prefix}claims")
     lines = _rows(spark, f"{schema}.{prefix}claim_lines")
     checks = _rows(spark, f"{schema}.{prefix}file_checks")
+    flags = _rows(spark, f"{schema}.{prefix}claim_quality") if quality else []
     ran = pipeline_completed(pipeline_name) if requires_run and pipeline_name else None
     if requires_run and ran is None:
         ran = False
-    return to_jsonable(output_from_records(claims, lines, checks, ran_where_asked=ran))
+    return to_jsonable(output_from_records(claims, lines, checks, ran_where_asked=ran, quality_rows=flags,
+                                           claim_extras=claim_extras, line_extras=line_extras))

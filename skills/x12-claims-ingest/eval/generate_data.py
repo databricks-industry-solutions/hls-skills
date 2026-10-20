@@ -52,6 +52,41 @@ TASKS = {
         {"name": "prof_0925.x12", "kind": "P", "style": {}, "tx": [(6, True)], "ctrl": 501},
         {"name": "inst_0925.x12", "kind": "I", "style": ONE_LINE, "tx": [(6, True)], "ctrl": 502},
     ]),
+    # hard (mapping): 4010A1 archive + 5010 batch with line-level rendering and varied dx pointers, then
+    # correction files two weeks later (replacements CLM05-3=7 and voids =8, with REF*F8)
+    "x12-005": (505, [
+        {"name": "archive_2011_prof.x12", "kind": "P", "version": "4010", "style": {}, "tx": [(5, True)],
+         "ctrl": 601, "gs_date": "20110701"},
+        {"name": "batch_1001_prof.x12", "kind": "P", "style": {},
+         "tx": [(6, True, {"line_rendering": True, "varied_pointers": True})], "ctrl": 602, "gs_date": "20261001"},
+        {"name": "batch_1001_inst.x12", "kind": "I", "style": ONE_LINE, "tx": [(5, True)], "ctrl": 603,
+         "gs_date": "20261001"},
+        {"name": "batch_1015_prof_corrections.x12", "kind": "P", "style": {}, "ctrl": 604, "gs_date": "20261015",
+         "resend": [{"pcn": "PCN000007", "freq": "7"}, {"pcn": "PCN000009", "freq": "7"},
+                    {"pcn": "PCN000011", "freq": "8"}]},
+        {"name": "batch_1015_inst_corrections.x12", "kind": "I", "style": ONE_LINE, "ctrl": 605,
+         "gs_date": "20261015",
+         "resend": [{"pcn": "PCN000014", "freq": "7"}, {"pcn": "PCN000018", "freq": "8"}]},
+    ]),
+    # edge (quality): planted defects at known claims, plus duplicate resubmissions a week later
+    "x12-006": (606, [
+        {"name": "q_prof_a.x12", "kind": "P", "style": {}, "ctrl": 701, "gs_date": "20261005",
+         "tx": [(14, True, {"sub_overrides": {
+             3: {"defects": ["NPI_INVALID"]}, 4: {"defects": ["ICD10_FORMAT"]},
+             5: {"defects": ["PROCEDURE_CODE_FORMAT"]}, 6: {"defects": ["POS_INVALID"]},
+             7: {"defects": ["DX_POINTER_INVALID"]}, 8: {"defects": ["TOTAL_MISMATCH"]},
+             9: {"defects": ["DATE_INVALID"]}}})]},
+        {"name": "q_prof_b.x12", "kind": "P", "style": {}, "ctrl": 702, "gs_date": "20261005",
+         "tx": [(3, False, {"po_box": True})]},
+        {"name": "q_inst_a.x12", "kind": "I", "style": ONE_LINE, "ctrl": 703, "gs_date": "20261005",
+         "tx": [(12, True, {"sub_overrides": {
+             3: {"defects": ["REVENUE_CODE_FORMAT"]}, 4: {"defects": ["NPI_INVALID"]},
+             5: {"defects": ["DATE_INVALID"]}, 6: {"defects": ["ICD10_FORMAT"]}}})]},
+        {"name": "q_inst_b.x12", "kind": "I", "style": ONE_LINE, "ctrl": 704, "gs_date": "20261005",
+         "tx": [(2, False, {"zip5": True})]},
+        {"name": "q_resubmit_1012.x12", "kind": "P", "style": {}, "ctrl": 705, "gs_date": "20261012",
+         "resend": [{"pcn": "PCN000012", "freq": "dup"}, {"pcn": "PCN000013", "freq": "dup"}]},
+    ]),
 }
 
 # Pinned facts used by expectations.json; generation fails loudly if the generator drifts.
@@ -60,6 +95,8 @@ EXPECTED = {
     "x12-002": {"claims": 27, "bad_files": []},
     "x12-003": {"claims": 13, "bad_files": ["prof_0921.x12", "remit_0921.x12"]},
     "x12-004": {"claims": 14, "bad_files": []},
+    "x12-005": {"claims": 17, "bad_files": []},       # 19 originals, 3 replaced, 2 voided
+    "x12-006": {"claims": 35, "bad_files": []},       # 18 claims with planted defects, 17 clean
 }
 
 
@@ -75,7 +112,14 @@ def build_all() -> dict:
 
 
 def main() -> None:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Seed benchmark task data + grader keys")
+    ap.add_argument("--tasks", nargs="*", help="only these task ids (default: all); keeps earlier tasks' data unchanged")
+    only = set(ap.parse_args().tasks or [])
     for task_id, (files, key) in build_all().items():
+        if only and task_id not in only:
+            continue
         d = Path(DATA_DIR) / task_id
         d.mkdir(parents=True, exist_ok=True)
         for name, content in files.items():

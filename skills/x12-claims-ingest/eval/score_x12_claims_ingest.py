@@ -42,7 +42,7 @@ for d in (EVAL_DIR, TESTS_DIR, SCRIPTS_DIR):
 from collect_outputs import collect
 from compare_runs import extract_scores, main as compare_main
 from ingest_scorers import IngestGold, IngestOutput, gold_from_key, to_jsonable
-from objective import ingest_objective
+from objective import ingest_objective, ingest_objective_v2
 from scorers import scorers as all_scorers
 
 SCHEMA = "hls_amer_catalog.x12_claims_ingest_test"
@@ -65,7 +65,10 @@ expectations_by_task, golds = {}, {}
 for e in expectations_list:
     checks = e.get("deterministic_checks", {})
     with open(checks["gold_key"]) as f:
-        gold = gold_from_key(json.load(f), requires_run=checks.get("requires_run", False))
+        gold = gold_from_key(json.load(f), requires_run=checks.get("requires_run", False),
+                             claim_extras=tuple(checks.get("claim_extra_fields", [])),
+                             line_extras=tuple(checks.get("line_extra_fields", [])),
+                             quality=checks.get("quality", False))
     golds[e["task_id"]] = gold
     expectations_by_task[e["task_id"]] = {**e["expectations"], **checks, "ingest_gold": to_jsonable(gold)}
 
@@ -77,7 +80,9 @@ def arm_rows(arm: str):
         prefix = ARMS[arm].format(task=tid.replace("-", "_"))
         checks = expectations_by_task[tid]
         pipeline = checks.get("pipeline_name", "").replace("<PREFIX>", prefix) or None
-        ingest_output = collect(spark, SCHEMA, prefix, checks.get("requires_run", False), pipeline)
+        ingest_output = collect(spark, SCHEMA, prefix, checks.get("requires_run", False), pipeline,
+                                tuple(checks.get("claim_extra_fields", [])), tuple(checks.get("line_extra_fields", [])),
+                                checks.get("quality", False))
         try:
             with open(f"{RUNS_DIR}/{arm}/{tid}.json") as f:
                 session = json.load(f)
@@ -92,8 +97,9 @@ def arm_rows(arm: str):
         out = IngestOutput(**{**ingest_output,
                               "flagged_pcns": set(ingest_output["flagged_pcns"]),
                               "reported_bad_files": set(ingest_output["reported_bad_files"]),
+                              "quality_flags": {tuple(x) for x in ingest_output["quality_flags"]},
                               "lines": {p: {int(k): v for k, v in ls.items()} for p, ls in ingest_output["lines"].items()}})
-        objectives[tid] = ingest_objective(golds[tid], out)
+        objectives[tid] = (ingest_objective(golds[tid], out), ingest_objective_v2(golds[tid], out))
     return rows, objectives
 
 rows_baseline, obj_baseline = arm_rows("baseline")
@@ -113,9 +119,12 @@ with mlflow.start_run(run_name="with_skill" + dbutils.widgets.get("run_suffix"))
 
 for result, objs in ((baseline_result, obj_baseline), (candidate_result, obj_with_skill)):
     with mlflow.start_run(run_id=result.run_id):
-        mlflow.log_metrics({f"ingest_score_{t.replace('-', '_')}": o.score for t, o in objs.items()})
-        mlflow.log_metric("ingest_score_mean", sum(o.score for o in objs.values()) / len(objs))
-        mlflow.log_dict({t: {"score": o.score, "gated": o.gated, **o.breakdown} for t, o in objs.items()},
+        # v1 kept for continuity with replicate 1; v2 (pre-registered 2026-10-19) is the headline objective
+        mlflow.log_metrics({f"ingest_score_{t.replace('-', '_')}": o[0].score for t, o in objs.items()})
+        mlflow.log_metrics({f"ingest_score_v2_{t.replace('-', '_')}": o[1].score for t, o in objs.items()})
+        mlflow.log_metric("ingest_score_mean", sum(o[0].score for o in objs.values()) / len(objs))
+        mlflow.log_metric("ingest_score_v2_mean", sum(o[1].score for o in objs.values()) / len(objs))
+        mlflow.log_dict({t: {"score_v2": o[1].score, "gated": o[1].gated, **o[1].breakdown} for t, o in objs.items()},
                         "ingest_objective.json")
 
 # COMMAND ----------
@@ -127,7 +136,7 @@ with open(f"{EVAL_DIR}/baseline_scores.json", "w") as f:
     json.dump(baseline_scores, f, indent=2)
 with open(f"{EVAL_DIR}/with_skill_scores.json", "w") as f:
     json.dump(candidate_scores, f, indent=2)
-print({t: (obj_baseline[t].score, obj_with_skill[t].score) for t in task_ids})
+print({t: (obj_baseline[t][1].score, obj_with_skill[t][1].score) for t in task_ids})
 
 # COMMAND ----------
 

@@ -94,5 +94,61 @@
         "<PREFIX>file_checks"
       ]
     }
+  },
+  {
+    "task_id": "x12-005",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-005/",
+    "difficulty": "hard",
+    "expectations": {
+      "expected_facts": [
+        "17 current claims are loaded",
+        "Voided claims PCN000011 and PCN000018 are not in the claims table",
+        "Replaced claims PCN000007, PCN000009 and PCN000014 carry their corrected totals"
+      ],
+      "guidelines": [
+        "Must not count replaced and replacement versions of the same claim twice"
+      ]
+    },
+    "deterministic_checks": {
+      "gold_key": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/grader/x12-claims-ingest/x12-005_key.json",
+      "requires_run": false,
+      "required_tables": [
+        "<PREFIX>claims",
+        "<PREFIX>claim_lines",
+        "<PREFIX>file_checks"
+      ],
+      "claim_extra_fields": [
+        "x12_version"
+      ],
+      "line_extra_fields": [
+        "rendering_provider_npi",
+        "line_diagnosis_codes"
+      ]
+    }
+  },
+  {
+    "task_id": "x12-006",
+    "dataset": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/x12-006/",
+    "difficulty": "edge",
+    "expectations": {
+      "expected_facts": [
+        "35 claims are loaded",
+        "18 claims have planted data-quality problems and each is flagged with the right rule"
+      ],
+      "guidelines": [
+        "Must not flag clean claims"
+      ]
+    },
+    "deterministic_checks": {
+      "gold_key": "/Volumes/hls_amer_catalog/x12_claims_ingest_test/grader/x12-claims-ingest/x12-006_key.json",
+      "requires_run": false,
+      "quality": true,
+      "required_tables": [
+        "<PREFIX>claims",
+        "<PREFIX>claim_lines",
+        "<PREFIX>file_checks",
+        "<PREFIX>claim_quality"
+      ]
+    }
   }
 ]

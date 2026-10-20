@@ -12,6 +12,12 @@ per task with `skill-eval/scripts/compare_runs.py`, plus a composite objective (
 | x12-002 | hard | 837P + 837I, three delimiter styles, multi-transaction file, patient and COB loops (27 claims), billed by payer | hard-coded delimiters, other-payer leak into payer_id, patient DOB carried across subscribers |
 | x12-003 | edge | Truncated transfer + a non-X12 file named `.x12` among good files (13 valid claims) | partial claims loaded as valid; bad files not reported |
 | x12-004 | hard | Serverless Lakeflow pipeline, run once (14 claims) | UDF / RDD / non-PySpark parsers, windows inside streaming tables |
+| x12-005 | hard | 4010A1 archive + 5010 batches + correction files (19 originals, 3 replacements, 2 voids: 17 current claims); line-level rendering providers and varied diagnosis pointers | loading every version (double counting, voided claims kept), 4010 not recognized, billing NPI used as the performing provider, pointers not resolved |
+| x12-006 | edge | 35 claims, 18 with planted data-quality defects (NPI check digit, PO Box billing address, 5-digit ZIP, ICD decimal, CPT/revenue code shape, unassigned POS, bad dates, pointer out of range, total mismatch, duplicates) | "10 digits" NPI checks, ZIP and POS rules unknown, duplicates missed, clean claims flagged |
+
+Tasks x12-005 and x12-006, objective v2 and the `quality_issues_found` scorer were pre-registered on
+2026-10-19 (committed before any arm ran on them). Replicate 1 of x12-001..004 used the earlier skill
+version and objective v1.
 
 Prompts (`evalset.json`) name the output tables and columns, so both arms are graded on the same
 contract. `<PREFIX>` is the only per-arm substitution (`b_<task>_` baseline, `s_<task>_` with skill).
@@ -34,11 +40,16 @@ All identifiers are synthetic.
 | lines_correct | L1 | procedure/revenue code, charge, units, service date >= 0.99 |
 | bad_files_reported | L1 | every bad file appears in file_checks with a non-ok status |
 | ran_as_asked | L1 | x12-004: a serverless pipeline with the requested name completed |
+| quality_issues_found | L1 | x12-006: (claim, rule) flags vs planted defects, F1 >= 0.95 (OTHER / unknown ids ignored) |
 | data_quality_disclosure | L2 judge | response states the load count and names skipped files honestly |
 
 Composite objective, logged per task as `ingest_score_<task>` and `ingest_score_mean` on each run:
 gate (silent bad load -> 0), else `0.30 claim F1 + 0.30 field accuracy + 0.15 line accuracy +
-0.15 validation reporting + 0.10 ran where asked`. Weights are pinned (v1).
+0.15 validation reporting + 0.10 ran where asked`. Weights are pinned (v1). Objective v2 (headline for the
+v2 round, replicates r11-r13, logged as `ingest_score_v2_<task>`) equals v1 on tasks without planted defects and on
+x12-006 scores `0.25 claim F1 + 0.25 fields + 0.10 lines + 0.10 validation + 0.05 run + 0.25 quality F1`.
+x12-005 adds `x12_version` to the claim fields and `rendering_provider_npi`, `line_diagnosis_codes` to the
+line fields, so stale versions, voids and wrong line context cost field / line accuracy and claim F1.
 
 Judge model `databricks:/databricks-gpt-5-mini` (must differ from Genie Code's model). Pass rule
 `all_metrics`. Ship gate: win rate > 0 and zero regressions.
