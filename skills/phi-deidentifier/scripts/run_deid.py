@@ -315,9 +315,10 @@ def run_deid(raw_fqn: str, view_name: str | None = None, k_target: int = 5,
     k_measured = k_actual is not None
     passed = k_measured and k_actual >= k_target and not leaked_cols
     if not k_measured:
+        tgt = "k-anonymity skipped by request" if not apply_kanon else f"target {k_target}"
         verdict = (f"REVIEW REQUIRED: no quasi-identifier columns were generalized, so k-anonymity "
-                   f"could not be measured — re-identification resistance is UNVERIFIED (target "
-                   f"{k_target}). Do NOT treat as de-identified without a Privacy Officer review "
+                   f"could not be measured — re-identification resistance is UNVERIFIED ({tgt}). "
+                   f"Do NOT treat as de-identified without a Privacy Officer review "
                    f"of the surviving columns.{leak_fail}")
     else:
         verdict = (f"VERIFIED: actual k={k_actual} over ALL surviving quasi-identifiers "
