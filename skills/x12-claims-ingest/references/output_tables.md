@@ -9,7 +9,8 @@ or Auto Loader (a leading `dbfs:` on the path is stripped first).
 | Column | Source | Notes |
 |---|---|---|
 | claim_id | derived | join key to lines and diagnoses |
-| claim_type | GS08 | professional / institutional / dental / unknown |
+| claim_type | GS08 | professional / institutional / dental / unknown (5010 X222/X223/X224, 4010A1 X098/X096/X097) |
+| x12_version | GS08 | `5010` or `4010` |
 | patient_control_number | CLM01 | provider's claim number |
 | claim_frequency_code | CLM05-3 | 1 original, 7 replacement, 8 void |
 | place_of_service_code | CLM05-1 | 837P only |
@@ -24,11 +25,11 @@ or Auto Loader (a leading `dbfs:` on the path is stripped first).
 | payer_id, payer_name | 2010BB NM1*PR | primary payer only |
 | patient_is_subscriber | absence of 2000C | |
 | patient_* | 2010CA, else subscriber | birth date and gender fall back to subscriber |
-| billing_provider_npi, _name, _tin, _taxonomy, _state, _zip | 2000A/2010AA | |
-| rendering_provider_npi, attending_provider_npi, referring_provider_npi, service_facility_npi | 2310 loops | claim level only |
+| billing_provider_npi, _id_qualifier, _name, _tin, _taxonomy, _address, _state, _zip | 2000A/2010AA | address = N3 lines; qualifier should be XX in 5010 |
+| rendering_provider_npi, attending_provider_npi, referring_provider_npi, service_facility_npi, service_facility_zip | 2310 loops | claim level only |
 | principal_diagnosis_code, admitting_diagnosis_code, diagnosis_codes, drg_code | HI | diagnosis_codes = principal + other in order |
 | prior_authorization_number, referral_number, payer_claim_control_number, clearinghouse_trace_number | REF G1 / 9F / F8 / D9 | |
-| isa_control_number, st_control_number, implementation_version, source_file | envelope | lineage |
+| isa_control_number, st_control_number, implementation_version, functional_group_datetime, source_file | envelope | lineage; GS date/time orders claim versions |
 | transaction_status | transaction_checks | keep `ok` in the main table |
 
 ## claim_lines (one row per LX)
@@ -36,7 +37,18 @@ or Auto Loader (a leading `dbfs:` on the path is stripped first).
 claim_id, line_number, procedure_qualifier, procedure_code, procedure_modifiers (array),
 revenue_code (837I), line_charge_amount, unit_basis_code, service_units, line_place_of_service,
 diagnosis_pointers (array of int, 837P), service_from_date, service_to_date,
-line_item_control_number, line_rendering_provider_npi, ndc_code, source_file.
+line_item_control_number, line_rendering_provider_npi, ndc_code, source_file, plus mapped context:
+`effective_rendering_npi` (2420A > 2310B > 2310A > 2010AA), `effective_place_of_service` (SV105 > CLM05-1),
+`line_diagnosis_codes` (SV107 pointers resolved; NULL entries mark out-of-range pointers).
+
+## claims, current view (`resolve_claim_versions`)
+
+Same columns as `claims` plus `version_count`; one row per claim (latest version by GS date), voids removed.
+
+## claim_quality (`quality_checks`)
+
+claim_id, patient_control_number, line_number, rule_id, severity (error | warning), field, value, message,
+source_file. Rules and sources: `quality_rules.md`.
 
 ## claim_diagnoses (one row per HI diagnosis)
 
@@ -44,7 +56,7 @@ claim_id, diagnosis_sequence, diagnosis_qualifier, diagnosis_code, is_principal.
 
 ## transaction_checks (one row per ST/SE, plus one per non-X12 file)
 
-file_path, transaction_set, st_control_number, implementation_version, se_segment_count,
+file_path, transaction_set, st_control_number, implementation_version, isa_fixed_width, se_segment_count,
 se_control_number, segment_count, claim_count, transaction_status
 (`ok`, `missing_SE`, `segment_count_mismatch`, `control_number_mismatch`, `not_837`, `not_x12`).
 

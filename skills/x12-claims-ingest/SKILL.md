@@ -1,17 +1,19 @@
 ---
 name: x12-claims-ingest
 description: >-
-  X12 837P/837I EDI claims ingestion on Databricks. Parses raw 837 professional and institutional
-  files from a Unity Catalog Volume into Delta tables (claims header, claim lines, diagnoses) plus
-  per-transaction validation, with built-in Spark functions only, so it runs on serverless, in
-  Lakeflow declarative pipelines (SDP), and with Auto Loader. Resolves the HL/loop hierarchy
-  (billing provider, subscriber, patient, claim, service line), keeps COB/other-payer loops out of
-  primary claim fields, and quarantines truncated or non-X12 files. Inputs: a Volume path of
-  .x12/.edi/.txt files. Outputs: claims, claim_lines, claim_diagnoses, transaction_checks. For
-  measure definitions and metric views on the landed tables use payer-provider-measure-catalog; for
-  de-identification use phi-deidentifier.
+  X12 837P/837I EDI claims ingestion and data quality on Databricks. Parses raw 837 professional and
+  institutional files (5010 and 4010A1) from a Unity Catalog Volume into Delta tables (claims, claim
+  lines, diagnoses) with built-in Spark functions only, so it runs on serverless, in Lakeflow
+  declarative pipelines (SDP) and with Auto Loader. Encodes the mapping rules: HL loop hierarchy,
+  COB loops kept out of primary fields, replacement/void resolution (CLM05-3, REF*F8), performing-
+  provider precedence, diagnosis-pointer resolution, line vs claim place of service. Runs sourced
+  quality checks (NPI check digit, 5010 billing address and ZIP rules, code-set formats, date logic,
+  totals, duplicates) and quarantines truncated or non-X12 files. Inputs: a Volume path of
+  .x12/.edi/.txt files. Outputs: claims, claim_lines, claim_diagnoses, claim_quality,
+  transaction_checks. For measure definitions and metric views on the landed tables use payer-
+  provider-measure-catalog; for de-identification use phi-deidentifier.
 category: Payer and provider
-summary: Parse X12 837P/837I claim files into Delta claims, lines and diagnoses tables on serverless or Lakeflow.
+summary: Parse X12 837P/837I claim files into Delta claims, lines and quality-check tables on serverless or Lakeflow.
 version: 0.1.0
 author: Raven Mukherjee
 license: Databricks License
@@ -21,8 +23,9 @@ license: Databricks License
 
 ## Overview
 
-Turns raw X12 837 claim files (professional 005010X222A1 and institutional 005010X223A2) into
-analysis-ready Delta tables. The parser in `scripts/x12_837.py` uses only built-in Spark SQL
+Turns raw X12 837 claim files (professional 005010X222A1 / 004010X098A1 and institutional
+005010X223A2 / 004010X096A1) into analysis-ready Delta tables, applies the claim mapping rules payers
+get wrong (claim versions, performing provider, diagnosis pointers) and runs sourced quality checks. The parser in `scripts/x12_837.py` uses only built-in Spark SQL
 functions and window functions: no UDFs, no RDDs, no external packages. That keeps it portable to
 serverless compute, Lakeflow declarative pipelines, and Databricks SQL-adjacent jobs. Output is one row
 per claim, one row per service line, one row per diagnosis, and one validation row per transaction.
@@ -35,6 +38,9 @@ per claim, one row per service line, one row per diagnosis, and one validation r
 - Checking a batch of 837 files for truncation, SE segment-count mismatches, or files that are not X12.
 - Getting claim, line and diagnosis tables that `payer-provider-measure-catalog` can map to metric views.
 - Answering "how many claims, what billed amount, which providers" from a folder of raw EDI.
+- Applying corrected and voided claims (frequency 7 / 8) so totals are not double counted.
+- Finding claims that fail front-end edits (bad NPI check digit, PO Box billing address, 5-digit ZIP,
+  invalid codes, pointer or total errors, duplicates) before they reach adjudication or reporting.
 
 ## Prerequisites
 
@@ -76,13 +82,15 @@ SELECT _metadata.file_path,
        substring(value, 4, 1)   AS element_sep,
        substring(value, 105, 1) AS component_sep,
        substring(value, 106, 1) AS segment_term,
-       regexp_extract(value, '005010X22[234]A[0-9]', 0) AS version
+       regexp_extract(value, '00(5010X22[234]|4010X09[678])A[0-9]', 0) AS version
 FROM read_files('/Volumes/<c>/<s>/<v>/837/', format => 'text', wholeText => true)
 LIMIT 20;
 ```
 
-`X222` = professional, `X223` = institutional, `X224` = dental (header fields parse; dental lines are
-out of scope). Files that are 835 (remittance) or 834 (enrollment) show up as `not_837` in Step 3.
+`X222` / `X098` = professional, `X223` / `X096` = institutional (5010 / 4010A1), `X224` / `X097` =
+dental (header fields parse; dental lines are out of scope). 4010 files carry ICD-9 (BK/BF) diagnoses;
+`x12_version` keeps them apart. Files that are 835 or 834 show up as `not_837` in Step 3. Some senders
+trim the ISA padding: delimiters are read from the ISA itself, and `isa_fixed_width` flags it.
 
 ### Step 2: Split into segments with loop context
 
@@ -119,7 +127,32 @@ claims = out["claims"]
 good, bad = claims.filter("transaction_status = 'ok'"), claims.filter("transaction_status <> 'ok'")
 ```
 
-### Step 5: Reconcile
+Lines carry the claim context that needs mapping rules: `effective_rendering_npi` (line 2420A, else
+claim 2310B rendering, else 837I attending, else billing), `effective_place_of_service` (line SV105
+over CLM05-1) and `line_diagnosis_codes` (SV107 pointers resolved to the claim's ordered ICD codes).
+
+### Step 5: Resolve corrected and voided claims
+
+Frequency 7 replaces and 8 voids an earlier claim (both with REF*F8). Loading every version double
+counts. `resolve_claim_versions(claims)` keeps the latest version per claim and drops voids; pass
+`link_keys` if you link versions by an ICN map instead of billing NPI + member + patient control number.
+
+```python
+current = x12_837.resolve_claim_versions(out["claims"])   # one row per claim, version_count shows history
+```
+
+### Step 6: Run quality checks
+
+`quality_checks(claims, claim_lines, claim_diagnoses, checks)` returns one row per (claim, line, rule)
+failure with `severity` error or warning. Rules and sources: `references/quality_rules.md`. Quarantine
+errors or route them to a work queue; report counts by rule to the user.
+
+```python
+q = x12_837.quality_checks(current, out["claim_lines"], out["claim_diagnoses"], checks)
+q.groupBy("rule_id", "severity").count().orderBy("rule_id").show()
+```
+
+### Step 7: Reconcile
 
 Check internal consistency before handing the tables on. Billed amount on the header must equal the
 sum of line charges; every claim needs a member, payer and billing NPI.
@@ -132,10 +165,10 @@ SELECT count(*) AS claims,
 FROM <catalog>.<schema>.claims;
 ```
 
-### Step 6: Write and hand off
+### Step 8: Write and hand off
 
-Write `claims`, `claim_lines`, `claim_diagnoses` (and `transaction_checks`) to the target schema, keyed
-by `claim_id`. For incremental loads use a recipe below. To build measures, point
+Write `claims` (current view), `claim_lines`, `claim_diagnoses`, `claim_quality` and
+`transaction_checks` to the target schema, keyed by `claim_id`. For incremental loads use a recipe below. To build measures, point
 `payer-provider-measure-catalog` at these tables (field mapping in `references/output_tables.md`).
 
 ## Key Parameters
@@ -146,6 +179,8 @@ by `claim_id`. For incremental loads use a recipe below. To build measures, poin
 | `checks` (parse_837) | `None` | transaction_checks output | Stamps `transaction_status` on each claim |
 | `schema_location` (stream_x12) | `None` | path | Auto Loader checkpoint for schema tracking (jobs) |
 | quarantine filter | `transaction_status = 'ok'` | any status list | Which claims reach the main table |
+| `link_keys` (resolve_claim_versions) | billing NPI, member, PCN | column names | How versions of one claim are linked |
+| `as_of` (quality_checks) | today | `YYYY-MM-DD` | Reference date for future-date checks |
 
 ## Common Recipes
 
@@ -192,7 +227,9 @@ def load(batch_df, _):
   principal + ordered diagnosis codes, DRG, type of bill or place of service, prior auth, lineage
   (`source_file`, ISA/ST control numbers), `transaction_status`.
 - `claim_lines`: one row per LX. Procedure code + modifiers, revenue code, charge, units, service
-  dates, diagnosis pointers, line control number, line rendering NPI, NDC.
+  dates, diagnosis pointers and `line_diagnosis_codes`, `effective_rendering_npi`,
+  `effective_place_of_service`, line control number, NDC.
+- `claim_quality`: one row per rule failure (claim, line, rule_id, severity, field, value, message).
 - `claim_diagnoses`: one row per HI diagnosis code with sequence and `is_principal`.
 - `transaction_checks`: one row per transaction or non-X12 file with segment counts and status.
 
@@ -208,6 +245,9 @@ def load(batch_df, _):
 | Header billed amount differs from line total | Parsed SV1 charge from the wrong element, or lines dropped | SV1-02 is charge (837P), SV2-03 is charge (837I); check `line_count` |
 | `[CAST_INVALID_INPUT]` / `ARRAY_INDEX_OUT_OF_BOUNDS` errors in custom SQL | ANSI mode on serverless | Use `try_cast` and `get(array, i)` as the module does |
 | UDF / RDD / `sparkContext` errors on serverless | Code outside this module | Keep transforms in DataFrame or SQL functions |
+| Billed totals too high after a correction batch | Replacements (CLM05-3 = 7) loaded next to the originals | Run `resolve_claim_versions`; voids (8) drop the claim |
+| Payer rejects NPIs that "look valid" | 10 digits is not enough: the check digit must pass (Luhn with 80840) | `NPI_INVALID` in `quality_checks`; see `npi_is_valid` |
+| 4010 claims show `claim_type = unknown` or no diagnoses | Version not recognized, or ICD-9 qualifiers ignored | Use this module: X098/X096 and BK/BF are handled; filter on `x12_version` |
 
 ## Guardrails
 
@@ -221,21 +261,27 @@ def load(batch_df, _):
   target schema and table names and get approval.
 - **Serverless-safe code only.** No UDFs, RDDs, `sparkContext`, `cache()`, or non-PySpark imports in
   the parse path.
+- **Do not invent quality rules.** Use the sourced rules in `references/quality_rules.md`; payer-specific
+  edits (duplicate signature, gender extensions) are configurable and must be confirmed with the user.
 - **Retry at most 3 times** on the same error; then stop and report what was tried.
 
 ## Bundled Resources
 
-- `scripts/x12_837.py`: the parser (`read_x12`, `stream_x12`, `segments`, `transaction_checks`, `parse_837`).
+- `scripts/x12_837.py`: the parser (`read_x12`, `stream_x12`, `segments`, `transaction_checks`,
+  `parse_837`, `resolve_claim_versions`, `quality_checks`, `npi_is_valid`).
 - `scripts/generate_837.py`: synthetic 837P/837I generator with an answer key (stdlib only).
 - `references/837_loops.md`: loop and segment cheat sheet, element positions used, parsing traps.
 - `references/output_tables.md`: column dictionary and mapping to the measure-catalog x12 adapter.
 - `references/pipeline_recipes.md`: full Lakeflow pipeline and Auto Loader job code.
+- `references/quality_rules.md`: quality and mapping rules with public sources.
 
 ## References
 
 - [X12 transaction sets](https://x12.org/products/transaction-sets): 837 is maintained by X12; the
   implementation guides (TR3) are licensed and are not reproduced here.
 - [CMS Place of Service code set](https://www.cms.gov/medicare/coding-billing/place-of-service-codes/code-sets)
+- [CMS NPI check digit](https://www.cms.gov/Regulations-and-Guidance/Administrative-Simplification/NationalProvIdentStand/Downloads/NPIcheckdigit.pdf)
+  and [How to avoid common 5010 claims rejections](https://www.cms.gov/files/document/howtoavoidcommonversion5010claimsrejectionspdf)
 - [NUCC provider taxonomy](https://taxonomy.nucc.org/)
 - [Auto Loader](https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/)
 - [Lakeflow declarative pipelines](https://docs.databricks.com/aws/en/dlt/)

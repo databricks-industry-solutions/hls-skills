@@ -14,6 +14,12 @@ v1 (ingest_objective, PINNED as a regression baseline: do not change these weigh
                + 0.15 * validation_reporting # truncated and non-X12 files identified
                + 0.10 * ran_where_asked      # requested job / pipeline actually completed
 
+v2 (ingest_objective_v2, pre-registered 2026-10-19 before any v2 eval run): identical to v1 on tasks
+without planted quality defects. On quality tasks it adds the detection F1 of (claim, rule) flags:
+                 0.25 * claim_set_F1 + 0.25 * field_accuracy + 0.10 * line_accuracy
+               + 0.10 * validation_reporting + 0.05 * ran_where_asked + 0.25 * quality_detection_F1
+Same gates as v1.
+
 Runnable today: give it an IngestGold + IngestOutput and it returns a number + breakdown.
 """
 
@@ -27,7 +33,7 @@ from dataclasses import dataclass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ingest_scorers import (  # noqa: E402
-    IngestGold, IngestOutput, claim_set_f1, field_accuracy, line_accuracy, ran_where_asked,
+    IngestGold, IngestOutput, claim_set_f1, field_accuracy, line_accuracy, quality_detection, ran_where_asked,
     silent_bad_loads, validation_reporting,
 )
 
@@ -37,6 +43,9 @@ W_FIELDS = 0.30
 W_LINES = 0.15
 W_VALIDATION = 0.15
 W_RUN = 0.10
+
+# --- v2 weights for quality tasks (PINNED). Sum to 1.0 ---
+W2_CLAIMS, W2_FIELDS, W2_LINES, W2_VALIDATION, W2_RUN, W2_QUALITY = 0.25, 0.25, 0.10, 0.10, 0.05, 0.25
 
 
 @dataclass
@@ -65,6 +74,19 @@ def ingest_objective(gold: IngestGold, out: IngestOutput) -> IngestObjective:
     if cs["recall"] == 0:
         return IngestObjective(score=0.0, gated=True, breakdown=breakdown, gate_reason="nothing_loaded")
     score = W_CLAIMS * cs["f1"] + W_FIELDS * fa["accuracy"] + W_LINES * la + W_VALIDATION * vr + W_RUN * rw
+    return IngestObjective(score=round(score, 4), gated=False, breakdown=breakdown)
+
+
+def ingest_objective_v2(gold: IngestGold, out: IngestOutput) -> IngestObjective:
+    v1 = ingest_objective(gold, out)
+    q = quality_detection(gold, out)
+    breakdown = {**v1.breakdown, "quality_precision": q["precision"], "quality_recall": q["recall"],
+                 "quality_f1": q["f1"], "quality_applicable": q["applicable"]}
+    if v1.gated or not q["applicable"]:
+        return IngestObjective(score=v1.score, gated=v1.gated, breakdown=breakdown, gate_reason=v1.gate_reason)
+    b = v1.breakdown
+    score = (W2_CLAIMS * b["claim_f1"] + W2_FIELDS * b["field_accuracy"] + W2_LINES * b["line_accuracy"]
+             + W2_VALIDATION * b["validation_reporting"] + W2_RUN * b["ran_where_asked"] + W2_QUALITY * q["f1"])
     return IngestObjective(score=round(score, 4), gated=False, breakdown=breakdown)
 
 
