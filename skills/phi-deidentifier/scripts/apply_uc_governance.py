@@ -151,7 +151,7 @@ FROM {raw_table}"""
     # 4. Verify achieved k on the actual view output.
     return GovernanceResult(
         view_fqn=f"{q.catalog}.{q.schema}.{view_name}",
-        k_target=k_target,
+        k_target=k_target if apply_kanon else None,   # None -> readout reads "k-anonymity skipped"
         k_achieved=gen.k_achieved if gen else None,
         suppressed_rows=gen.suppressed_rows if gen else 0,
         generalization=gsummary,
