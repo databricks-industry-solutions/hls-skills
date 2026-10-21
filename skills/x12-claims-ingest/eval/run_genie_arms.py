@@ -7,7 +7,8 @@ BiomniBench harness); the baseline arm gets an empty folder. Genie runs with an 
 (--genie-home) whose config has no AGENTS.md, memories, history or personal skills, so nothing but the
 skill differs between arms. Prompts are evalset.json queries verbatim, with <PREFIX> = b_|s_<task>_r<k>_.
 
-Each run writes events.jsonl, stderr.log, answer.txt and run.json in its workdir, and uploads
+Each run writes events.jsonl, stderr.log, answer.txt and run.json to <workdir>.logs/ (outside the agent's
+folder, which the agent may clean up), and uploads
 {"response", "action_log", ...} to <runs-dir>/r<k>/<arm>/<task_id>.json for score_x12_claims_ingest.py
 (widgets: runs_dir=<runs-dir>/r<k>, baseline_prefix=b_{task}_r<k>_, with_skill_prefix=s_{task}_r<k>_).
 Reruns skip workdirs that already have run.json.
@@ -95,27 +96,33 @@ def upload(local: Path, remote: str, profile: str) -> None:
 
 def run_one(item: dict, args) -> dict:
     wd = Path(args.run_root) / f"r{item['rep']}" / item["task_id"] / item["arm"]
+    # Run records live beside the workdir, never inside it: agents may clean up their own folder.
+    logs = wd.parent / f"{item['arm']}.logs"
     remote = f"{args.runs_dir}/r{item['rep']}/{item['arm']}/{item['task_id']}.json"
-    if (wd / "run.json").exists():  # finished earlier: keep it, (re)upload in case that step failed
-        upload(wd / "session.json", remote, args.profile)
-        return json.loads((wd / "run.json").read_text())
+    for done in (logs, wd):  # finished earlier (older runs kept records in the workdir): keep, re-upload
+        if (done / "run.json").exists():
+            upload(done / "session.json", remote, args.profile)
+            return json.loads((done / "run.json").read_text())
     prepare_workdir(wd, item["arm"])
+    if logs.exists():
+        shutil.rmtree(logs)
+    logs.mkdir(parents=True)
     cmd = ["genie", "exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "--ephemeral",
-           "-C", str(wd), "-o", str(wd / "answer.txt"), item["prompt"]]
+           "-C", str(wd), "-o", str(logs / "answer.txt"), item["prompt"]]
     env = {**os.environ, "GENIE_HOME": str(Path(args.genie_home).expanduser())}
     start = time.time()
-    with open(wd / "events.jsonl", "w") as out, open(wd / "stderr.log", "w") as err:
+    with open(logs / "events.jsonl", "w") as out, open(logs / "stderr.log", "w") as err:
         try:
             rc = subprocess.run(cmd, cwd=wd, env=env, stdin=subprocess.DEVNULL, stdout=out, stderr=err,
                                 timeout=args.timeout_min * 60).returncode
         except subprocess.TimeoutExpired:
             rc = "timeout"
-    s = summarize(read_events(wd / "events.jsonl"))
-    answer = (wd / "answer.txt").read_text().strip() if (wd / "answer.txt").exists() else ""
+    s = summarize(read_events(logs / "events.jsonl"))
+    answer = (logs / "answer.txt").read_text().strip() if (logs / "answer.txt").exists() else ""
     meta = {**item, "returncode": rc, "wall_s": round(time.time() - start), "response": answer, **s,
             "model": args.model_label, "workdir": str(wd)}
-    (wd / "run.json").write_text(json.dumps(meta, indent=2))
-    session = wd / "session.json"
+    (logs / "run.json").write_text(json.dumps(meta, indent=2))
+    session = logs / "session.json"
     session.write_text(json.dumps({k: meta[k] for k in ("response", "action_log", "returncode", "opened_skill",
                                                         "usage", "wall_s", "prefix")}, indent=2))
     upload(session, remote, args.profile)
