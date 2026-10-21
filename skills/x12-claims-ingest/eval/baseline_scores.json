@@ -2,37 +2,61 @@
   "x12-001": {
     "bad_files_reported": true,
     "lines_correct": true,
+    "ran_as_asked": true,
+    "data_quality_disclosure": true,
     "no_silent_bad_load": true,
     "claim_fields_correct": true,
-    "ran_as_asked": true,
-    "claims_complete": true,
-    "data_quality_disclosure": true
+    "quality_issues_found": true,
+    "claims_complete": true
   },
   "x12-002": {
     "bad_files_reported": true,
     "lines_correct": true,
+    "ran_as_asked": true,
+    "data_quality_disclosure": true,
     "no_silent_bad_load": true,
     "claim_fields_correct": true,
-    "ran_as_asked": true,
-    "claims_complete": true,
-    "data_quality_disclosure": true
+    "quality_issues_found": true,
+    "claims_complete": true
   },
   "x12-003": {
     "bad_files_reported": true,
     "lines_correct": true,
-    "no_silent_bad_load": true,
-    "claim_fields_correct": true,
     "ran_as_asked": true,
-    "claims_complete": true,
-    "data_quality_disclosure": true
+    "data_quality_disclosure": true,
+    "no_silent_bad_load": false,
+    "claim_fields_correct": true,
+    "quality_issues_found": true,
+    "claims_complete": false
   },
   "x12-004": {
     "bad_files_reported": true,
     "lines_correct": true,
+    "ran_as_asked": true,
+    "data_quality_disclosure": true,
     "no_silent_bad_load": true,
     "claim_fields_correct": true,
+    "quality_issues_found": true,
+    "claims_complete": true
+  },
+  "x12-005": {
+    "bad_files_reported": true,
+    "lines_correct": true,
     "ran_as_asked": true,
-    "claims_complete": true,
-    "data_quality_disclosure": true
+    "data_quality_disclosure": true,
+    "no_silent_bad_load": true,
+    "claim_fields_correct": true,
+    "quality_issues_found": true,
+    "claims_complete": true
+  },
+  "x12-006": {
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "ran_as_asked": true,
+    "data_quality_disclosure": true,
+    "no_silent_bad_load": true,
+    "claim_fields_correct": true,
+    "quality_issues_found": true,
+    "claims_complete": true
   }
 }

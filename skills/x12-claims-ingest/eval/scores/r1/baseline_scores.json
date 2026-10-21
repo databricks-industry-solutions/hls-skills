@@ -1,0 +1,38 @@
+{
+  "x12-001": {
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "no_silent_bad_load": true,
+    "claim_fields_correct": true,
+    "ran_as_asked": true,
+    "claims_complete": true,
+    "data_quality_disclosure": true
+  },
+  "x12-002": {
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "no_silent_bad_load": true,
+    "claim_fields_correct": true,
+    "ran_as_asked": true,
+    "claims_complete": true,
+    "data_quality_disclosure": true
+  },
+  "x12-003": {
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "no_silent_bad_load": true,
+    "claim_fields_correct": true,
+    "ran_as_asked": true,
+    "claims_complete": true,
+    "data_quality_disclosure": true
+  },
+  "x12-004": {
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "no_silent_bad_load": true,
+    "claim_fields_correct": true,
+    "ran_as_asked": true,
+    "claims_complete": true,
+    "data_quality_disclosure": true
+  }
+}

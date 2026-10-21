@@ -69,6 +69,12 @@ Judge model `databricks:/databricks-gpt-5-mini` (must differ from Genie Code's m
 
 Repeat each (task, arm) 3 times if time allows: agent runs are not deterministic.
 
+### Score files
+
+`scores/r1/` holds round 1 (x12-001..004, earlier skill version). `scores/r11/`, `scores/r12/`, `scores/r13/`
+hold the three replicates of the v2 round. `baseline_scores.json` / `with_skill_scores.json` at this level are
+the majority over r11-r13 (a metric passes if it passed in at least 2 runs). `eval_report.md` has the results.
+
 ### Steps 2-3 with Genie Code CLI (`run_genie_arms.py`)
 
 `python3 run_genie_arms.py --reps 1 [--tasks ...]` runs both arms with `genie exec` (same approach as the
