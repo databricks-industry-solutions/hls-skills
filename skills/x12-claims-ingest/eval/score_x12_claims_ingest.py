@@ -24,7 +24,13 @@ import sys
 import mlflow
 
 mlflow.set_tracking_uri("databricks")
-dbutils.widgets.text("experiment", "/Users/raven.mukherjee@databricks.com/skill-eval-x12-claims-ingest")
+_ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+_user = _ctx.userName().get()
+# This notebook lives at <repo>/skills/x12-claims-ingest/eval/, so the skills folder is two levels up.
+_nb = _ctx.notebookPath().get()
+_default_root = ("" if _nb.startswith("/Workspace") else "/Workspace") + _nb.rsplit("/x12-claims-ingest/eval/", 1)[0]
+dbutils.widgets.text("experiment", f"/Users/{_user}/skill-eval-x12-claims-ingest")
+dbutils.widgets.text("skills_root", _default_root)  # the repo's skills/ folder (not .assistant/skills)
 dbutils.widgets.text("baseline_prefix", "b_{task}_")
 dbutils.widgets.text("with_skill_prefix", "s_{task}_")
 dbutils.widgets.text("tasks", "")  # comma-separated task ids; empty = all in evalset.json
@@ -32,7 +38,7 @@ dbutils.widgets.text("run_suffix", "")
 dbutils.widgets.text("runs_dir", "/Volumes/hls_amer_catalog/x12_claims_ingest_test/eval/x12-claims-ingest/_runs")
 EXPERIMENT_PATH = dbutils.widgets.get("experiment")
 mlflow.set_experiment(EXPERIMENT_PATH)
-SKILLS_ROOT = "/Workspace/Users/raven.mukherjee@databricks.com/hls-skills-dev/hls-skills/skills"  # not .assistant/skills
+SKILLS_ROOT = dbutils.widgets.get("skills_root")
 EVAL_DIR = f"{SKILLS_ROOT}/x12-claims-ingest/eval"
 TESTS_DIR = f"{SKILLS_ROOT}/x12-claims-ingest/tests"
 SCRIPTS_DIR = f"{SKILLS_ROOT}/skill-eval/scripts"

@@ -99,6 +99,6 @@ view is a post hoc reading; the pre-registered rule is the all-metrics one.
 Evalset `eval/evalset.json` + `eval/expectations.json`; data via `eval/generate_data.py`; arms via
 `eval/run_genie_arms.py --first-rep 11 --reps 3`; scoring via `eval/score_x12_claims_ingest.py` (one run per
 replicate, widgets `runs_dir`, `baseline_prefix`, `with_skill_prefix`); runs `baseline_r11..r13` and
-`with_skill_r11..r13` in MLflow experiment `/Users/raven.mukherjee@databricks.com/skill-eval-x12-claims-ingest`;
+`with_skill_r11..r13` in MLflow experiment `/Users/<user>/skill-eval-x12-claims-ingest` on fe-vm-hls-amer;
 comparison via `skills/skill-eval/scripts/compare_runs.py` on `scores/r1X/` (per replicate) or
 `baseline_scores.json` / `with_skill_scores.json` (majority).
