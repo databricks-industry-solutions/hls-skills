@@ -1,0 +1,62 @@
+{
+  "x12-001": {
+    "no_silent_bad_load": true,
+    "quality_issues_found": true,
+    "data_quality_disclosure": true,
+    "claims_complete": true,
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "ran_as_asked": true,
+    "claim_fields_correct": true
+  },
+  "x12-002": {
+    "no_silent_bad_load": true,
+    "quality_issues_found": true,
+    "data_quality_disclosure": true,
+    "claims_complete": true,
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "ran_as_asked": true,
+    "claim_fields_correct": true
+  },
+  "x12-003": {
+    "no_silent_bad_load": true,
+    "quality_issues_found": true,
+    "data_quality_disclosure": true,
+    "claims_complete": true,
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "ran_as_asked": true,
+    "claim_fields_correct": true
+  },
+  "x12-004": {
+    "no_silent_bad_load": true,
+    "quality_issues_found": true,
+    "data_quality_disclosure": true,
+    "claims_complete": true,
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "ran_as_asked": true,
+    "claim_fields_correct": true
+  },
+  "x12-005": {
+    "no_silent_bad_load": true,
+    "quality_issues_found": true,
+    "data_quality_disclosure": false,
+    "claims_complete": true,
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "ran_as_asked": true,
+    "claim_fields_correct": true
+  },
+  "x12-006": {
+    "no_silent_bad_load": true,
+    "quality_issues_found": true,
+    "data_quality_disclosure": true,
+    "claims_complete": true,
+    "bad_files_reported": true,
+    "lines_correct": true,
+    "ran_as_asked": true,
+    "claim_fields_correct": true
+  }
+}
