@@ -73,6 +73,18 @@ Repo layout and skill templates are inspired by the patterns in [SciAgent-Skills
 
 Licensed under the Databricks License. See [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md).
 
+## Disclaimer
+This is an open source solution to provide agent skills to assist with healthcare and life sciences tasks. However, **all compliance obligations remain with the user**. This includes but is not limited to:
+
+- **HIPAA**: You are responsible for ensuring your deployment meets HIPAA requirements (encryption, access controls, audit logging, BAAs, etc.)
+- **GDPR, CCPA, and other privacy regulations**: Evaluate whether your use of this tool satisfies applicable data protection laws
+- **Validation**: You must verify that results are complete and accurate for your specific data and use case
+- **Data Encryption**: Enable encryption at rest and in transit in your Databricks workspace
+- **Access Controls**: Configure appropriate table/catalog permissions in Unity Catalog
+- **Audit Logging**: Enable workspace audit logs for compliance tracking
+
+**Databricks makes no guarantees that use of this solution alone is sufficient for regulatory compliance**
+
 ## Contributors
 
 - [Yen Low](mailto:yen.low@databricks.com)
@@ -88,5 +100,3 @@ To add yourself, see [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Acknowledgements
 
 Thanks to Eli Swanson, Douglas Moore, Parastou Eslami and Khagay Nagdimov for their advice.
-
-

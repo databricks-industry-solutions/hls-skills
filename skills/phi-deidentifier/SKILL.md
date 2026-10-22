@@ -240,6 +240,10 @@ row suppression is capped (`max_suppression_frac`, default 0.10); passthrough is
   component scorers (detection recall/F2, residual-leak gate, utility retention, k-anonymity,
   governance), and their pure-Python unit tests.
 
+
+## Disclaimer
+This skill provides guidance to AI to do PHI detection and de-identification but all compliance obligations (e.g. HIPAA, GDPR, CCPA) remain with the user. We urge that you validate the results to ensure accuracy and completeness using appropriate benchmark(s). Databricks makes no guarantees that use of this skill is sufficient for regulatory compliance.
+
 ## References
 
 - [45 CFR §164.514(b) — Safe Harbor](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) — the de-identification standard.
