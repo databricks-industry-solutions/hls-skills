@@ -2,17 +2,16 @@
 name: presentation-builder
 description: >-
   Presentation builder that turns a finished HLS artifact — a cohort, de-identified dataset,
-  model metrics, measure catalog, or analysis result in Unity Catalog — into a polished,
-  shareable, self-contained HTML deck. Triggers on "make a deck/slides", "present this",
-  "share this out", "write it up for stakeholders", "turn this cohort/model/analysis into a
-  presentation". Renders onto a frozen 1920x1080 framework (keyboard + click navigation,
-  Save-as-PDF, Databricks branding) so every deck looks identical. GROUNDS every figure in
-  the real artifact via scripts/ground.py (counts, distributions, numeric summaries, each
-  cited to its source) and never types a number by hand. Delegates PHI handling to the
-  phi-deidentifier skill: de-identify the source first and build from its governed view; if
-  phi-deidentifier is not available, asks the user whether to include or exclude PHI. Run the
-  vetted entrypoints in scripts/build_deck.py and scripts/ground.py — do not hand-write deck
-  HTML. For building the cohort use cohort-builder; to de-identify first use phi-deidentifier.
+  model, measure catalog, or analysis in Unity Catalog — into a polished, shareable,
+  self-contained HTML deck. Triggers on "make a deck/slides", "present this", "share this
+  out", "turn this cohort/model/analysis into a presentation". Renders onto a frozen 1920x1080
+  framework (keyboard/click nav, Save-as-PDF, Databricks branding) so every deck looks
+  identical. GROUNDS every figure in the real artifact via scripts/ground.py (counts,
+  distributions, numeric summaries, each cited to source) and never types a number by hand.
+  Delegates PHI handling to the phi-deidentifier skill: de-identify the source first and build
+  from its governed view; if it is not available, asks whether to include or exclude PHI. Run
+  the vetted entrypoints in scripts/build_deck.py and scripts/ground.py — do not hand-write
+  deck HTML. For building the cohort use cohort-builder; to de-identify first use phi-deidentifier.
 category: Others
 summary: Turn a cohort, dataset, model, or analysis into a grounded, shareable HTML deck (PHI de-id delegated to phi-deidentifier).
 version: 0.1
