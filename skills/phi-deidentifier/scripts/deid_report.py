@@ -69,8 +69,9 @@ def build_readout(gov: GovernanceResult, k_actual: int | None = None,
             dropped.append(label)
 
     if k is None:
+        tgt = "k-anonymity skipped by request" if gov.k_target is None else f"target {gov.k_target}"
         safety_line = (f"**Re-identification safety:** k-anonymity **NOT MEASURED** — no "
-                       f"quasi-identifier columns were generalized (target {gov.k_target}). "
+                       f"quasi-identifier columns were generalized ({tgt}). "
                        f"Re-identification resistance is UNVERIFIED; Privacy Officer review required.")
         meaning_line = ("  Meaning: nothing was generalized to measure k over, so this readout "
                         "makes NO claim about re-identifiability of the surviving columns.")

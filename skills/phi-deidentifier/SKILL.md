@@ -48,16 +48,28 @@ re-identifiable). The entrypoint treats every quasi-identifier as in-scope and v
 - "Mask PHI but keep length-of-stay so we can still do longitudinal analysis."
 - "De-identify these clinical PDFs / scanned documents before we share them" — unstructured
   documents are handled by the document entrypoints (`preview_document_deid_options` /
-  `apply_document_deid` in `scripts/deid_docs.py`): `ai_parse_document` → detect PHI in the
-  extracted text → redact ALL identifier classes → a governed redacted derivative + a separately-
-  governed, reversible surrogate→raw crosswalk → residual-leak scan.
+  `apply_document_deid` in `scripts/deid_docs.py`): `ai_parse_document` → **layered** redaction →
+  a governed redacted derivative + a separately-governed, reversible surrogate→raw crosswalk →
+  deterministic residual verdict. Layers: (1) **member/relative name** — the patient name is
+  extracted from all patient-name fields (incl. a misspelled surname in a second field) and
+  redacted everywhere, shared-surname relatives ("Robert James Whitfield") and relationship-cue
+  names ("husband Robert") too; **provider names are kept** by design. (2) **model** (`ai_mask`,
+  per line so recall holds on long docs) — addresses, geography, written dates, format-less IDs;
+  no 'person name' label, so providers survive. (3) **regex** — SSN (incl. masked/partial),
+  phone/fax, email, MRN, DEA (incl. dash), labeled IDs (incl. dictation/EMS/accession, digit-gated
+  so prose is safe), URL, IP, dates. **Report the deterministic residual verdict verbatim**
+  (fixed-format / member / employer, each a fixed query) — do NOT improvise a separate LLM
+  re-scan; the model-dependent categories it lists (sub-state geography, narrative org/school
+  names, relatives without a cue or shared surname) always require Privacy-Officer review.
 
 ## Prerequisites
 
-- **Compute: Python-enabled compute (serverless or a cluster) — NOT a SQL-only warehouse.** The
-  entrypoints are **Python** (they call the Databricks SDK), so in Genie Code select **serverless
-  (Python)** compute from the start; the SDK then executes the generated SQL against a SQL warehouse
-  on your behalf (auto-selected, or pass `warehouse_id=`). Auth is ambient in-workspace, or a CLI `profile=` locally.
+- **FIRST, before running anything: select serverless (Python) compute.** Every entrypoint here
+  (structured `run_deid.py` AND document `deid_docs.py`) is **Python** that calls the Databricks
+  SDK — it will NOT run on a SQL-only warehouse. In Genie Code, attach **serverless (Python)**
+  compute (or a Python-enabled cluster) as the first step; do not start on a SQL warehouse and
+  switch mid-run. The SDK then runs the generated SQL against a warehouse on your behalf (auto, or
+  pass `warehouse_id=`). Auth is ambient in-workspace, or a CLI `profile=` locally.
 - **Inputs**: a fully-qualified structured table (`catalog.schema.table`) with typed columns.
 - **Consumer role**: the group/role that should read the de-identified view (governance is role-driven).
 - **Environment (optional)**: a Databricks secret scope for the tokenization salt (never a literal);
@@ -130,6 +142,13 @@ restricted prefixes (`references/restricted_zip3.md`).
 ones (age, LOS). Direct-identifier stripping is table stakes; without this step stripped data is
 still re-identifiable (measured baseline: k=1, ~87% of rows unique). Reports the privacy/utility
 trade explicitly.
+
+**Optional — redaction + tokenization only (skip k-anonymity):** the surfaced `apply_kanon`
+choice (or `apply_deid(..., apply_kanon=False)`) builds the governed view with direct identifiers
+dropped/tokenized and dates reduced to year, but **keeps the quasi-identifiers at full
+granularity** (no generalization or suppression). Use the vetted path for this — do NOT hand-write
+the view. Because nothing is generalized, k is unmeasurable, so the verdict is **REVIEW REQUIRED**
+(re-identification resistance unverified), never a certified de-identification.
 
 ### Step 5: Apply through Unity Catalog governance (no second PHI copy)
 

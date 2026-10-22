@@ -89,6 +89,13 @@ def _resolve_expr(qi: QuasiIdentifier, level: int) -> str:
     return e.replace("__los__", f"({LOS_EXPR})")
 
 
+def base_expr(qi: QuasiIdentifier) -> str:
+    """Full-granularity (level-0) SQL expression for a QI — the real column, or the derived
+    expression for a derived QI (e.g. length-of-stay). Used by the no-k-anon path to keep
+    quasi-identifiers intact without generalization."""
+    return _resolve_expr(qi, 0)
+
+
 # --- Generic, data-driven hierarchies for ANY column -------------------------
 # Custom ladders above win when a column is known. For an unknown quasi-identifier,
 # build a fallback ladder from the column's TYPE so the engine is never "stuck":

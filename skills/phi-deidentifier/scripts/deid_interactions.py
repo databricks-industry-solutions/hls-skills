@@ -148,6 +148,15 @@ def deid_decisions(role_map: dict) -> list:
             options=[{"label": "Rank them most-valuable-first (e.g. ['age','length_of_stay','geo'])",
                       "value": "<ordered list of QI labels>"}],
             note="Feeds the engine's utility weighting; unranked QIs are coarsened first."))
+        decisions.append(Decision(
+            key="apply_kanon",
+            title="Apply k-anonymity to the quasi-identifiers?",
+            options=[{"label": "Yes — generalize/suppress QIs to reach k (certifiable, default)",
+                      "value": True},
+                     {"label": "No — redaction + tokenization only, keep QIs at full granularity",
+                      "value": False}],
+            note="'No' is faster and keeps analytic columns intact, but k is then unmeasurable — "
+                 "the result is REVIEW-REQUIRED, never a certified de-identification."))
     decisions.append(Decision(
         key="output_delivery",
         title="How should the result be delivered?",
@@ -166,6 +175,7 @@ def surfaced_keys(role_map: dict) -> set:
         keys.add("date_handling")
     if any(s == "generalize" for s in role_map.values()):
         keys.add("utility_priority")
+        keys.add("apply_kanon")
     return keys
 
 
@@ -202,7 +212,7 @@ def deid_notebook_source(raw_fqn: str, k_target: int, view_name: str | None,
 
 # COMMAND ----------
 import sys
-sys.path.append("<path-to>/skills/phi-deidentifier/scripts")  # adjust to your workspace
+sys.path.append("<path-to>/skills/hls-phi-deidentifier/scripts")  # adjust to your workspace
 from run_deid import apply_deid
 
 # COMMAND ----------
