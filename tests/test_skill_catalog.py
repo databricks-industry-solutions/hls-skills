@@ -36,8 +36,8 @@ def test_catalog_order_follows_category_then_name():
         "payer-provider-measure-catalog",
         "phi-deidentifier",
         "accelerators",
-        "scientific-figures",
         "presentation-builder",
+        "scientific-figures",
         "skill-eval",
     ]
     assert {s["category"] for s in skills} <= set(CATEGORY_NAMES)
