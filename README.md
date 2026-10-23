@@ -38,6 +38,7 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 | [**phi-deidentifier**](skills/phi-deidentifier/SKILL.md) | Payer and provider | HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view). |
 | [**accelerators**](skills/accelerators/SKILL.md) | Others | Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step. |
 | [**presentation-builder**](skills/presentation-builder/SKILL.md) | Others | Turn a cohort, dataset, model, or analysis into a grounded, shareable HTML deck (PHI de-id delegated to phi-deidentifier). |
+| [**report-builder**](skills/report-builder/SKILL.md) | Others | LaTeX report generation and PDF compilation from analysis notebooks via Tectonic. |
 | [**scientific-figures**](skills/scientific-figures/SKILL.md) | Others | Publication-quality scientific and biopharma figures for notebooks, apps, and reports. |
 | [**skill-eval**](skills/skill-eval/SKILL.md) | Others | Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy. |
 <!-- skill-catalog:end -->
