@@ -136,5 +136,75 @@
       ],
       "forbidden_patterns": []
     }
+  },
+  {
+    "task_id": "acc-006",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/accelerators/hl7/adt/",
+    "difficulty": "easy",
+    "expectations": {
+      "expected_facts": [
+        "Recommends the funke-hl7v2 solution accelerator (databricks-industry-solutions/funke-hl7v2)",
+        "Uses the funke parse_hl7v2_msg UDF on the raw message text, or the funke bundle pipeline that produces raw_messages and parsed_messages",
+        "Extracts fields from the parsed hl7 column with funke.utils.get_value or segment/field/component addressing (for example PID-3, PID-5, MSH-9, PV1-19)"
+      ],
+      "guidelines": [
+        "Ends with a concrete next step the user can run, not only a link",
+        "Does not present a hand-written HL7 string-splitting parser as the main recommendation without mentioning funke"
+      ]
+    },
+    "deterministic_checks": {
+      "required_patterns": [
+        [
+          "\\bfunke\\b"
+        ],
+        [
+          "parse_hl7v2_msg",
+          "get_value",
+          "parsed_messages",
+          "bundle deploy",
+          "HL7 Ingestion"
+        ]
+      ],
+      "forbidden_patterns": []
+    }
+  },
+  {
+    "task_id": "acc-007",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/accelerators/hl7/batch/",
+    "difficulty": "edge",
+    "expectations": {
+      "expected_facts": [
+        "Recommends the funke-hl7v2 solution accelerator for parsing",
+        "funke parses one message per input and requires the first segment to be MSH, so FHS/BHS batch files do not parse as-is",
+        "Batch files must be split into individual messages (on MSH boundaries, dropping FHS, BHS, BTS and FTS) before parsing",
+        "The funke UDF returns NULL instead of raising on a message it cannot parse, so rows with a NULL hl7 column must be checked"
+      ],
+      "guidelines": [
+        "Gives a concrete splitting step, not only a warning",
+        "Does not claim funke handles FHS/BHS batch envelopes natively"
+      ]
+    },
+    "deterministic_checks": {
+      "required_patterns": [
+        [
+          "\\bfunke\\b"
+        ],
+        [
+          "FHS",
+          "BHS",
+          "batch"
+        ],
+        [
+          "split",
+          "one message per"
+        ],
+        [
+          "null",
+          "NULL",
+          "None"
+        ]
+      ],
+      "forbidden_patterns": []
+    }
   }
 ]

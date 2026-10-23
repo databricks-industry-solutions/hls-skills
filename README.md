@@ -36,7 +36,7 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 | [**rwe-cohortstudy**](skills/rwe-cohortstudy/SKILL.md) | Clinical RWE | Comparative effectiveness (cohort study) with propensity adjustment (matching, IPW). |
 | [**payer-provider-measure-catalog**](skills/payer-provider-measure-catalog/SKILL.md) | Payer and provider | Canonical payer+provider measure catalog mapped to Unity Catalog metric views. |
 | [**phi-deidentifier**](skills/phi-deidentifier/SKILL.md) | Payer and provider | HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view). |
-| [**accelerators**](skills/accelerators/SKILL.md) | Others | Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step. |
+| [**accelerators**](skills/accelerators/SKILL.md) | Others | Route imaging, biology-model and HL7v2 tasks to an HLS accelerator (Pixels, Genesis Workbench or funke-hl7v2) with the exact next step. |
 | [**presentation-builder**](skills/presentation-builder/SKILL.md) | Others | Turn a cohort, dataset, model, or analysis into a grounded, shareable HTML deck (PHI de-id delegated to phi-deidentifier). |
 | [**scientific-figures**](skills/scientific-figures/SKILL.md) | Others | Publication-quality scientific and biopharma figures for notebooks, apps, and reports. |
 | [**skill-eval**](skills/skill-eval/SKILL.md) | Others | Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy. |

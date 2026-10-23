@@ -12,12 +12,14 @@ Benchmark evaluation for the `accelerators` skill following the [skill-eval](../
 | acc-002 | hard | Protein folding and design with a UI for scientists | Genesis Workbench, admin install, core before large_molecule |
 | acc-004 | edge | Fine-tune Geneformer | Genesis Workbench, honest that Geneformer is "coming soon", interim path |
 | acc-005 | edge | Full Pixels install on Azure as a non-admin | Gated features, Azure GPU type, admin vs user split |
+| acc-006 | easy | HL7v2 ADT files to Delta, fields queried with SQL | Uses funke-hl7v2 (`parse_hl7v2_msg`, `get_value` or the bundle pipeline) instead of a hand-written HL7 splitter |
+| acc-007 | edge | HL7v2 batch files with FHS/BHS headers | funke needs one message per input starting with MSH; split first and check for NULL parses |
 
-acc-002, acc-004 and acc-005 are discriminators: without the skill the base model either does not know the accelerator exists, claims support that is not there, or misses cloud and permission details. Task IDs skip acc-003 (an x12-edi-parser task parked until that accelerator is added).
+acc-002, acc-004, acc-005 and acc-007 are discriminators: without the skill the base model either does not know the accelerator exists, claims support that is not there, or misses cloud and permission details. Task IDs skip acc-003 (an x12-edi-parser task parked until that accelerator is added).
 
 ## Data
 
-Synthetic only (`generate_data.py`): 18 CT DICOM files (3 patients x 2 series x 3 instances).
+Synthetic only (`generate_data.py`): 18 CT DICOM files (3 patients x 2 series x 3 instances), 6 HL7v2 ADT messages (one per file) and 1 FHS/BHS batch file wrapping 3 ADT messages. No real patient data.
 
 Volume: `/Volumes/hls_amer_catalog/vital_skills/eval/accelerators/` (override with `SKILL_EVAL_DATA_DIR`; replace the path in `evalset.json` queries to match).
 
