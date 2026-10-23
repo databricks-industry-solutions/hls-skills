@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Functional tests for the payer-provider-measure-catalog skill.
+"""Functional tests for the semantic-builder skill.
 
 Unlike the repo-wide SKILL.md linter (tests/test_skill_quality.py), these exercise
 the skill's actual code: the catalog validator and the metric-view generator.
 
-  python3 -m pytest skills/payer-provider-measure-catalog/tests/
+  python3 -m pytest skills/semantic-builder/tests/
 """
 from __future__ import annotations
 

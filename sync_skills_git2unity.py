@@ -46,7 +46,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
-DEFAULT_REPO_URL = "https://github.com/databricks-industry-solutions/hls-skills"
+DEFAULT_REPO_URL = "https://github.com/databricks-industry-solutions/vital-skills"
 SKILLS_API = "/api/2.1/unity-catalog/skills"
 FILES_API = "/api/2.0/fs/files"
 

@@ -1,6 +1,6 @@
 # Docs site
 
-The [GitHub Pages site](https://databricks-industry-solutions.github.io/hls-skills/) is `docs/index.html` (the landing page) plus an MkDocs guide under `/guide/`. Most of the guide is not written in `docs/`. It is generated at build time from files elsewhere in this repository, so **edit the source file, not the page.**
+The [GitHub Pages site](https://databricks-industry-solutions.github.io/vital-skills/) is `docs/index.html` (the landing page) plus an MkDocs guide under `/guide/`. Most of the guide is not written in `docs/`. It is generated at build time from files elsewhere in this repository, so **edit the source file, not the page.**
 
 ## Where each page comes from
 
@@ -43,7 +43,7 @@ The strict build fails if a file or heading is missing or ambiguous, and names t
 
 Copied text is shown in two places, so it has to render in both.
 
-- **Links.** Relative links, such as `[AGENTS.md](AGENTS.md)`, point at GitHub on the site. To link a site page, use its full URL, such as `https://databricks-industry-solutions.github.io/hls-skills/guide/skills/`.
+- **Links.** Relative links, such as `[AGENTS.md](AGENTS.md)`, point at GitHub on the site. To link a site page, use its full URL, such as `https://databricks-industry-solutions.github.io/vital-skills/guide/skills/`.
 - **Notes and warnings.** Use GitHub alerts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`). The site turns them into boxed notes. MkDocs-only syntax such as `!!! note` shows as raw text on GitHub.
 - **Comments.** `<!-- ... -->` is hidden in both places but stays in the published page source. Do not start one with `include:` in a page under `docs/`; that marks a copy.
 

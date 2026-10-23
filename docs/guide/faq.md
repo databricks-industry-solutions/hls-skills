@@ -45,19 +45,19 @@ skills/<skill-name>/
 Make the folder path accessible and share the path with other users.
 
 #### Option 2
-Run [`sync_skills_git2unity.py`](https://github.com/databricks-industry-solutions/hls-skills/blob/main/sync_skills_git2unity.py){target="_blank" rel="noopener"} to register the skills in Unity Catalog. They then show up on [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/){target="_blank" rel="noopener"} under Skills for other users to discover and use, provided you grant them appropriate permissions. See [Setup](setup.md){target="_blank" rel="noopener"}.
+Run [`sync_skills_git2unity.py`](https://github.com/databricks-industry-solutions/vital-skills/blob/main/sync_skills_git2unity.py){target="_blank" rel="noopener"} to register the skills in Unity Catalog. They then show up on [Unity Gateway](https://docs.databricks.com/aws/en/agents/uc-skills/){target="_blank" rel="noopener"} under Skills for other users to discover and use, provided you grant them appropriate permissions. See [Setup](setup.md){target="_blank" rel="noopener"}.
 
 
 ## Why are a skill's `tests/` and `eval/` folders missing after syncing?
-They are kept in Git for contributors and are never published by the [`sync_skills_git2unity.py` script](https://github.com/databricks-industry-solutions/hls-skills/blob/main/sync_skills_git2unity.py){target="_blank" rel="noopener"}.
+They are kept in Git for contributors and are never published by the [`sync_skills_git2unity.py` script](https://github.com/databricks-industry-solutions/vital-skills/blob/main/sync_skills_git2unity.py){target="_blank" rel="noopener"}.
 
 
 ## How do I report a bug, request a skill, or add my own?
-[Open an issue](https://github.com/databricks-industry-solutions/hls-skills/issues/new/choose){target="_blank" rel="noopener"} to report a bug or request a skill. To add or update one, see [Contributing](contributing.md){target="_blank" rel="noopener"}.
+[Open an issue](https://github.com/databricks-industry-solutions/vital-skills/issues/new/choose){target="_blank" rel="noopener"} to report a bug or request a skill. To add or update one, see [Contributing](contributing.md){target="_blank" rel="noopener"}.
 
 
 ## Why does a page under `docs/guide/` look empty on GitHub?
-Pages such as Setup, Contributing and Evaluation are copied from `README.md` and `CONTRIBUTING.md` when the site is built. Their source file holds only an include line, which GitHub hides. Edit the root file instead; see [DOCS.md](https://github.com/databricks-industry-solutions/hls-skills/blob/main/DOCS.md){target="_blank" rel="noopener"}.
+Pages such as Setup, Contributing and Evaluation are copied from `README.md` and `CONTRIBUTING.md` when the site is built. Their source file holds only an include line, which GitHub hides. Edit the root file instead; see [DOCS.md](https://github.com/databricks-industry-solutions/vital-skills/blob/main/DOCS.md){target="_blank" rel="noopener"}.
 
 
 

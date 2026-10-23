@@ -8,7 +8,7 @@ Nested lists also need wider indentation for MkDocs than GitHub requires.
 import posixpath
 import re
 
-REPO = "https://github.com/databricks-industry-solutions/hls-skills"
+REPO = "https://github.com/databricks-industry-solutions/vital-skills"
 BRANCH = "main"
 LINK = re.compile(r"(!?\[[^\]]*\]\()([^)\s]+)(\))")
 EXTERNAL = re.compile(r"^([a-z][a-z0-9+.-]*:|#|/)", re.IGNORECASE)

@@ -2,7 +2,7 @@
 ## Agent skills for Health & Life Sciences workflows. 
 Each skill is a `SKILL.md` folder that teaches Genie Code following the [Agent Skills](https://agentskills.io/specification) standard) how to run domain workflows with libraries, tools and MCP servers.
 
-Site: [https://databricks-industry-solutions.github.io/hls-skills/](https://databricks-industry-solutions.github.io/hls-skills/)
+Site: [https://databricks-industry-solutions.github.io/vital-skills/](https://databricks-industry-solutions.github.io/vital-skills/)
 
 ## Setup
 <!-- Do not change this header which generates setup.md -->
@@ -32,10 +32,10 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 | [**open-weight-models**](skills/open-weight-models/SKILL.md) | Bioinformatics | Package, register, validate & deploy open-weight HLS models on Databricks — e.g. TEDDY and Geneformer. |
 | [**pathway-enrichment-analysis**](skills/pathway-enrichment-analysis/SKILL.md) | Bioinformatics | Pathway enrichment for RNA-seq (ORA or GSEA). |
 | [**sc-rnaseq**](skills/sc-rnaseq/SKILL.md) | Bioinformatics | Analyze single-cell RNA-seq data from .h5ad files. |
-| [**cohort-builder**](skills/cohort-builder/SKILL.md) | Clinical RWE | Build a reproducible, feasibility-checked patient cohort from coded + free-text clinical data. |
-| [**rwe-cohortstudy**](skills/rwe-cohortstudy/SKILL.md) | Clinical RWE | Comparative effectiveness (cohort study) with propensity adjustment (matching, IPW). |
-| [**payer-provider-measure-catalog**](skills/payer-provider-measure-catalog/SKILL.md) | Payer and provider | Canonical payer+provider measure catalog mapped to Unity Catalog metric views. |
-| [**phi-deidentifier**](skills/phi-deidentifier/SKILL.md) | Payer and provider | HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view). |
+| [**cohort-builder**](skills/cohort-builder/SKILL.md) | Clinical | Build a reproducible, feasibility-checked patient cohort from coded + free-text clinical data. |
+| [**phi-deidentifier**](skills/phi-deidentifier/SKILL.md) | Clinical | HIPAA Safe-Harbor de-identify a Unity Catalog table (k-anonymity + governed view). |
+| [**rwe-cohortstudy**](skills/rwe-cohortstudy/SKILL.md) | Clinical | Comparative effectiveness (cohort study) with propensity adjustment (matching, IPW). |
+| [**semantic-builder**](skills/semantic-builder/SKILL.md) | Clinical | Canonical payer+provider measure catalog mapped to Unity Catalog metric views. |
 | [**accelerators**](skills/accelerators/SKILL.md) | Others | Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step. |
 | [**presentation-builder**](skills/presentation-builder/SKILL.md) | Others | Turn a cohort, dataset, model, or analysis into a grounded, shareable HTML deck (PHI de-id delegated to phi-deidentifier). |
 | [**skill-eval**](skills/skill-eval/SKILL.md) | Others | Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy. |
@@ -44,7 +44,7 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 ## Repository Layout
 
 ```
-hls-skills/
+vital-skills/
 ├── AGENTS.md                 # Skill authoring guide
 ├── CLAUDE.md                 # Compatibility shim → AGENTS.md
 ├── templates/                # Pipeline / toolkit / guide templates

@@ -57,7 +57,7 @@ The `description` field is the discovery hook agents use before loading the full
 - Lead with keywords, not stop verbs (`Use`, `A`, `An`, `The`, `Query`, `Fetch`, `Run`)
 - Put disambiguation (`For X use Y`) at the **end**
 - No promotional adjectives (`powerful`, `comprehensive`, `state-of-the-art`)
-- Set `category` to one of `Bioinformatics`, `Clinical RWE`, `Payer and provider`, `Others`
+- Set `category` to one of `Bioinformatics`, `Clinical`, `Others`
 - Set `summary` to a one-line outcome for the README and landing-page tables (≤ 200 chars; quote the value if it contains a colon)
 - After adding or changing a skill, run `python docs/hooks/skill_catalog.py` so those tables stay in sync
 

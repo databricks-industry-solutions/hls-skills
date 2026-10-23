@@ -10,7 +10,7 @@ description: >
   in observational data, run propensity score analysis, build external control arms, emulate
   a target trial, perform causal inference from EHR/claims data, or conduct comparative
   cohort studies with confounding adjustment.
-category: Clinical RWE
+category: Clinical
 summary: Comparative effectiveness (cohort study) with propensity adjustment (matching, IPW).
 author: Yen Low
 version: 0.5

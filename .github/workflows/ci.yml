@@ -4,6 +4,7 @@ name: CI
 # pushes to dev and main. ready_for_review refires the workflow when a draft is
 # promoted. Three independent jobs:
 #   overall-test-check  tests/: SKILL.md quality gate for every skill + sync bundle filter
+#                     + skill_catalog.py --check (README.md / docs/index.html vs skills/*/SKILL.md)
 #                     + benchmarks/biomnibench/tests (offline harness tests)
 #   skill-tests       one matrix entry per skills/<name>/tests/, discovered at run time,
 #                     so a new skill's tests run without editing this file
@@ -41,6 +42,8 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           version: ${{ env.UV_VERSION }}
+      - name: Skill catalog is current
+        run: uv run --isolated --with pyyaml python docs/hooks/skill_catalog.py --check
       - name: Skill quality gate and sync bundle filter
         run: uv run --isolated --with pytest python -m pytest -q tests
       - name: BiomniBench harness

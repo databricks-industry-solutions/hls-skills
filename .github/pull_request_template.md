@@ -26,4 +26,4 @@
 
 ## Contribution terms
 
-- [ ] I accept the contribution terms in [CONTRIBUTING.md](https://github.com/databricks-industry-solutions/hls-skills/blob/main/CONTRIBUTING.md) (right to submit, license grant, no confidential information).
+- [ ] I accept the contribution terms in [CONTRIBUTING.md](https://github.com/databricks-industry-solutions/vital-skills/blob/main/CONTRIBUTING.md) (right to submit, license grant, no confidential information).

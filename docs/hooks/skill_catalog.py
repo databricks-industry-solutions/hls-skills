@@ -26,8 +26,7 @@ FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 # Display order of landing-page filter chips and README groups.
 CATEGORIES = [
     ("Bioinformatics", "var(--t-bio)"),
-    ("Clinical RWE", "var(--t-rwe)"),
-    ("Payer and provider", "var(--t-pp)"),
+    ("Clinical", "var(--t-rwe)"),
     ("Others", "var(--t-oth)"),
 ]
 CATEGORY_NAMES = tuple(name for name, _ in CATEGORIES)

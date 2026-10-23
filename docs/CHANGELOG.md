@@ -6,6 +6,10 @@ site) are recorded here. Format follows
 
 ## [Unreleased]
 
+### Changed
+- Landing page: Explore (the skill table) comes first; Quick start is at the bottom.
+- The skill table starts compressed; click it or “Show all skills” to expand.
+
 ### Added
 - The Evaluation page now explains how to test skills against BiomniBench-DA,
   with a diagram of the pipeline (`docs/guide/assets/biomnibench-eval.svg`, from
@@ -141,7 +145,7 @@ only; no changes to `skills/`.
 ### Notes
 - Go-live is a maintainer action: in Settings → Pages, flip the publishing
   folder from `/ (root)` to `/docs`. Reversible and non-disruptive. `baseurl`
-  is `/hls-skills`.
+  is `/vital-skills`.
 - JavaScript is required: the skill cards are rendered client-side, and without
   JavaScript the page renders in light mode (the single-source-of-truth theme is
   set by script). This is acceptable because the catalog itself needs JavaScript.

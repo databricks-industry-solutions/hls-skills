@@ -7,9 +7,9 @@
 strict: true
 site_name: Vital Skills
 site_description: Agent skills for Health & Life Sciences workflows on Databricks
-site_url: https://databricks-industry-solutions.github.io/hls-skills/
-repo_url: https://github.com/databricks-industry-solutions/hls-skills
-repo_name: hls-skills
+site_url: https://databricks-industry-solutions.github.io/vital-skills/
+repo_url: https://github.com/databricks-industry-solutions/vital-skills
+repo_name: vital-skills
 edit_uri: ""
 copyright: Licensed under the Databricks License
 

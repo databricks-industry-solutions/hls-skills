@@ -10,7 +10,7 @@ Usage:
   python compare_runs.py baseline_scores.json candidate_scores.json
   python compare_runs.py baseline.json candidate.json --pass-rule any_metric --format markdown
 
-Source: https://github.com/databricks-industry-solutions/hls-skills/blob/feat/skill-eval1/skills/skill-eval/scripts/compare_runs.py
+Source: https://github.com/databricks-industry-solutions/vital-skills/blob/feat/skill-eval1/skills/skill-eval/scripts/compare_runs.py
 """
 
 from __future__ import annotations

@@ -27,7 +27,7 @@ It also ships a workflow builder in the UI and an MCP server app that exposes de
 - Notebook-level single-cell QC, clustering and markers without a UI: use `sc-rnaseq`
 - Bulk RNA-seq differential expression: use `bulk-rnaseq`
 
-Geneformer: route to Genesis Workbench (bionemo module), and tell the user its Geneformer support is marked "coming soon" in the current release. Until it ships, the `open-weight-models` skill in hls-skills has a Geneformer packaging reference. Next step for the user: type `@open-weight-models` in Genie Code and ask it to package Geneformer, which loads `references/models/geneformer.md` from that skill.
+Geneformer: route to Genesis Workbench (bionemo module), and tell the user its Geneformer support is marked "coming soon" in the current release. Until it ships, the `open-weight-models` skill in this repo has a Geneformer packaging reference. Next step for the user: type `@open-weight-models` in Genie Code and ask it to package Geneformer, which loads `references/models/geneformer.md` from that skill.
 
 ## Deploy signals
 

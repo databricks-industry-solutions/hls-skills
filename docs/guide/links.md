@@ -8,8 +8,8 @@
 
 
 ## Help
-- [Source code on GitHub](https://github.com/databricks-industry-solutions/hls-skills){target="_blank" rel="noopener"}
-- [Report a bug or request a skill](https://github.com/databricks-industry-solutions/hls-skills/issues/new/choose){target="_blank" rel="noopener"}
+- [Source code on GitHub](https://github.com/databricks-industry-solutions/vital-skills){target="_blank" rel="noopener"}
+- [Report a bug or request a skill](https://github.com/databricks-industry-solutions/vital-skills/issues/new/choose){target="_blank" rel="noopener"}
 
 
 ## Databricks

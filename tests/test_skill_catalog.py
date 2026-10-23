@@ -9,6 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "docs" / "hooks"))
 
 from skill_catalog import (  # noqa: E402
+    CATEGORY_INDEX,
     CATEGORY_NAMES,
     CatalogError,
     inject_landing_page,
@@ -24,22 +25,19 @@ LANDING = REPO_ROOT / "docs" / "index.html"
 
 
 def test_catalog_order_follows_category_then_name():
+    """Catalog membership comes from skills/*/SKILL.md — no golden name list.
+
+    A new skill is picked up automatically. Contributors still run
+    ``python docs/hooks/skill_catalog.py`` so README.md and docs/index.html match.
+    """
     skills = load_skills()
-    names = [s["name"] for s in skills]
-    assert names == [
-        "bulk-rnaseq",
-        "open-weight-models",
-        "pathway-enrichment-analysis",
-        "sc-rnaseq",
-        "cohort-builder",
-        "rwe-cohortstudy",
-        "payer-provider-measure-catalog",
-        "phi-deidentifier",
-        "accelerators",
-        "presentation-builder",
-        "skill-eval",
-    ]
-    assert {s["category"] for s in skills} <= set(CATEGORY_NAMES)
+    folders = {p.parent.name for p in (REPO_ROOT / "skills").glob("*/SKILL.md")}
+    assert {s["folder"] for s in skills} == folders
+    for skill in skills:
+        assert skill["name"] == skill["folder"]
+        assert skill["category"] in CATEGORY_NAMES
+    expected = sorted(skills, key=lambda s: (CATEGORY_INDEX[s["category"]], s["name"]))
+    assert [s["name"] for s in skills] == [s["name"] for s in expected]
 
 
 def test_readme_and_landing_page_match_generated_catalog():

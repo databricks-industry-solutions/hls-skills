@@ -31,5 +31,5 @@ Use with any AI agent ([Genie Code](https://docs.databricks.com/aws/en/genie-cod
 Often, both are powered by similar LLMs but [Genie Code](https://docs.databricks.com/aws/en/genie-code/) is optimized for coding while [Genie One](https://www.databricks.com/product/genie/one) is optimized for chatting.
 
 ## Freely available
-Get Vital Skills from [Github](https://github.com/databricks-industry-solutions/hls-skills). Don't have Databricks? Check out [Databricks Free Edition](https://www.databricks.com/learn/free-edition)!
+Get Vital Skills from [Github](https://github.com/databricks-industry-solutions/vital-skills). Don't have Databricks? Check out [Databricks Free Edition](https://www.databricks.com/learn/free-edition)!
 

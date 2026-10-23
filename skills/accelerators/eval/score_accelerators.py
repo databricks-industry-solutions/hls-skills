@@ -21,7 +21,7 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 # DBTITLE 1,Config
-dbutils.widgets.text("skills_root", "/Workspace/Users/<you>/hls-skills/skills")
+dbutils.widgets.text("skills_root", "/Workspace/Users/<you>/vital-skills/skills")
 dbutils.widgets.text("data_dir", "/Volumes/hls_amer_catalog/vital_skills/eval/accelerators")
 dbutils.widgets.text("experiment", "/Users/<you>/skill-eval-accelerators")
 
