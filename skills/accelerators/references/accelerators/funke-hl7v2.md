@@ -46,7 +46,7 @@ from funke.parsing.hl7 import HL7v2Schema
 from funke.utils import get_value
 
 raw = (spark.read.format("binaryFile").load("/Volumes/<catalog>/<schema>/<volume>/<folder>")
-       .withColumn("content", F.regexp_replace(F.decode("content", "UTF-8"), r"^\s+", "")))
+       .withColumn("content", F.regexp_replace(F.decode("content", "UTF-8"), r"^[\x0b\x1c\s]+|[\x0b\x1c\s]+$", "")))
 parsed = raw.withColumn("hl7", parse_hl7v2_msg(HL7v2Schema())(F.col("content")))
 hl7 = F.col("hl7")
 parsed.select(
@@ -73,18 +73,18 @@ databricks bundle deploy -t dev --var catalog=<catalog> --var warehouse_id=<ware
 databricks pipelines start-update <hl7-ingestion-pipeline-id> -p <profile>
 ```
 
-Deploy takes a few minutes and starts nothing: both pipelines are created idle and the app stopped. In the `dev` target the pipelines are triggered (an update processes the landed files and stops; tested: 6 ADT files to `parsed_messages` in under a minute). The bundle YAML sets `continuous: true`, which applies with `-t prod` (`mode: production`, not tested here). The README alternative is to clone the repo into the workspace and click Deploy in the Asset Bundle editor.
+A `dev` deploy (Databricks CLI v1.17.0, 2026-10-22) took a few minutes and started nothing: both pipelines were created idle with `continuous` off and the app stopped, and one update processed 6 landed ADT files to `parsed_messages` in under a minute and stopped. The docs do not say development mode turns `continuous` off, and the bundle YAML sets `continuous: true`, so check the pipeline settings after any deploy (`-t prod` not tested here). The README alternative is to clone the repo into the workspace and click Deploy in the Asset Bundle editor.
 
 ## Pitfalls
 
 - **Batch files parse to NULL**: funke expects one message per input whose first segment is `MSH`. Files wrapped in `FHS`/`BHS` (immunization registry and other batch feeds) fail. Split them first:
   `F.explode(F.split(F.regexp_replace("content", r"\r\n?|\n", "\r"), r"\r(?=MSH\|)"))`, keep rows that start with `MSH|` and drop `BTS`/`FTS` lines. Tested: one 3-message batch file became 3 parsed messages.
-- **Failures are silent**: the UDF returns NULL for any message it cannot parse instead of raising. Check `hl7 IS NULL` after every load. A leading blank line also causes NULL; strip leading whitespace first (`regexp_replace(content, r"^\s+", "")`; Spark `ltrim` removes spaces only).
+- **Failures are silent**: the UDF returns NULL for any message it cannot parse instead of raising. Check `hl7 IS NULL` after every load. A leading blank line or MLLP framing byte (`0x0B` before a message; 8 of the repo samples carry framing bytes) also causes NULL, and a trailing `0x1C` adds an empty `''` segment key. Strip both ends first (`regexp_replace(content, r"^[\x0b\x1c\s]+|[\x0b\x1c\s]+$", "")`; Spark `ltrim` removes spaces only).
 - **`warehouse_id` is required**: `bundle validate` and `deploy` fail with "no value assigned to required variable warehouse_id" until `--var warehouse_id=<id>` is passed.
 - **Default catalog `main`**: pass `--var catalog=<catalog>` where the user can create schemas.
 - **Deploy fails on Homebrew or system Python**: the wheel build runs `python3 -m pip install` and hits "externally-managed-environment" (PEP 668). Run the deploy from an activated virtual environment.
 - **`pip install` fails at "Installing build dependencies"**: when the workspace package index cannot serve `setuptools` (seen with a Databricks PyPI proxy; private mirrors can do the same), install with `--no-build-isolation` or use the Git folder path.
 - **Library must reach the Spark workers**: use `%pip` in a notebook or an environment `dependencies` entry (the bundle's pipelines attach the funke wheel this way). Installing into a local path such as `/tmp` with `pip --target` works on the driver only and the UDF fails with `No module named 'funke'`.
 - **Dev target names**: the landing Volume is under `dev_<user>_<schema>`, not `<schema>`. The app name `adt-control-room` is not prefixed, so two users deploying into one workspace collide.
-- **Continuous pipelines outside dev**: the YAML defines `HL7 Ingestion` and `Bed Utilization (Gold)` as continuous, so outside the `dev` target they run once started and bill until stopped (`databricks pipelines stop <id>`; the demo app can pause them). The `dev` target deploys them as triggered.
+- **Continuous pipelines**: the YAML defines `HL7 Ingestion` and `Bed Utilization (Gold)` as continuous, so once started they run and bill until stopped (`databricks pipelines stop <id>`; the demo app can pause them). A `dev` deploy was observed with `continuous` off; check after any deploy.
 - **Patient ID**: use PID-3 (patient identifier list); the README example reads PID-2, a backward-compatibility field that is often empty.
