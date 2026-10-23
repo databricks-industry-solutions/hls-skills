@@ -1,9 +1,9 @@
 ---
 name: accelerators
-description: HLS solution accelerator steerage for Databricks. Routes a task to an existing databricks-industry-solutions accelerator and gives the precise next step - Pixels (DICOM medical imaging, OHIF viewer, DICOMweb, MONAI segmentation) and Genesis Workbench (protein folding and design, docking, ADMET, single-cell foundation models, variant calling, NVIDIA BioNeMo). Consult before building an imaging pipeline or biology model stack from scratch. For notebook single-cell analysis use sc-rnaseq; for de-identifying tables use phi-deidentifier.
+description: HLS solution accelerator steerage for Databricks (DICOM imaging, protein and single-cell models, HL7v2 messages). Routes a task to an existing databricks-industry-solutions accelerator and gives the precise next step - Pixels (DICOM medical imaging, OHIF viewer, DICOMweb, MONAI segmentation), Genesis Workbench (protein folding and design, docking, ADMET, single-cell foundation models, variant calling, NVIDIA BioNeMo) and funke-hl7v2 (HL7v2 message parsing of ADT, ORU, ORM, SIU and VXU files into Delta). Consult before building an imaging pipeline, biology model stack or HL7 parser from scratch. For notebook single-cell analysis use sc-rnaseq; for de-identifying tables use phi-deidentifier; for measures from parsed claims or EHR data use payer-provider-measure-catalog.
 category: Others
-summary: Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step.
-version: 0.5
+summary: Route imaging, biology-model and HL7v2 tasks to an HLS accelerator (Pixels, Genesis Workbench or funke-hl7v2) with the exact next step.
+version: 0.6
 author: Rohan Parikh
 license: Databricks License
 ---
@@ -12,7 +12,7 @@ license: Databricks License
 
 ## Overview
 
-Databricks publishes Health and Life Sciences solution accelerators under [databricks-industry-solutions](https://github.com/databricks-industry-solutions). Many requests ("index my DICOM files", "fold these proteins", "dock this ligand") are already solved by one of them. This skill routes the request to the right accelerator and ends with a precise next step: the exact library call, install command or admin action the user needs, plus the pitfalls that are not obvious from the README.
+Databricks publishes Health and Life Sciences solution accelerators under [databricks-industry-solutions](https://github.com/databricks-industry-solutions). Many requests ("index my DICOM files", "fold these proteins", "parse our HL7 ADT feed") are already solved by one of them. This skill routes the request to the right accelerator and ends with a precise next step: the exact library call, install command or admin action the user needs, plus the pitfalls that are not obvious from the README.
 
 The skill is instructions only. It does not install or run accelerators itself. Per-accelerator facts live in `references/accelerators/`; the index is `references/accelerators/index.md`. Others can add accelerators by copying `references/accelerator-template.md`.
 
@@ -23,6 +23,7 @@ The skill is instructions only. It does not install or run accelerators itself. 
 - A user wants small-molecule generation, docking or ADMET/toxicity prediction
 - A user wants cell-type annotation against a reference atlas (SCimilarity), scGPT perturbation or a single-cell foundation model behind a UI
 - A user needs germline variant calling (NVIDIA Parabricks), GWAS, ClinVar annotation or NVIDIA BioNeMo fine-tuning
+- A user wants HL7v2 messages (ADT, ORU, ORM, SIU, VXU) from an EHR or interface engine parsed into Delta and queried with SQL
 - A user is about to hand-write a pipeline, parser or serving wrapper that an accelerator already provides
 
 ## Key Concepts
@@ -31,13 +32,13 @@ The skill is instructions only. It does not install or run accelerators itself. 
 The base model does not know these accelerators exist and will write pydicom loops or custom folding endpoints from scratch. Recommending the accelerator first saves days and avoids known failure modes.
 
 ### Precise next step
-Every answer ends with a short **Next step** section: one concrete action the user can take now (a command or snippet to run) and, if something is blocking them, the exact admin action and who does it. A link or "see the docs" is not a next step.
+Every answer ends with a short **Next step** section: one concrete action the user can take now (a command or snippet to run) and, if something is blocking them, the exact admin action and who does it. A link or "see the docs" is not a next step. The section repeats the literal command or code block to run first (for example the install line from the reference), even when the answer above is already a numbered procedure; "run the cells above", "write a plan" or "define the task" do not count.
 
 ### The repo is the source of truth
 Accelerators change weekly. Use the facts in `references/accelerators/<name>.md` for routing and pitfalls, then read the accelerator's own README and install docs for current steps. If the repo is cloned as a Git folder in the workspace, read the files there; otherwise give the user the repo URL and the exact file to open.
 
 ### Library path vs full install
-Some accelerators can be used as a Python library from a notebook (Pixels cataloging from a repo clone; check the serverless caveat in its reference). Others are a full install of apps, jobs and GPU endpoints that needs workspace admin rights (Genesis Workbench, Pixels viewer and segmentation). Recommend the smallest path that answers the request.
+Some accelerators can be used as a Python library from a notebook (Pixels cataloging from a repo clone, check the serverless caveat in its reference; funke-hl7v2 parsing with `%pip install` from GitHub). Others are a full install of apps, jobs and GPU endpoints that needs workspace admin rights (Genesis Workbench, Pixels viewer and segmentation). Recommend the smallest path that answers the request.
 
 ### Accelerators are not supported products
 They are provided as-is without SLAs. Problems go to the repo's GitHub Issues, not Databricks support.
@@ -51,15 +52,20 @@ What is the user trying to do?
 │   ├── Browser viewer, DICOMweb endpoint, CT auto-segmentation → Pixels, full install
 │   └── De-identify DICOM tags → Pixels DicomMetaAnonymizerExtractor
 │       (structured tables instead → phi-deidentifier)
-└── Life sciences models
-    ├── Proteins: fold, design, embed → Genesis Workbench large_molecule
-    ├── Small molecules: generate, dock, ADMET → Genesis Workbench small_molecule
-    ├── Single-cell foundation models (SCimilarity, scGPT, TEDDY) → Genesis Workbench single_cell
-    │   (notebook QC, clustering, markers → sc-rnaseq)
-    ├── Geneformer → Genesis Workbench bionemo; support is marked "coming soon",
-    │   so say so and offer the `open-weight-models` skill as the interim path
-    ├── Variant calling, GWAS, ClinVar → Genesis Workbench genomics
-    └── Model not shipped by Genesis Workbench → `open-weight-models` skill
+├── Life sciences models
+│   ├── Proteins: fold, design, embed → Genesis Workbench large_molecule
+│   ├── Small molecules: generate, dock, ADMET → Genesis Workbench small_molecule
+│   ├── Single-cell foundation models (SCimilarity, scGPT, TEDDY) → Genesis Workbench single_cell
+│   │   (notebook QC, clustering, markers → sc-rnaseq)
+│   ├── Geneformer → Genesis Workbench bionemo; support is marked "coming soon",
+│   │   so say so and offer the `open-weight-models` skill as the interim path
+│   ├── Variant calling, GWAS, ClinVar → Genesis Workbench genomics
+│   └── Model not shipped by Genesis Workbench → `open-weight-models` skill
+└── Clinical messaging (HL7v2)
+    ├── Parse message files into Delta, query fields with SQL → funke-hl7v2, library path
+    ├── Streaming landing-to-parsed pipeline, ADT bed-utilization demo → funke-hl7v2, bundle
+    └── FHIR, X12 claims or MLLP listener → not covered; say so
+        (measures from parsed data → payer-provider-measure-catalog)
 ```
 
 | Task | Accelerator | Smallest path | Reference |
@@ -70,6 +76,8 @@ What is the user trying to do?
 | Docking, molecule generation, ADMET | Genesis Workbench | Full install: core + small_molecule (admin) | `references/accelerators/genesis-workbench.md` |
 | Single-cell foundation models | Genesis Workbench | Full install: core + single_cell (admin) | `references/accelerators/genesis-workbench.md` |
 | Variant calling, GWAS, ClinVar | Genesis Workbench | Full install: core + genomics (admin) | `references/accelerators/genesis-workbench.md` |
+| Parse HL7v2 message files into Delta | funke-hl7v2 | `%pip install` from GitHub + `parse_hl7v2_msg` UDF | `references/accelerators/funke-hl7v2.md` |
+| Streaming HL7v2 pipeline or ADT demo | funke-hl7v2 | Asset Bundle deploy (no admin) | `references/accelerators/funke-hl7v2.md` |
 
 ## Best Practices
 
@@ -105,7 +113,7 @@ What is the user trying to do?
    - Library path: the install line and the minimal working snippet
    - Full install: prerequisites, commands in order, expected duration and the admin actions needed
    - Point to the repo's README or install doc for anything beyond the reference
-   - Finish with `Next step`: the first command or snippet to run now, then any admin action with the role that performs it
+   - Finish with `Next step`: the first command or snippet to run now, written out in a code block, then any admin action with the role that performs it
 
 ## Protocol Guidelines
 
@@ -122,6 +130,9 @@ Evaluated with `skill-eval` on 2026-10-05 (full report: `eval/eval_report.md`).
 |-----|----------|------------|---------|
 | Workspace Genie Code, 4 tasks | 0/4 pass | 3/4 pass | 3 wins, 0 regressions, ship gate pass |
 | Genie Code CLI routing, 10 prompts | 3/10 | 10/10 | no false triggers on 3 unrelated prompts |
+| v0.6 funke-hl7v2, workspace Genie Code, 2 tasks (2026-10-22) | 0/2 pass | 2/2 pass | 2 wins, 0 regressions, ship gate pass; day-2 with funke deployed: tie-pass |
+| v0.6 funke-hl7v2, Genie Code CLI, 2 tasks x 3 runs | 0/6 pass | 6/6 pass (after the Next step fix) | 0 regressions, ship gate pass |
+| v0.6 routing, 22 prompts, all hls-skills installed | 7/22 | 20/22 | HL7v2 8/8 (5 held-out); negatives 7/7; misses are overlap with `open-weight-models` and `sc-rnaseq`; 3/3 near misses graded by hand |
 
 Without the skill, Genie Code rebuilt a DICOM pipeline and a protein folding stack from scratch and gave wrong Pixels facts. The remaining tie (DICOM to Delta) reflects that Pixels' library did not install on serverless in testing; the skill now says so.
 
@@ -138,9 +149,11 @@ Without the skill, Genie Code rebuilt a DICOM pipeline and a protein folding sta
 - [databricks-industry-solutions](https://github.com/databricks-industry-solutions) - all published solution accelerators
 - [Pixels](https://github.com/databricks-industry-solutions/pixels) - DICOM ingestion, OHIF viewer, DICOMweb, MONAI segmentation
 - [Genesis Workbench](https://github.com/databricks-industry-solutions/genesis-workbench) - life sciences foundation models, workflows and MCP server
+- [funke-hl7v2](https://github.com/databricks-industry-solutions/funke-hl7v2) - native HL7v2 parsing into Delta, streaming pipeline and ADT demo
 
 ## Related Skills
 
 - `open-weight-models` - package and serve an open-weight HLS model that Genesis Workbench does not ship
 - `sc-rnaseq` - notebook-level single-cell analysis with scanpy and rapids-singlecell
 - `phi-deidentifier` - de-identify structured Unity Catalog tables (Pixels covers DICOM tags)
+- `payer-provider-measure-catalog` - governed measures (length of stay, readmissions) from parsed EHR or claims data

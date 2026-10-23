@@ -26,5 +26,19 @@
     "artifact_produced": true,
     "steers_to_accelerator": false,
     "factually_grounded": false
+  },
+  "acc-006": {
+    "no_forbidden_content": true,
+    "steers_to_accelerator": false,
+    "precise_next_step": false,
+    "artifact_produced": true,
+    "factually_grounded": false
+  },
+  "acc-007": {
+    "no_forbidden_content": true,
+    "steers_to_accelerator": false,
+    "precise_next_step": false,
+    "artifact_produced": true,
+    "factually_grounded": false
   }
 }

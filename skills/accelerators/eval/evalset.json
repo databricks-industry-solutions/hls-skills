@@ -18,5 +18,15 @@
     "task_id": "acc-005",
     "dataset": "",
     "query": "I want to install the Pixels accelerator with the OHIF viewer and CT auto-segmentation on our Azure Databricks workspace. I am not a workspace admin. What do I need and what are the steps? Save your final answer as markdown to /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/outputs/acc-005.md"
+  },
+  {
+    "task_id": "acc-006",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/accelerators/hl7/adt/",
+    "query": "Our EHR interface engine drops HL7v2 ADT messages as files into /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/hl7/adt/. I want them parsed into a Delta table and then pull patient ID, patient name, event type and visit number out with SQL. What is the best way to do this on Databricks? Give me the exact steps. Save your final answer as markdown to /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/outputs/acc-006.md"
+  },
+  {
+    "task_id": "acc-007",
+    "dataset": "/Volumes/hls_amer_catalog/vital_skills/eval/accelerators/hl7/batch/",
+    "query": "We get HL7v2 batch files in /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/hl7/batch/ (each file has FHS and BHS headers and several messages). We want to parse them on Databricks and land the messages in Delta. What should we use and what do we need to watch out for? Save your final answer as markdown to /Volumes/hls_amer_catalog/vital_skills/eval/accelerators/outputs/acc-007.md"
   }
 ]
