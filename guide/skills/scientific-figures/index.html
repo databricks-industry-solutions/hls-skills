@@ -1,0 +1,2560 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Guidance for generating publication-quality scientific and biopharma figures in Databricks notebooks and apps. Covers static plots (matplotlib/seaborn), interactive visualizations (Plotly), 3-D protein structure rendering (py3Dmol, Molstar), and domain-specific biopharma chart types (Kaplan-Meier, forest plots, waterfall, swimmer, volcano). Load this skill when the user asks to create, style, or export any scientific figure, plot, chart, or molecular visualization — or when migrating a notebook visualization into a Databricks App. Also load proactively for any life sciences research workflow — regardless of specific domain — because biological data analysis always produces figures as a side-effect even when the user's stated goal is 'analyze' rather than 'visualize'.">
+      
+      
+      
+        <link rel="canonical" href="https://databricks-industry-solutions.github.io/hls-skills/guide/skills/scientific-figures/">
+      
+      
+        <link rel="prev" href="../presentation-builder/">
+      
+      
+        <link rel="next" href="../skill-eval/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/databricks-logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>scientific-figures - Vital Skills</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=DM+Sans:300,300i,400,400i,700,700i%7CDM+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"DM Sans";--md-code-font:"DM Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  
+  <script>
+    (function () {
+      // Exactly how Material persists this site's two palette options:
+      // #__palette_0 = default (light, index 0), #__palette_1 = slate (dark, index 1).
+      var PALETTE = {
+        light: { index: 0, color: { media: "(prefers-color-scheme: light)", scheme: "default", primary: "custom", accent: "custom" } },
+        dark:  { index: 1, color: { media: "(prefers-color-scheme: dark)",  scheme: "slate",   primary: "custom", accent: "custom" } }
+      };
+      // Material namespaces the key as __md_scope.pathname + ".__palette", where
+      // __md_scope = new URL(base_url, location) = the site root at every page depth.
+      // base_url renders the same per-page relative path, so this is Material's exact key.
+      var key = new URL("../../..", location).pathname + ".__palette";
+
+      var vs = null;
+      try { vs = localStorage.getItem("vs-theme"); } catch (e) {}
+
+      // landing -> docs: if the landing set a theme, seed the site-root __palette
+      // before Material's own reader (which runs early in <body>) applies it, so the
+      // page loads in the shared scheme with no extra flash beyond Material's native one.
+      if (vs === "dark" || vs === "light") {
+        try { localStorage.setItem(key, JSON.stringify(PALETTE[vs])); } catch (e) {}
+      }
+
+      // docs -> landing: when the user flips Material's palette toggle, mirror the choice
+      // back to the shared "vs-theme" key so the landing page follows on its next load.
+      addEventListener("change", function (e) {
+        var t = e.target;
+        if (t && t.name === "__palette" && t.checked) {
+          var dark = t.getAttribute("data-md-color-scheme") === "slate";
+          try { localStorage.setItem("vs-theme", dark ? "dark" : "light"); } catch (e) {}
+        }
+      });
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#scientific-figures-skill" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../" title="Vital Skills" class="md-header__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vital Skills
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              scientific-figures
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:currentColor"><path d="M20.5 14.2A8.5 8.5 0 1 1 9.8 3.5a6.6 6.6 0 0 0 10.7 10.7z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="fill:none;stroke:currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../evaluation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../links/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Links
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="Vital Skills" class="md-nav__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    Vital Skills
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bulk-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../open-weight-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    open-weight-models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pathway-enrichment-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pathway-enrichment-analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sc-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sc-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort-builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cohort-builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rwe-cohortstudy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rwe-cohortstudy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../payer-provider-measure-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    payer-provider-measure-catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phi-deidentifier/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    phi-deidentifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../accelerators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    accelerators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../presentation-builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    presentation-builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scientific-figures
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scientific-figures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-which-subskill-to-load" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision: which subskill to load
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared-quality-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared quality standards
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shared quality standards">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resolution-and-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolution and sizing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resolution and sizing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#figure-width-hard-rule-applies-to-notebook-and-paper-figures-alike" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Figure width (hard rule, applies to notebook and paper figures alike)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#color" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Color
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typography" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typography
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pre-render-layout-planning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-render layout planning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#panel-aspect-ratio-hard-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Panel aspect ratio (hard rule)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-always-save-both-pdf-and-png" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default: always save both PDF and PNG
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#font-size-compensation-for-report-embedded-figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Font size compensation for report-embedded figures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rasterization-for-large-scatter-plots-hybrid-vectorraster-pdfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rasterization for large scatter plots (hybrid vector+raster PDFs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-ethics-in-figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data ethics in figures
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notebook-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebook workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mandatory-visual-review-every-figure-every-render" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mandatory visual review (every figure, every render)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mandatory visual review (every figure, every render)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#review-procedure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review procedure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#design-requirements-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design requirements checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#two-tier-review-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two-tier review standard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acknowledging-the-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acknowledging the review
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notebook-environment-setup-snippet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebook environment setup snippet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saving-figures-from-notebooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving figures from notebooks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#app-context-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        App context detection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference-library-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick reference: library selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skill-eval/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    skill-eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../links/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Links
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-which-subskill-to-load" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision: which subskill to load
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared-quality-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared quality standards
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shared quality standards">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resolution-and-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolution and sizing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resolution and sizing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#figure-width-hard-rule-applies-to-notebook-and-paper-figures-alike" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Figure width (hard rule, applies to notebook and paper figures alike)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#color" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Color
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typography" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typography
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pre-render-layout-planning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-render layout planning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#panel-aspect-ratio-hard-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Panel aspect ratio (hard rule)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-always-save-both-pdf-and-png" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default: always save both PDF and PNG
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#font-size-compensation-for-report-embedded-figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Font size compensation for report-embedded figures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rasterization-for-large-scatter-plots-hybrid-vectorraster-pdfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rasterization for large scatter plots (hybrid vector+raster PDFs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-ethics-in-figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data ethics in figures
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notebook-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebook workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mandatory-visual-review-every-figure-every-render" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mandatory visual review (every figure, every render)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mandatory visual review (every figure, every render)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#review-procedure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review procedure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#design-requirements-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design requirements checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#two-tier-review-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two-tier review standard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acknowledging-the-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acknowledging the review
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notebook-environment-setup-snippet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebook environment setup snippet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saving-figures-from-notebooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving figures from notebooks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#app-context-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        App context detection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference-library-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick reference: library selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="scientific-figures-skill">Scientific Figures Skill<a class="headerlink" href="#scientific-figures-skill" title="Permanent link">&para;</a></h1>
+<div class="admonition abstract">
+<p class="admonition-title">Skill details</p>
+<p><strong>Version</strong> 0.5 · <strong>Author</strong> Peter Hawkins · <strong>License</strong> Databricks</p>
+<p><a href="https://github.com/databricks-industry-solutions/hls-skills/tree/main/skills/scientific-figures">Browse on GitHub</a> · <a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/SKILL.md">Raw SKILL.md</a></p>
+</div>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>This is the hub skill. It defines shared quality standards (size, fonts,
+color, layout, export) that apply to every figure, and routes to the right
+subskill reference file based on the visualization context. Subskill files
+live under <code>references/</code> and are loaded on demand — do not load them all up
+front.</p>
+<h2 id="when-to-use">When to Use<a class="headerlink" href="#when-to-use" title="Permanent link">&para;</a></h2>
+<ul>
+<li>User asks to create, style, or export a scientific figure, plot, or chart in a Databricks notebook</li>
+<li>User needs a publication- or report-ready figure (journal PDF/PNG export, correct DPI and font sizes)</li>
+<li>User asks for an interactive visualization (hover, zoom, dashboard embed) or is migrating a notebook plot into a Databricks App</li>
+<li>User asks to render a protein structure, molecular surface, or binding site in 3-D (PDB/mmCIF)</li>
+<li>User asks for a biopharma domain chart: Kaplan-Meier, forest plot, waterfall, swimmer, volcano, dose-response, CONSORT</li>
+<li>Any life sciences analysis workflow that will produce figures as a side effect, even if the user only asked to "analyze"</li>
+</ul>
+<h2 id="workflow">Workflow<a class="headerlink" href="#workflow" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Route</strong>: match the request to subskill reference file(s) using the decision table below. Always load <code>references/color.md</code> alongside any rendering subskill.</li>
+<li><strong>Set up</strong>: emit the notebook environment setup snippet (below) before the first figure.</li>
+<li><strong>Plan the layout</strong>: apply the pre-render planning rules (legend placement, colorbar placement, panel count and width) before writing plotting code.</li>
+<li><strong>Render</strong>: write the figure code in its own cell, separate from expensive compute.</li>
+<li><strong>Review visually</strong>: fetch and inspect the rendered image against the design requirements checklist — mandatory for every figure (see "Mandatory visual review").</li>
+<li><strong>Export</strong>: save both PDF and PNG with <code>bbox_inches='tight'</code>; for LaTeX-embedded figures, check effective font size after scaling.</li>
+</ol>
+<h2 id="decision-which-subskill-to-load">Decision: which subskill to load<a class="headerlink" href="#decision-which-subskill-to-load" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Signal in the request</th>
+<th>Load subskill</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Any figure</strong> (always load, alongside the rendering subskill)</td>
+<td><a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/references/color.md">color.md</a></td>
+</tr>
+<tr>
+<td>Static plot, publication PDF/PNG, journal submission, poster</td>
+<td><a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/references/matplotlib-seaborn.md">matplotlib-seaborn.md</a></td>
+</tr>
+<tr>
+<td>Interactive plot, hover tooltips, zoomable, HTML export, dashboard embed</td>
+<td><a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/references/plotly-interactive.md">plotly-interactive.md</a></td>
+</tr>
+<tr>
+<td>Protein structure, PDB, mmCIF, molecular surface, binding site, 3-D render</td>
+<td><a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/references/protein-structure-3d.md">protein-structure-3d.md</a></td>
+</tr>
+<tr>
+<td>Protein-protein interface, chain contacts, interface residues, distance labels (only when asked; load with the protein subskill)</td>
+<td><a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/references/protein-interface.md">protein-interface.md</a></td>
+</tr>
+<tr>
+<td>KM curve, forest plot, waterfall, swimmer, volcano, CONSORT, dose-response</td>
+<td><a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/references/biopharma-domains.md">biopharma-domains.md</a></td>
+</tr>
+</tbody>
+</table>
+<p>If the request spans multiple subskills (e.g. "interactive KM curve"), load
+both the domain subskill and the rendering subskill.</p>
+<h2 id="shared-quality-standards">Shared quality standards<a class="headerlink" href="#shared-quality-standards" title="Permanent link">&para;</a></h2>
+<p>Apply these to EVERY figure regardless of library. <strong>These rules override any
+conflicting size, font or layout value in a subskill.</strong></p>
+<h3 id="resolution-and-sizing">Resolution and sizing<a class="headerlink" href="#resolution-and-sizing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Print / PDF</strong>: 300 DPI minimum, 600 DPI for line art.</li>
+<li><strong>Screen / notebook</strong>: 150 DPI is sufficient.</li>
+<li><strong>Databricks Apps</strong>: render at the container size; let the layout engine handle
+    responsiveness. The width rule below does not apply to app components.</li>
+</ul>
+<h4 id="figure-width-hard-rule-applies-to-notebook-and-paper-figures-alike">Figure width (hard rule, applies to notebook and paper figures alike)<a class="headerlink" href="#figure-width-hard-rule-applies-to-notebook-and-paper-figures-alike" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Layout</th>
+<th>Total figure width</th>
+<th>Derivation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Single panel</strong> (one plot)</td>
+<td><strong>~3.15 in</strong></td>
+<td>90% of one journal column (3.5 in)</td>
+</tr>
+<tr>
+<td><strong>2+ panels side by side</strong></td>
+<td><strong>~5.85 in</strong></td>
+<td>90% of letter text width (8.5 in page minus 1 in margins = 6.5 in)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The width covers <strong>everything</strong>: panels, legends, colorbars, panel letters
+    and margins. Legends do not get extra width beyond the limit.</li>
+<li>Never exceed 5.85 in for a static figure. If the content does not fit,
+    reduce panels per row, move legends below, shorten labels, or split the
+    figure. There is no "full-page 10 in" option (10 in is a page <em>height</em>).</li>
+<li><strong>Inherently wide single plots</strong> (KM with at-risk table, forest with
+    estimate column, waterfall, swimmer, labelled volcano) start at 3.15 in and
+    may widen up to 5.85 in only if the visual review shows they are cramped.</li>
+<li><strong>Single-panel figures with long labels</strong>: if a single-panel figure has
+    category labels (axis ticks, legend entries) long enough that 3.15 in would
+    leave less than 50% of the width for the actual plot area, use 5.85 in and
+    mark it as <code>figure*</code> (full-width) in LaTeX. This is common with biological
+    ontology terms, tissue names, and multi-word categories.</li>
+<li><strong>Exempt:</strong> interactive views (Plotly in notebooks/apps, 3-D viewers) are
+    sized to their container; fonts still follow the 8 pt rule. Their static
+    exports follow the width rule.</li>
+<li><strong>Posters, slides, or a specific journal's style guide</strong>: only when the
+    user explicitly asks, using the size they specify. No default presets.</li>
+<li>Height follows from the panel aspect rules below, not the other way round.</li>
+<li>At 150 DPI these widths render at ~470 px and ~880 px in the notebook.</li>
+</ul>
+<h3 id="color">Color<a class="headerlink" href="#color" title="Permanent link">&para;</a></h3>
+<p>All color rules live in <a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/scientific-figures/references/color.md">color.md</a>: the company palette, the
+color-by-count order (black → red → navy → orange → teal → grey, max 6 hues),
+shade families for related groups, fixed semantic colors, cross-panel
+consistency and colormaps. Load it for every figure.</p>
+<ul>
+<li><strong>Background</strong>: white (<code>#FFFFFF</code>) for publications. For notebooks and apps,
+    respect the Databricks theme if detectable; otherwise default to white.</li>
+</ul>
+<h3 id="typography">Typography<a class="headerlink" href="#typography" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Font family</strong>: <code>Arial</code> or <code>Helvetica</code> for journals (universal support).
+    <code>Inter</code> or <code>Source Sans Pro</code> for digital/app contexts.</li>
+<li><strong>Font size (hard rule, at final printed size)</strong>: <strong>8 pt for all text</strong> —
+    axis labels, tick labels, legends, colorbar labels, annotations, on-plot
+    labels and panel letters.<ul>
+<li><strong>Titles</strong> (figure and panel): <strong>at least 8 pt</strong>, bold. They may be
+    larger, but never smaller.</li>
+<li><strong>7.5 pt is the absolute floor.</strong> Nothing goes below it.</li>
+<li>If text does not fit at 8 pt, change the layout (fewer panels per
+    row, legend below, shorter labels, fewer on-plot labels). Do not shrink
+    the font.</li>
+<li>For figures embedded in a LaTeX report, "8 pt" means the <em>effective</em>
+    size after LaTeX scales the figure to the column width. See "Font size
+    compensation" under Export.</li>
+<li>Posters: scale up proportionally from 8 pt.</li>
+</ul>
+</li>
+<li><strong>Bold axis labels and tick labels</strong> by default — they read better at
+    typical journal column widths. Drop bold only if a specific journal style
+    guide prohibits it (e.g. some Cell Press templates). Title is always bold.</li>
+<li><strong>No <code>suptitle</code> for figures destined for LaTeX.</strong> The LaTeX <code>\caption{}</code>
+    serves as the figure title. A matplotlib <code>fig.suptitle()</code> creates a
+    duplicate title that either gets clipped (without <code>bbox_inches='tight'</code>) or
+    extends the PDF beyond the figsize (with tight), distorting the dimensions
+    LaTeX expects. For notebook-only figures, suptitle is fine — keep it at
+    <code>y≤0.98</code> with adequate <code>subplots_adjust(top=...)</code> to prevent overlap with
+    panel titles.</li>
+<li><strong>Long titles must wrap.</strong> If a title exceeds ~40 characters at the target
+    figure width, insert a <code>\n</code> to wrap to two lines and add <code>pad=12</code> to
+    prevent collision with the plot area. This applies to <code>ax.set_title()</code>,
+    colorbar labels, and legend titles.</li>
+</ul>
+<h3 id="pre-render-layout-planning">Pre-render layout planning<a class="headerlink" href="#pre-render-layout-planning" title="Permanent link">&para;</a></h3>
+<p>Before writing the plotting code, make these decisions based on the data:</p>
+<p><strong>Legends:</strong> Count the legend entries and estimate the longest label length.
+If entries × label length won't fit inside the axes at 8 pt, place the legend
+outside — below the figure with <code>bbox_to_anchor=(0.5, -0.1)</code>, <code>loc='upper
+center'</code>, and <code>ncol≥2</code>. Never rely on a wrapper library's default legend
+placement for figures with &gt;3 categories or labels &gt;20 characters — auto-placed
+legends overflow the axes unpredictably.</p>
+<p><strong>Colorbars:</strong> If a colorbar is present, decide placement before rendering.
+Vertical colorbars on the right waste margin in narrow figures — use horizontal
+at top or bottom for figures ≤3.15 in wide. For multi-panel figures, prefer a
+single shared colorbar rather than one per panel.</p>
+<p><strong>Wrapper library overrides:</strong> Many plotting libraries (seaborn, plotly,
+domain-specific wrappers) auto-place legends and colorbars outside the axes.
+When using any wrapper library:
+1. Suppress the auto-legend (the library's equivalent of "no legend") and
+    build a manual <code>fig.legend()</code> with explicit <code>bbox_to_anchor</code> inside the
+    figure bounds.
+2. If the library adds an auto-colorbar, render first (<code>make_figure()</code> or
+    equivalent), then find and hide the auto-placed colorbar axis, and add
+    your own with controlled positioning via <code>fig.add_axes()</code>.
+3. The specific suppression mechanism varies by library — check its docs.
+    The principle is always the same: take control away from the default and
+    place elements explicitly.</p>
+<h3 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Use a fixed <code>figsize</code> in inches set by the width rule above. For multi-panel
+    figures, <strong>size the panels first, then budget legends, gutters and margins
+    in inches</strong>, and place axes explicitly (<code>fig.add_axes</code> in inch-derived
+    fractions, or <code>GridSpec</code> with computed ratios). Never let leftover space
+    after legends decide the panel shape — that is what produces stretched plots.
+    <code>tight_layout()</code> / <code>constrained_layout=True</code> are acceptable for quick
+    single-panel exploratory plots only.</li>
+</ul>
+<h4 id="panel-aspect-ratio-hard-rule">Panel aspect ratio (hard rule)<a class="headerlink" href="#panel-aspect-ratio-hard-rule" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Equal aspect (<code>ax.set_aspect("equal", adjustable="datalim")</code> or
+    <code>"box"</code>) is required whenever x and y share units or the geometry is
+    meaningful</strong>: 2-D embeddings (e.g. PCA, t-SNE, UMAP), spatial /
+    geographic / image coordinates, x-vs-y of the same quantity (predicted vs
+    observed, replicate vs replicate, with a y = x line), correlation matrices
+    and heatmaps (square cells), 2-D structure projections and maps.</li>
+<li><strong>Otherwise choose the box aspect for the data</strong>, not the leftover space:
+    ~1:1 to 4:3 for scatter, violin, box and bar panels; wider (up to ~2:1) for
+    time series, KM curves and dose-response. Avoid panels taller than wide
+    unless the data is inherently vertical (forest plots, ranked lists,
+    swimmer plots).</li>
+<li>Plots of the same type in one figure share the same panel size.</li>
+<li>Remove chartjunk: no background grid by default (add light grid only when it
+    aids value reading, e.g. bar charts). Remove top and right spines for scatter
+    and line plots.</li>
+<li>Legend outside the plot area when &gt;3 items; inside (upper-right or best) for
+    ≤3 items.</li>
+<li>Multi-panel: use <code>subplot_mosaic</code> or <code>GridSpec</code> for complex layouts. Label
+    panels A, B, C in the upper-left corner, 8 pt bold.</li>
+</ul>
+<h3 id="export">Export<a class="headerlink" href="#export" title="Permanent link">&para;</a></h3>
+<h4 id="default-always-save-both-pdf-and-png">Default: always save both PDF and PNG<a class="headerlink" href="#default-always-save-both-pdf-and-png" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Always save both formats</strong> when figures may be used in a report or shared.
+    PDF for vector quality in LaTeX; PNG at 300 DPI for previews, slides, and
+    web. The <code>save_figure</code> helper below defaults to <code>formats=("pdf", "png")</code>.</li>
+<li><strong>PDF</strong> (<code>.pdf</code>): preferred for LaTeX <code>\includegraphics</code>. Vector text, axes,
+    and spines stay crisp at any zoom. Preferred over SVG for LaTeX workflows.</li>
+<li><strong>PNG</strong> (<code>.png</code>): 300 DPI raster. Use for notebook display, slides, and web.
+    Never <code>.jpg</code> for figures with text or line art.</li>
+<li><strong>Always save with <code>bbox_inches='tight'</code> for both PDF and PNG.</strong> This
+    prevents clipping of titles, legends below axes, rotated tick labels, and
+    colorbar labels that extend beyond the figsize — the most common source of
+    broken figure PDFs. To keep saved dimensions predictable for LaTeX, design
+    all content to fit within the figsize (see "Pre-render layout planning"
+    below) — then <code>bbox_inches='tight'</code> acts as a safety net that captures any
+    slight overhang without significantly changing the page size. If a figure's
+    tight-cropped dimensions differ substantially from its figsize, that signals
+    content is extending outside and the layout needs adjustment. Always print
+    the final figure size in the cell output.</li>
+<li>For Plotly: <code>write_image</code> (requires kaleido) for static export;
+    <code>write_html</code> for interactive sharing.</li>
+</ul>
+<h4 id="font-size-compensation-for-report-embedded-figures">Font size compensation for report-embedded figures<a class="headerlink" href="#font-size-compensation-for-report-embedded-figures" title="Permanent link">&para;</a></h4>
+<p>When figures are embedded in a LaTeX report via
+<code>\includegraphics[width=0.95\columnwidth]</code>, LaTeX scales each figure from its
+saved width to the column width. Because <code>bbox_inches='tight'</code> crops each
+figure differently (legends, colorbars, long labels all change the bounding
+box), the saved PDF widths vary — and so do the effective font sizes after
+scaling.</p>
+<p><strong>Default workflow (tight bbox with compensation):</strong></p>
+<ol>
+<li><strong>Start at 8 pt</strong> for all text (rcParams + every explicit <code>fontsize=</code> call).
+    Use <code>sns.set_context("paper", font_scale=0.8)</code> before <code>rcParams.update()</code>
+    so seaborn/scanpy internals also use small fonts.</li>
+<li><strong>Save with <code>bbox_inches='tight'</code></strong> (the default).</li>
+<li><strong>Check the saved PDF width</strong> by reading the MediaBox:
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pdf_path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">rb</span><span class="s1">'/MediaBox\s*\[\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+[\d.]+\s*\]'</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">saved_width_in</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="mi">72</span>
+</code></pre></div></li>
+<li><strong>Calculate the effective font size</strong> after LaTeX scaling:
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>effective_pt = source_pt × (target_width / saved_width)
+</code></pre></div>
+    where <code>target_width</code> is <code>0.95 × \columnwidth</code> (~6.18 in for REVTeX
+    preprint).</li>
+<li><strong>If effective size is off target</strong>, adjust the source font size:
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>adjusted_pt = round(target_pt × (saved_width / target_width), 1)
+</code></pre></div>
+    Clamp: never let the effective size fall below <strong>7.5 pt</strong>.</li>
+<li><strong>Re-render</strong> with the adjusted font size and re-save. One iteration is
+    usually sufficient — tight-bbox cropping is deterministic for a given
+    layout.</li>
+</ol>
+<p><strong>Audit all font sources.</strong> Hardcoded <code>fontsize=N</code> calls, rcParams, and
+seaborn context all contribute. When changing font sizes, grep for <em>every</em>
+<code>fontsize=</code> in the notebook — not just the ones matching the current value.
+Different cells may have been set independently.</p>
+<p><strong>When to use manual layout instead:</strong></p>
+<p>If the user needs pixel-exact font consistency across all figures (e.g. strict
+journal style requirements), switch to non-tight saving:
+- Remove <code>bbox_inches='tight'</code> (set <code>savefig.bbox</code> to <code>"standard"</code>)
+- Use explicit <code>fig.subplots_adjust(left=..., right=..., ...)</code> per figure
+- All figures save at exactly the <code>figsize</code> width → uniform scaling
+- This requires more per-figure iteration to avoid clipping, but guarantees
+    identical effective font sizes across all figures</p>
+<h4 id="rasterization-for-large-scatter-plots-hybrid-vectorraster-pdfs">Rasterization for large scatter plots (hybrid vector+raster PDFs)<a class="headerlink" href="#rasterization-for-large-scatter-plots-hybrid-vectorraster-pdfs" title="Permanent link">&para;</a></h4>
+<p>Pure vector PDFs of scatter plots with &gt;5,000 points become enormous and slow
+to render. Use matplotlib's <code>rasterized=True</code> on the scatter artist to produce
+<strong>hybrid PDFs</strong>: vector text, axes, spines, and legends with rasterized data
+points. This gives crisp text at any zoom while keeping file size manageable.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Hybrid rasterization: vector chrome, raster data</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">rasterized</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># data points rasterized</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># Text, axes, legends remain vector — crisp at any zoom</span>
+</code></pre></div>
+<p>When to use <code>rasterized=True</code>:
+- 2-D embeddings (PCA, t-SNE, UMAP — typically 5K–100K+ points)
+- Dense diagnostic scatter plots (e.g. residuals, QC metrics)
+- Any scatter with &gt;5,000 points</p>
+<p>When NOT to rasterize:
+- Bar charts, violin plots, box plots, line plots (already low element count)
+- Heatmaps (use <code>imshow</code> which is raster by default)
+- Dot plots (low element count)</p>
+<p><strong>Wrapper-library caveat:</strong> Some domain plotting libraries (e.g. scanpy,
+seaborn) pass <code>rasterized=</code> internally. If passing it again raises
+<code>TypeError: got multiple values for keyword argument 'rasterized'</code>, set
+rasterization on the axes instead:
+<code>ax.set_rasterization_zorder(1)</code> (rasterizes everything below zorder 1;
+data points default to zorder 0, text and axes are higher).</p>
+<h3 id="data-ethics-in-figures">Data ethics in figures<a class="headerlink" href="#data-ethics-in-figures" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Follow the workspace PHI rules: never plot individual patient identifiers.
+    Aggregate to cohort, arm, or compound level for any figure that may be shared.</li>
+<li>Axis labels must include units. Y-axis should start at zero for bar charts
+    unless there is a strong analytical reason not to (document the reason in a
+    comment).</li>
+<li>Do not truncate axes to exaggerate effects without explicit annotation.</li>
+</ul>
+<h2 id="notebook-workflow">Notebook workflow<a class="headerlink" href="#notebook-workflow" title="Permanent link">&para;</a></h2>
+<p><strong>Always split expensive compute from plot rendering.</strong> Put data loading,
+metric computation, and threshold calculations in their own cell(s). Put the
+figure-drawing code in a separate downstream cell that only reads the computed
+variables. This lets you iterate on aesthetics (fonts, colors, sizing) without
+re-running the expensive pipeline — a round-trip that often takes minutes for
+large or compute-heavy datasets.</p>
+<h2 id="mandatory-visual-review-every-figure-every-render">Mandatory visual review (every figure, every render)<a class="headerlink" href="#mandatory-visual-review-every-figure-every-render" title="Permanent link">&para;</a></h2>
+<p>A figure is not done until the agent has <strong>looked at the rendered image</strong> and
+fixed what it sees. Code that runs without error is not evidence that the
+figure is correct.</p>
+<p><strong>Hard rule: every figure gets at least one visual review.</strong> No exceptions.
+After <code>runAsset</code> on any cell that produces a figure, the agent's next action
+MUST be <code>getAssetExecutionResults</code> (or equivalent) to fetch and inspect the
+rendered image. Do not add the next cell, do not proceed to the next analysis
+step, until the review is done. This applies to intermediate figures, final
+figures, and exploratory plots alike.</p>
+<p><strong>"Cell ran without errors" is not a visual review.</strong> A cell can succeed while
+producing overlapping text, clipped legends, or distorted aspect ratios —
+matplotlib does not raise exceptions for layout problems. The only way to
+catch these is to look at the pixels. If the image cannot be fetched (e.g.
+context limits), state that explicitly ("I could not fetch the rendered image
+for visual review") rather than silently skipping the check.</p>
+<p><strong>After fixing a figure, re-fetch and re-review.</strong> The fix itself may introduce
+new problems (e.g. moving a legend below may collide with x-axis labels).
+Every edit-run cycle must end with a fresh visual inspection.</p>
+<h3 id="review-procedure">Review procedure<a class="headerlink" href="#review-procedure" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Render, then view.</strong> After running the plotting cell, fetch the rendered
+    image (e.g. <code>getAssetExecutionResults</code> for the cell) and inspect it. If the
+    run result only returns image metadata, fetch it explicitly.</li>
+<li><strong>Confirm it is the new render.</strong> Print the figure size (and any changed
+    parameter) in the cell output. If the image looks identical to the
+    previous version after a code change, verify the live values in the
+    session and re-fetch before drawing conclusions.</li>
+<li><strong>Check against the design requirements</strong> (see below).</li>
+<li><strong>Fix and repeat</strong> until the requirements pass (up to 3 rounds). Then
+    report to the user what was checked and any residual issue that could not
+    be fixed, instead of reporting the figure as finished.</li>
+</ol>
+<p>Never describe a figure's appearance, or call it complete, without having
+viewed the current render.</p>
+<h3 id="design-requirements-checklist">Design requirements checklist<a class="headerlink" href="#design-requirements-checklist" title="Permanent link">&para;</a></h3>
+<p>These are the pass/fail criteria for every figure. Each item is either met
+or not met — there is no "close enough."</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Requirement</th>
+<th>Pass condition</th>
+<th>Common failure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1</td>
+<td><strong>Width</strong></td>
+<td>Figure width matches the width rule (3.15 in single-panel, ≤5.85 in multi-panel). Saved file matches designed size.</td>
+<td><code>tight_layout</code> or <code>bbox_inches='tight'</code> silently changed the width.</td>
+</tr>
+<tr>
+<td>R2</td>
+<td><strong>Aspect ratio</strong></td>
+<td>Equal aspect where required (embeddings, spatial, correlation). Otherwise panels are ~1:1 to 4:3. Nothing looks stretched or squashed.</td>
+<td><code>set_aspect</code> missing on embedding plots; leftover space dictating panel shape.</td>
+</tr>
+<tr>
+<td>R3</td>
+<td><strong>No text overlap</strong></td>
+<td>No overlapping or clipped text, labels, legends, or panel letters. All text fully visible.</td>
+<td>Long legend entries or axis labels running into adjacent panels or data.</td>
+</tr>
+<tr>
+<td>R4</td>
+<td><strong>No dead space</strong></td>
+<td>No large empty gutters, oversized margins, or wasted whitespace.</td>
+<td><code>right=0.72</code> leaving 28% empty when legends are short.</td>
+</tr>
+<tr>
+<td>R5</td>
+<td><strong>Font sizes</strong></td>
+<td>8 pt for all text (7.5 pt floor). Titles ≥8 pt bold. Any hardcoded <code>fontsize=</code> below 7.5 is a failure. For report-embedded figures, check effective size after LaTeX scaling.</td>
+<td>Legend or tick labels dropped below 7.5 pt "to fit".</td>
+</tr>
+<tr>
+<td>R6</td>
+<td><strong>Color</strong></td>
+<td>Palette from color.md only. Count order respected. Max 6 hues. Same category = same color across panels. Neighbors distinguishable.</td>
+<td>Default matplotlib colors used instead of company palette.</td>
+</tr>
+<tr>
+<td>R7</td>
+<td><strong>Legends</strong></td>
+<td>Complete (every visual encoding explained). Not redundant with on-plot labels. Readable names (no raw column names or opaque IDs).</td>
+<td>Legend shows internal identifiers instead of human-readable names.</td>
+</tr>
+<tr>
+<td>R8</td>
+<td><strong>Axis labels</strong></td>
+<td>Every axis has a label. Units included where applicable.</td>
+<td>Embedding axes unlabeled; count axis missing units.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="two-tier-review-standard">Two-tier review standard<a class="headerlink" href="#two-tier-review-standard" title="Permanent link">&para;</a></h3>
+<p><strong>Standard review (interactive analysis):</strong> Every figure gets at least one
+pass through the checklist. Fix any R3 (text overlap) or R5 (font size)
+failures immediately — these are never acceptable. For R1, R2, R4, R6–R8,
+fix if possible within 1–2 edits; note residual issues to the user if not.</p>
+<p><strong>Report-generation review (PDF/LaTeX export):</strong> Figures destined for a
+report or publication must pass <strong>all 8 requirements</strong> before export. The
+agent must iterate (up to 3 rounds) until all pass, or explicitly flag which
+requirements could not be met and why. A figure that fails any requirement
+must not be silently included in a report.</p>
+<h3 id="acknowledging-the-review">Acknowledging the review<a class="headerlink" href="#acknowledging-the-review" title="Permanent link">&para;</a></h3>
+<p>After reviewing, state what you checked and any issues found — even if
+everything passed. Example: "Reviewed: 5.85×4.0 in, equal aspect on embeddings,
+no text overlap, 10pt legend (single-panel floor), palette correct." If you
+cannot state what you checked, you did not review.</p>
+<h2 id="notebook-environment-setup-snippet">Notebook environment setup snippet<a class="headerlink" href="#notebook-environment-setup-snippet" title="Permanent link">&para;</a></h2>
+<p>When generating the first figure in a notebook session, emit this setup cell
+before the figure code:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># -- Scientific figure defaults ------------------------------------------------</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">_FIGURE_STYLE</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="c1"># Canvas</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="s2">"figure.figsize"</span><span class="p">:</span> <span class="p">(</span><span class="mf">5.85</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">),</span>   <span class="c1"># multi-panel max width; single panel 3.15 in</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="s2">"figure.dpi"</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="s2">"savefig.dpi"</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="s2">"savefig.bbox"</span><span class="p">:</span> <span class="s2">"tight"</span><span class="p">,</span>      <span class="c1"># safety net; content should fit in figsize; see Export</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="s2">"savefig.pad_inches"</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="s2">"savefig.transparent"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="c1"># Font</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="s2">"font.family"</span><span class="p">:</span> <span class="s2">"sans-serif"</span><span class="p">,</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="s2">"font.sans-serif"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"Arial"</span><span class="p">,</span> <span class="s2">"Helvetica"</span><span class="p">,</span> <span class="s2">"DejaVu Sans"</span><span class="p">],</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="c1"># 8 pt everywhere; titles &gt;= 8 pt; absolute floor 7.5 pt</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="s2">"font.size"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="s2">"axes.titlesize"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="s2">"figure.titlesize"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    <span class="s2">"axes.titleweight"</span><span class="p">:</span> <span class="s2">"bold"</span><span class="p">,</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    <span class="s2">"figure.titleweight"</span><span class="p">:</span> <span class="s2">"bold"</span><span class="p">,</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    <span class="s2">"axes.labelsize"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    <span class="s2">"xtick.labelsize"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    <span class="s2">"ytick.labelsize"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    <span class="s2">"legend.fontsize"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    <span class="s2">"legend.title_fontsize"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    <span class="c1"># Axes</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    <span class="s2">"axes.spines.top"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    <span class="s2">"axes.spines.right"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    <span class="s2">"axes.grid"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>    <span class="s2">"axes.linewidth"</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>    <span class="c1"># Lines and markers</span>
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>    <span class="s2">"lines.linewidth"</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>    <span class="s2">"lines.markersize"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>    <span class="c1"># Legend</span>
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>    <span class="s2">"legend.frameon"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    <span class="c1"># Color</span>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>    <span class="s2">"axes.prop_cycle"</span><span class="p">:</span> <span class="n">mpl</span><span class="o">.</span><span class="n">cycler</span><span class="p">(</span>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>        <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">"#000000"</span><span class="p">,</span> <span class="s2">"#D62728"</span><span class="p">,</span> <span class="s2">"#3A6EA5"</span><span class="p">,</span> <span class="s2">"#F28C28"</span><span class="p">,</span> <span class="s2">"#1BA7A6"</span><span class="p">,</span> <span class="s2">"#8C8C8C"</span><span class="p">]</span>
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>    <span class="p">),</span>  <span class="c1"># color.md Rule 1 order: black, red, navy, orange, teal, grey</span>
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>    <span class="s2">"image.cmap"</span><span class="p">:</span> <span class="s2">"viridis"</span><span class="p">,</span>
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a><span class="p">}</span>
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a><span class="c1"># seaborn context/style OVERWRITE font sizes: call them first, then our rcParams.</span>
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a><span class="c1"># "paper" context with font_scale=0.8 keeps seaborn/scanpy internals near 8pt.</span>
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a><span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="s2">"paper"</span><span class="p">,</span> <span class="n">font_scale</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a><span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">"ticks"</span><span class="p">)</span>
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a><span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_FIGURE_STYLE</span><span class="p">)</span>
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a><span class="c1"># NOTE: Some domain libraries (e.g. scanpy) override rcParams on import.</span>
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a><span class="c1"># Re-enforce after their imports: mpl.rcParams.update(_FIGURE_STYLE)</span>
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Scientific figure defaults applied."</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="saving-figures-from-notebooks">Saving figures from notebooks<a class="headerlink" href="#saving-figures-from-notebooks" title="Permanent link">&para;</a></h2>
+<p>When the user wants to save a figure to a UC Volume or workspace path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">save_figure</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="p">(</span><span class="s2">"pdf"</span><span class="p">,</span> <span class="s2">"png"</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="sd">"""Save a matplotlib figure in one or more formats.</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="sd">    `path` is a UC Volume or workspace directory the user has chosen — ask</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="sd">    for it; do not assume a default. Always uses bbox_inches='tight' to</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="sd">    prevent clipping. Design all content to fit within the figsize so tight</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="sd">    acts as a safety net, not a layout tool.</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="sd">    """</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="k">for</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="n">formats</span><span class="p">:</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>        <span class="n">out</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">fmt</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="n">fmt</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">"tight"</span><span class="p">,</span> <span class="n">pad_inches</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Saved: </span><span class="si">{</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_size_inches</span><span class="p">()</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Figure size: </span><span class="si">{</span><span class="n">w</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">h</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> in"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="app-context-detection">App context detection<a class="headerlink" href="#app-context-detection" title="Permanent link">&para;</a></h2>
+<p>When the user's figure is destined for a Databricks App rather than a notebook
+or PDF, switch guidance:</p>
+<ol>
+<li><strong>Simple interactive chart (no complex UI)</strong>: stay in Plotly; use
+    <code>references/plotly-interactive.md</code>.</li>
+<li><strong>Rich app with controls, forms, multi-view</strong>: recommend migrating to a
+    React + Plotly.js or React + Deck.gl stack. See the migration section in
+    <code>references/plotly-interactive.md</code>.</li>
+<li><strong>3-D molecular viewer in an app</strong>: use Molstar (not py3Dmol). See
+    <code>references/protein-structure-3d.md</code>.</li>
+</ol>
+<h2 id="quick-reference-library-selection">Quick reference: library selection<a class="headerlink" href="#quick-reference-library-selection" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Library</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Static publication figure</td>
+<td>matplotlib + seaborn</td>
+<td>Best control, universal journal acceptance</td>
+</tr>
+<tr>
+<td>Quick EDA in notebook</td>
+<td>seaborn / pandas <code>.plot()</code></td>
+<td>Fastest iteration</td>
+</tr>
+<tr>
+<td>Interactive exploration</td>
+<td>Plotly</td>
+<td>Hover, zoom, filter; good notebook support</td>
+</tr>
+<tr>
+<td>Interactive in Databricks App</td>
+<td>Plotly (simple) or React + Plotly.js (complex)</td>
+<td>See app migration guide</td>
+</tr>
+<tr>
+<td>Protein / small molecule 3-D</td>
+<td><strong>Molstar</strong> (default: core CDN in notebooks, React in apps); py3Dmol if the user wants simple Python or asks for it</td>
+<td>Try Molstar first; NGL only as a last resort after telling the user. See protein subskill</td>
+</tr>
+<tr>
+<td>Geospatial / map overlays</td>
+<td>Plotly Mapbox or Folium</td>
+<td>Not covered in depth here</td>
+</tr>
+<tr>
+<td>Animated figures</td>
+<td>matplotlib FuncAnimation or Plotly frames</td>
+<td>Use sparingly; prefer faceting</td>
+</tr>
+</tbody>
+</table>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Saved figure width differs from <code>figsize</code></td>
+<td><code>bbox_inches='tight'</code> cropped overhanging content</td>
+<td>Content is extending outside the figsize — fix layout; treat tight as a safety net, not a layout tool</td>
+</tr>
+<tr>
+<td>Overlapping or clipped text/legends</td>
+<td>Auto-placed legend from a wrapper library, or labels too long for the width</td>
+<td>Suppress the auto-legend; place a manual <code>fig.legend()</code> below the axes; wrap long titles with <code>\n</code></td>
+</tr>
+<tr>
+<td><code>TypeError: got multiple values for keyword argument 'rasterized'</code></td>
+<td>Domain library (scanpy, seaborn) passes <code>rasterized=</code> internally</td>
+<td>Use <code>ax.set_rasterization_zorder(1)</code> instead of passing <code>rasterized=True</code></td>
+</tr>
+<tr>
+<td>Fonts too small in a LaTeX-embedded figure</td>
+<td>Tight-cropped PDF widths vary, so LaTeX scaling changes effective font size</td>
+<td>Read the MediaBox width, compute effective pt, adjust source font size and re-render (see Export)</td>
+</tr>
+<tr>
+<td>rcParams reset after import</td>
+<td>Some libraries (e.g. scanpy) override rcParams on import</td>
+<td>Re-apply <code>mpl.rcParams.update(_FIGURE_STYLE)</code> after their imports</td>
+</tr>
+<tr>
+<td>Plotly static export fails</td>
+<td><code>write_image</code> requires kaleido</td>
+<td>Install kaleido, or use <code>write_html</code> for interactive sharing instead</td>
+</tr>
+</tbody>
+</table>
+<h2 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Every figure gets a visual review.</strong> Never call a figure done without fetching and inspecting the rendered image; re-review after every fix (max 3 rounds, then report residual issues).</li>
+<li><strong>Never shrink text below 7.5 pt</strong> to make content fit — change the layout instead.</li>
+<li><strong>Never exceed the width rule</strong> (3.15 in single-panel, 5.85 in multi-panel) for static figures.</li>
+<li><strong>No individual patient identifiers in figures.</strong> Aggregate to cohort, arm, or compound level for anything that may be shared.</li>
+<li><strong>Do not truncate axes</strong> to exaggerate effects without explicit annotation; bar charts start at zero unless justified in a comment.</li>
+<li>Confirm with the user before heavy rendering workloads (e.g. &gt;100k-point 3-D views or batch figure generation).</li>
+</ol>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://matplotlib.org/stable/index.html">matplotlib documentation</a> — rcParams, layout engines, export</li>
+<li><a href="https://seaborn.pydata.org/">seaborn documentation</a> — statistical plotting contexts and styles</li>
+<li><a href="https://plotly.com/python/">Plotly Python documentation</a> — interactive figures and static export (kaleido)</li>
+<li><a href="https://pypi.org/project/py3Dmol/">py3Dmol documentation</a> — 3-D molecular visualization in notebooks</li>
+<li><a href="https://molstar.org/docs/">Molstar documentation</a> — 3-D molecular viewer for apps and notebooks</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright vs-copyright">
+  <a class="vs-footer-logo" href="https://www.databricks.com/" target="_blank" rel="noopener" title="Databricks">
+    <img src="../../assets/databricks-logo.svg" alt="Databricks" width="24" height="24">
+  </a>
+  <div>
+    
+      <div class="md-copyright__highlight">
+        Licensed under the Databricks License
+      </div>
+    
+    
+      Made with
+      <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+        Material for MkDocs
+      </a>
+    
+  </div>
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.suggest", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

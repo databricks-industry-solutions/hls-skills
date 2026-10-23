@@ -1,0 +1,1876 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Presentation builder that turns a finished HLS artifact — a cohort, de-identified dataset, model, measure catalog, or analysis in Unity Catalog — into a polished, shareable, self-contained HTML deck. Triggers on 'make a deck/slides', 'present this', 'share this out', 'turn this cohort/model/analysis into a presentation'. Renders onto a frozen 1920x1080 framework (keyboard/click nav, Save-as-PDF, Databricks branding) so every deck looks identical. GROUNDS every figure in the real artifact via scripts/ground.py (counts, distributions, numeric summaries, each cited to source) and never types a number by hand. Delegates PHI handling to the phi-deidentifier skill: de-identify the source first and build from its governed view; if it is not available, asks whether to include or exclude PHI. Run the vetted entrypoints in scripts/build_deck.py and scripts/ground.py — do not hand-write deck HTML. For building the cohort use cohort-builder; to de-identify first use phi-deidentifier.">
+      
+      
+      
+        <link rel="canonical" href="https://databricks-industry-solutions.github.io/hls-skills/guide/skills/presentation-builder/">
+      
+      
+        <link rel="prev" href="../accelerators/">
+      
+      
+        <link rel="next" href="../scientific-figures/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/databricks-logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>presentation-builder - Vital Skills</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=DM+Sans:300,300i,400,400i,700,700i%7CDM+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"DM Sans";--md-code-font:"DM Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  
+  <script>
+    (function () {
+      // Exactly how Material persists this site's two palette options:
+      // #__palette_0 = default (light, index 0), #__palette_1 = slate (dark, index 1).
+      var PALETTE = {
+        light: { index: 0, color: { media: "(prefers-color-scheme: light)", scheme: "default", primary: "custom", accent: "custom" } },
+        dark:  { index: 1, color: { media: "(prefers-color-scheme: dark)",  scheme: "slate",   primary: "custom", accent: "custom" } }
+      };
+      // Material namespaces the key as __md_scope.pathname + ".__palette", where
+      // __md_scope = new URL(base_url, location) = the site root at every page depth.
+      // base_url renders the same per-page relative path, so this is Material's exact key.
+      var key = new URL("../../..", location).pathname + ".__palette";
+
+      var vs = null;
+      try { vs = localStorage.getItem("vs-theme"); } catch (e) {}
+
+      // landing -> docs: if the landing set a theme, seed the site-root __palette
+      // before Material's own reader (which runs early in <body>) applies it, so the
+      // page loads in the shared scheme with no extra flash beyond Material's native one.
+      if (vs === "dark" || vs === "light") {
+        try { localStorage.setItem(key, JSON.stringify(PALETTE[vs])); } catch (e) {}
+      }
+
+      // docs -> landing: when the user flips Material's palette toggle, mirror the choice
+      // back to the shared "vs-theme" key so the landing page follows on its next load.
+      addEventListener("change", function (e) {
+        var t = e.target;
+        if (t && t.name === "__palette" && t.checked) {
+          var dark = t.getAttribute("data-md-color-scheme") === "slate";
+          try { localStorage.setItem("vs-theme", dark ? "dark" : "light"); } catch (e) {}
+        }
+      });
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hls-presentation-builder-grounded-shareable-decks" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../" title="Vital Skills" class="md-header__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vital Skills
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              presentation-builder
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:currentColor"><path d="M20.5 14.2A8.5 8.5 0 1 1 9.8 3.5a6.6 6.6 0 0 0 10.7 10.7z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="fill:none;stroke:currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Skills
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../evaluation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../links/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Links
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="Vital Skills" class="md-nav__button md-logo" aria-label="Vital Skills" data-md-component="logo">
+      
+  <img src="../../assets/vitalskills.png" alt="logo">
+
+    </a>
+    Vital Skills
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/databricks-industry-solutions/hls-skills" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hls-skills
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Skills
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bulk-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../open-weight-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    open-weight-models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pathway-enrichment-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pathway-enrichment-analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sc-rnaseq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sc-rnaseq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cohort-builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cohort-builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rwe-cohortstudy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rwe-cohortstudy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../payer-provider-measure-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    payer-provider-measure-catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phi-deidentifier/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    phi-deidentifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../accelerators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    accelerators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    presentation-builder
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    presentation-builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-identify-the-artifact-and-the-story" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Identify the artifact and the story
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-de-identify-before-you-present-delegate-to-phi-deidentifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — De-identify before you present (delegate to phi-deidentifier)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-ground-every-figure-groundpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Ground every figure (ground.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-assemble-the-slide-spec-vocabulary-in-referencesdeck_frameworkmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Assemble the slide spec (vocabulary in references/deck_framework.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-build-and-verify-build_deckbuild_deck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Build and verify (build_deck.build_deck)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-deliver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Deliver
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scientific-figures/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scientific-figures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skill-eval/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    skill-eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../links/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Links
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-identify-the-artifact-and-the-story" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Identify the artifact and the story
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-de-identify-before-you-present-delegate-to-phi-deidentifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — De-identify before you present (delegate to phi-deidentifier)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-ground-every-figure-groundpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Ground every figure (ground.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-assemble-the-slide-spec-vocabulary-in-referencesdeck_frameworkmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Assemble the slide spec (vocabulary in references/deck_framework.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-build-and-verify-build_deckbuild_deck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Build and verify (build_deck.build_deck)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-deliver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Deliver
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="hls-presentation-builder-grounded-shareable-decks">HLS Presentation Builder — Grounded, Shareable Decks<a class="headerlink" href="#hls-presentation-builder-grounded-shareable-decks" title="Permanent link">&para;</a></h1>
+<div class="admonition abstract">
+<p class="admonition-title">Skill details</p>
+<p><strong>Version</strong> 0.1 · <strong>Author</strong> Zachary Phillips · <strong>License</strong> Databricks License</p>
+<p><a href="https://github.com/databricks-industry-solutions/hls-skills/tree/main/skills/presentation-builder">Browse on GitHub</a> · <a href="https://github.com/databricks-industry-solutions/hls-skills/blob/main/skills/presentation-builder/SKILL.md">Raw SKILL.md</a></p>
+</div>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Turns a finished HLS artifact into a <strong>self-contained HTML presentation a stakeholder can
+open in any browser and share</strong> — no server, no login, no PowerPoint. The deck renders onto
+a frozen design framework (fixed 1920×1080 canvas scaled to fit, keyboard/click navigation,
+one-slide-per-page "Save as PDF", Databricks branding), so the author only supplies a
+<em>slide spec</em> and the figures. What makes the output trustworthy is built in: every number on
+a data slide is <strong>grounded</strong> in the real artifact (pulled by <code>ground.py</code> and cited to its
+source table/column) and never typed by hand.</p>
+<p>PHI handling is <strong>delegated</strong>, not re-implemented here: before building a deck from a
+patient-level source, de-identify it with the <strong>phi-deidentifier</strong> skill and build from its
+governed view. If <code>phi-deidentifier</code> is not available in the environment, the builder
+<strong>asks the user</strong> whether PHI may be included — see "De-identify before you present" below.</p>
+<p>It runs on the <strong>execution model</strong>: Genie Code calls the vetted entrypoints and reports
+their output. It does not hand-write the ~400-line deck shell (that is frozen in
+<code>scripts/deck_framework.py</code>) and does not invent a figure (those come from <code>ground.py</code>).</p>
+<h2 id="when-to-use">When to Use<a class="headerlink" href="#when-to-use" title="Permanent link">&para;</a></h2>
+<ul>
+<li>"Turn this cohort into a deck I can send to the clinical team."</li>
+<li>"Make a shareable presentation of the de-identified claims dataset."</li>
+<li>"Present my model's evaluation metrics as slides for the review."</li>
+<li>"Write up this analysis / measure catalog as an HTML one-pager to share."</li>
+<li>"I need a readout deck for stakeholders — grounded in the real numbers, PHI-safe."</li>
+<li>"Export the cohort summary as slides and let me Save-as-PDF."</li>
+</ul>
+<p>For building the cohort itself use <strong>cohort-builder</strong>; to de-identify a table before it
+goes into a shareable deck use <strong>phi-deidentifier</strong>.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Compute: Python-enabled compute (serverless or a cluster) — NOT a SQL-only warehouse.</strong>
+    The entrypoints are Python functions; <code>ground.py</code> uses the Databricks SDK to execute SQL
+    against a warehouse on your behalf (auto-selected, or pass <code>warehouse_id=</code>). Auth is
+    ambient in-workspace, or a CLI <code>profile=</code> locally. <strong>Rendering a deck needs no warehouse at
+    all</strong> — only the grounding step queries data.</li>
+<li><strong>Inputs</strong>: a finished artifact to present — most often a Unity Catalog table/view
+    (<code>catalog.schema.table</code>): a cohort, a de-identified dataset, a scored table, a measure
+    catalog. Model metrics can come from an MLflow run / registered model you pass in as
+    figures.</li>
+<li><strong>No external services</strong> are required to render; an optional Google-Fonts link loads DM
+    Sans/DM Mono and degrades gracefully to system fonts offline.</li>
+</ul>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="p">;</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"scripts"</span><span class="p">)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ground</span><span class="o">,</span><span class="w"> </span><span class="nn">build_deck</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># De-identify FIRST if the source holds PHI: run the phi-deidentifier skill and point TABLE</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># at its governed view. If phi-deidentifier isn't available, ask the user whether to include</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># or exclude PHI before building (see "De-identify before you present").</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">TABLE</span> <span class="o">=</span> <span class="s2">"catalog.schema.my_cohort_deid"</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># 1) GROUND: pull real figures (each returns a `source` string to print on the slide).</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">head</span>  <span class="o">=</span> <span class="n">ground</span><span class="o">.</span><span class="n">cohort_summary</span><span class="p">(</span><span class="n">TABLE</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="s2">"my-profile"</span><span class="p">)</span>          <span class="c1"># N rows / N subjects</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">payer</span> <span class="o">=</span> <span class="n">ground</span><span class="o">.</span><span class="n">column_distribution</span><span class="p">(</span><span class="n">TABLE</span><span class="p">,</span> <span class="s2">"payer"</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="s2">"my-profile"</span><span class="p">)</span>  <span class="c1"># bar data</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># 2) ASSEMBLE a spec from those figures (never hand-type a number).</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">spec</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"My Cohort"</span><span class="p">,</span> <span class="s2">"footer_left"</span><span class="p">:</span> <span class="s2">"Databricks · HLS"</span><span class="p">,</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>  <span class="s2">"slides"</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"cover"</span><span class="p">,</span> <span class="s2">"theme"</span><span class="p">:</span> <span class="s2">"dark"</span><span class="p">,</span> <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"My [[cohort]]"</span><span class="p">,</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>     <span class="s2">"subtitle"</span><span class="p">:</span> <span class="s2">"Grounded, governed readout."</span><span class="p">},</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"metrics"</span><span class="p">,</span> <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Headline"</span><span class="p">,</span> <span class="s2">"tiles"</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>      <span class="p">{</span><span class="s2">"value"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">head</span><span class="p">[</span><span class="s1">'n_subjects'</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Patients"</span><span class="p">,</span> <span class="s2">"caption"</span><span class="p">:</span> <span class="n">head</span><span class="p">[</span><span class="s2">"source"</span><span class="p">]}]},</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"bar_chart"</span><span class="p">,</span> <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"By payer"</span><span class="p">,</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>     <span class="s2">"chart"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"heading"</span><span class="p">:</span> <span class="s2">"Patients by payer"</span><span class="p">,</span> <span class="s2">"unit"</span><span class="p">:</span> <span class="s2">"patients"</span><span class="p">,</span> <span class="s2">"bars"</span><span class="p">:</span> <span class="n">payer</span><span class="p">[</span><span class="s2">"bars"</span><span class="p">]},</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>     <span class="s2">"notes"</span><span class="p">:</span> <span class="n">payer</span><span class="p">[</span><span class="s2">"source"</span><span class="p">]},</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  <span class="p">],</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="p">}</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="c1"># 3) BUILD a single self-contained .html the user can open and share.</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="nb">print</span><span class="p">(</span><span class="n">build_deck</span><span class="o">.</span><span class="n">build_deck</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">"~/Downloads/my_cohort_deck.html"</span><span class="p">))</span>
+</code></pre></div>
+<h2 id="workflow">Workflow<a class="headerlink" href="#workflow" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-identify-the-artifact-and-the-story">Step 1 — Identify the artifact and the story<a class="headerlink" href="#step-1-identify-the-artifact-and-the-story" title="Permanent link">&para;</a></h3>
+<p>Confirm what is being presented (cohort / dataset / model / analysis) and the audience
+(clinical, data, security, exec). Pick 5–8 slides. Keep one idea per slide.</p>
+<h3 id="step-2-de-identify-before-you-present-delegate-to-phi-deidentifier">Step 2 — De-identify before you present (delegate to <code>phi-deidentifier</code>)<a class="headerlink" href="#step-2-de-identify-before-you-present-delegate-to-phi-deidentifier" title="Permanent link">&para;</a></h3>
+<p>This skill does <strong>not</strong> detect, classify, or redact PHI — that is delegated. Before building
+a deck from any patient-/member-level source:</p>
+<ol>
+<li>
+<p><strong>Run the <code>phi-deidentifier</code> skill</strong> on the source table. It produces a de-identified,
+    k-anonymous, governed Unity Catalog view (Safe Harbor) and a readout of what was removed.
+    Point the grounding step (Step 3) at <strong>that view</strong>, not the raw table.</p>
+</li>
+<li>
+<p><strong>If <code>phi-deidentifier</code> is NOT available</strong> in the environment — i.e. it is not installed
+    in Genie or whatever LLM/agent is running this skill — <strong>do not guess, and do not quietly
+    ship PHI.</strong> Stop and ask the user, e.g.:</p>
+<blockquote>
+<p>"The <code>phi-deidentifier</code> skill isn't available here, so I can't automatically redact PHI
+from <code>&lt;table&gt;</code> before putting it in a shareable deck. How would you like to proceed?
+<strong>(a) Include PHI</strong> as-is in the presentation (you confirm the source is already
+de-identified or that sharing identifiable data is acceptable), or <strong>(b) Exclude PHI</strong> —
+I'll present grounded aggregates only (counts, distributions, numeric summaries) and
+leave out patient-level rows."</p>
+</blockquote>
+<p>Build only after the user chooses. If they choose (b), stick to the <code>ground.py</code> aggregate
+helpers and do not place patient-level sample rows on any slide.</p>
+</li>
+</ol>
+<p>A non-PHI source (model metrics, a measure catalog, an already-de-identified view) needs no
+de-identification step — go straight to Step 3.</p>
+<h3 id="step-3-ground-every-figure-groundpy">Step 3 — Ground every figure (<code>ground.py</code>)<a class="headerlink" href="#step-3-ground-every-figure-groundpy" title="Permanent link">&para;</a></h3>
+<p>Pull the numbers from the data; never type them. Each helper returns a <code>source</code> string —
+put it in the tile <code>caption</code> or the slide <code>notes</code> so the deck is self-citing.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Returns</th>
+<th>Use on slide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cohort_summary(table)</code></td>
+<td><code>n_rows</code>, <code>n_subjects</code></td>
+<td><code>metrics</code> tile</td>
+</tr>
+<tr>
+<td><code>numeric_summary(table, col)</code></td>
+<td><code>min/max/avg/median/count</code></td>
+<td><code>metrics</code> tile</td>
+</tr>
+<tr>
+<td><code>column_distribution(table, col)</code></td>
+<td><code>bars</code> (top-N value counts)</td>
+<td><code>bar_chart</code></td>
+</tr>
+<tr>
+<td><code>profile_table(table)</code></td>
+<td>row count, columns</td>
+<td>sanity / lineage</td>
+</tr>
+</tbody>
+</table>
+<h3 id="step-4-assemble-the-slide-spec-vocabulary-in-referencesdeck_frameworkmd">Step 4 — Assemble the slide spec (vocabulary in <code>references/deck_framework.md</code>)<a class="headerlink" href="#step-4-assemble-the-slide-spec-vocabulary-in-referencesdeck_frameworkmd" title="Permanent link">&para;</a></h3>
+<p>Layout types: <code>cover</code>, <code>statement</code>, <code>bullets</code>, <code>cards</code>, <code>metrics</code>, <code>bar_chart</code>,
+<code>two_column</code>, <code>architecture</code>, <code>closing</code>. Per slide: <code>theme</code> (<code>light</code>/<code>dark</code>), <code>kicker</code>,
+<code>title</code>, <code>subtitle</code>, <code>notes</code> (speaker notes), <code>footer_left</code>. Inline markup in any text:
+<code>[[x]]</code> → accent highlight, <code>**x**</code> → bold. All content is HTML-escaped automatically.</p>
+<h3 id="step-5-build-and-verify-build_deckbuild_deck">Step 5 — Build and verify (<code>build_deck.build_deck</code>)<a class="headerlink" href="#step-5-build-and-verify-build_deckbuild_deck" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">build_deck</span><span class="o">.</span><span class="n">build_deck</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">"~/Downloads/deck.html"</span><span class="p">)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># -&gt; {path, slides, bytes, titles}</span>
+</code></pre></div>
+<p>Open the file in a browser. Navigate with ← / → / space / click (left half = back) / <code>R</code>
+to reset / <code>End</code>. <strong>Save as PDF</strong>: the browser print dialog emits one slide per page.</p>
+<h3 id="step-6-deliver">Step 6 — Deliver<a class="headerlink" href="#step-6-deliver" title="Permanent link">&para;</a></h3>
+<p>Hand over the <code>.html</code> (self-contained — email it, drop it in Drive, host it anywhere). Note
+to the recipient that it is grounded in <code>&lt;table&gt;</code> — and, when the source held PHI, that it
+was de-identified upstream with <code>phi-deidentifier</code> (or that the user explicitly approved the
+PHI it contains).</p>
+<h2 id="key-parameters">Key Parameters<a class="headerlink" href="#key-parameters" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Where</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spec["slides"]</code></td>
+<td><code>build_deck</code></td>
+<td>the slides, each a layout dict (see <code>references/deck_framework.md</code>)</td>
+</tr>
+<tr>
+<td><code>spec["accent"]</code></td>
+<td><code>build_deck</code></td>
+<td>optional <code>#hex</code> brand accent override (default <code>#ff3621</code>)</td>
+</tr>
+<tr>
+<td><code>theme</code></td>
+<td>per slide</td>
+<td><code>"light"</code> (default) or <code>"dark"</code></td>
+</tr>
+<tr>
+<td><code>top</code></td>
+<td><code>ground.column_distribution</code></td>
+<td>keep the top-N categories by count (default <code>8</code>)</td>
+</tr>
+<tr>
+<td><code>profile</code>, <code>warehouse_id</code></td>
+<td><code>ground.*</code></td>
+<td>CLI profile / warehouse for the grounding queries</td>
+</tr>
+</tbody>
+</table>
+<h2 id="expected-outputs">Expected Outputs<a class="headerlink" href="#expected-outputs" title="Permanent link">&para;</a></h2>
+<ul>
+<li>A single self-contained <code>.html</code> file at <code>out_path</code> (open in any browser, email, host anywhere).</li>
+<li><code>build_deck.build_deck(...)</code> returns <code>{path, slides, bytes, titles}</code>.</li>
+<li><code>ground.*</code> helpers return figures plus a <code>source</code> string to print as the slide caption.</li>
+<li>Navigation (←/→/space/click/<code>R</code>) and browser "Save as PDF" (one slide per page) work out of the box.</li>
+</ul>
+<h2 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>No hand-entered figures.</strong> Numbers on <code>metrics</code>/<code>bar_chart</code> slides must come from
+    <code>ground.py</code>. If a figure isn't grounded, label it an assumption on a <code>statement</code> slide.</li>
+<li><strong>Sanity-check numeric figures before you print them.</strong> <code>numeric_summary</code> returns <code>min</code>
+    and <code>max</code> alongside <code>avg</code>/<code>median</code> on purpose — eyeball them. Real tables (especially
+    synthetic ones) carry impossible outliers (e.g. an HbA1c of 246,952%), which wreck a
+    <strong>mean</strong> while leaving the <strong>median</strong> sane. Prefer the median, or filter the measure to a
+    plausible range, and never put a mean on a slide without checking its min/max first.
+    Grounding reports what's in the data — it does not launder it.</li>
+<li><strong>De-identify PHI upstream; never ship it silently.</strong> This skill does not redact PHI.
+    For a patient-level source, run <code>phi-deidentifier</code> first and build from its governed view.
+    If <code>phi-deidentifier</code> is unavailable, ask the user to include or exclude PHI (Step 2) and
+    build only after they choose — do not decide on their behalf.</li>
+<li><strong>No editing the frozen framework.</strong> <code>deck_framework.py</code> is the locked shell; styling
+    changes go in <code>layouts.COMPONENT_CSS</code> or the per-slide spec, never in the framework block.</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The source table has PHI and <code>phi-deidentifier</code> isn't installed</strong> — don't build yet.
+    Ask the user to include or exclude PHI (Step 2); if they exclude it, present grounded
+    aggregates only and omit patient-level rows.</li>
+<li><strong>A distribution looks short / a category is missing</strong> — only the top <code>top</code> categories (by
+    count, default 8) are returned; raise <code>top</code> to show more.</li>
+<li><strong><code>ValueError: unknown type ...</code> / <code>theme must be ...</code></strong> — the spec has a layout type or
+    theme the renderer doesn't support; see the vocabulary in <code>references/deck_framework.md</code>.</li>
+<li><strong>Fonts look like the system default</strong> — the DM Sans/DM Mono webfont link needs network
+    access; offline it falls back to system-ui by design (the deck is still self-contained).</li>
+<li><strong>Navigation / Save-as-PDF misbehaves</strong> — do not hand-edit <code>deck_framework.py</code>; regenerate
+    the deck through <code>build_deck</code> so the frozen shell is emitted verbatim.</li>
+</ul>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/build_deck.py</code></td>
+<td>Entrypoint: validate spec → render → write self-contained <code>.html</code></td>
+</tr>
+<tr>
+<td><code>scripts/deck_framework.py</code></td>
+<td><strong>Frozen</strong> deck shell (CSS, navigation runtime, print, protocol)</td>
+</tr>
+<tr>
+<td><code>scripts/layouts.py</code></td>
+<td>Pure slide renderers + the editable component CSS</td>
+</tr>
+<tr>
+<td><code>scripts/ground.py</code></td>
+<td>Grounded reads (counts/distributions/summaries), each cited to its source</td>
+</tr>
+<tr>
+<td><code>references/deck_framework.md</code></td>
+<td>Deck-spec contract + full layout vocabulary reference</td>
+</tr>
+<tr>
+<td><code>references/grounding_recipes.md</code></td>
+<td>SQL recipes for grounding figures + how PHI is delegated</td>
+</tr>
+<tr>
+<td><code>examples/build_example_deck.py</code></td>
+<td>Runnable worked example (a cohort readout deck)</td>
+</tr>
+<tr>
+<td><code>tests/</code></td>
+<td>Offline unit tests (framework emission, renderer safety, grounding shape)</td>
+</tr>
+</tbody>
+</table>
+<p>Design framework adapted from the OpenDesign deck runtime (open-design.ai). PHI
+de-identification is delegated to the <code>phi-deidentifier</code> skill (HIPAA Safe Harbor,
+45 CFR §164.514(b)(2)).</p>
+<h2 id="evaluation">Evaluation<a class="headerlink" href="#evaluation" title="Permanent link">&para;</a></h2>
+<p>Offline unit tests (<code>tests/test_presentation_builder.py</code>, no warehouse) assert the
+invariants: the frozen framework is emitted verbatim (navigation + print survive), the
+renderers are deterministic and HTML-escape all content (an unknown layout / empty deck /
+bad theme fails loud), and the grounding reader shapes figures the way the renderers expect.
+Run <code>python3 -I -m pytest tests/ -q</code>.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright vs-copyright">
+  <a class="vs-footer-logo" href="https://www.databricks.com/" target="_blank" rel="noopener" title="Databricks">
+    <img src="../../assets/databricks-logo.svg" alt="Databricks" width="24" height="24">
+  </a>
+  <div>
+    
+      <div class="md-copyright__highlight">
+        Licensed under the Databricks License
+      </div>
+    
+    
+      Made with
+      <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+        Material for MkDocs
+      </a>
+    
+  </div>
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.suggest", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
