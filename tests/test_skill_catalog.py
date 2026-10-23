@@ -37,6 +37,7 @@ def test_catalog_order_follows_category_then_name():
         "phi-deidentifier",
         "accelerators",
         "presentation-builder",
+        "report-builder",
         "scientific-figures",
         "skill-eval",
     ]
