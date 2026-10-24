@@ -1,4 +1,3 @@
-<!-- Generated from CHANGELOG.md. Edit that file, then run python docs/hooks/skill_catalog.py -->
 # Changelog
 
 All notable changes to Vital Skills are documented here.

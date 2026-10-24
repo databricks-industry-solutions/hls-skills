@@ -193,7 +193,9 @@ def test_every_docs_include_resolves(page):
     expand_includes(page.read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("name", ["setup.md", "contributing.md", "evaluation.md"])
+@pytest.mark.parametrize(
+    "name", ["setup.md", "contributing.md", "evaluation.md", "CHANGELOG.md"]
+)
 def test_guide_page_is_copied_from_repo_file(name):
     page = REPO_ROOT / "docs" / "guide" / name
     assert any(MARKER.match(line) for line in page.read_text(encoding="utf-8").splitlines())
@@ -204,6 +206,16 @@ def test_evaluation_page_has_whole_section():
     out, _ = expand_includes(page.read_text(encoding="utf-8"))
     assert "## Run an evaluation" in out and "## What the `eval/` folder holds" in out
     assert "!!! warning" in out and "## Docs site" not in out
+
+
+def test_changelog_page_copies_root_file():
+    page = REPO_ROOT / "docs" / "guide" / "CHANGELOG.md"
+    out, used = expand_includes(page.read_text(encoding="utf-8"))
+    assert used == {REPO_ROOT / "CHANGELOG.md"}
+    assert out.startswith("# Changelog")
+    assert "## [1.0.0]" in out
+    assert "<!-- include:" not in out
+    assert out.count("\n# ") == 0
 
 
 def test_contributing_page_has_no_cla():
