@@ -1,8 +1,9 @@
-"""Skill table for README.md and docs/index.html, from skills/*/SKILL.md.
+"""Generated catalog files: README table, landing-page skills, docs changelog.
 
 Each skill's frontmatter holds `category` and `summary`. This module formats
 those into the README Markdown table and the landing-page TOPICS/SKILLS
 arrays. Markers in those files are the only parts that are rewritten.
+`docs/CHANGELOG.md` is a copy of the root `CHANGELOG.md`.
 
   python docs/hooks/skill_catalog.py
 """
@@ -20,6 +21,12 @@ REPO_ROOT = HOOKS_DIR.parents[1]
 SKILLS_DIR = REPO_ROOT / "skills"
 README = REPO_ROOT / "README.md"
 LANDING = REPO_ROOT / "docs" / "index.html"
+ROOT_CHANGELOG = REPO_ROOT / "CHANGELOG.md"
+DOCS_CHANGELOG = REPO_ROOT / "docs" / "CHANGELOG.md"
+CHANGELOG_BANNER = (
+    "<!-- Generated from CHANGELOG.md. Edit that file, then run "
+    "python docs/hooks/skill_catalog.py -->\n"
+)
 
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 
@@ -168,14 +175,48 @@ def inject_landing_page(text: str, skills: list[dict] | None = None) -> str:
     return replace_block(text, JS_START, JS_END, js_catalog(skills))
 
 
+def docs_changelog(source: str | None = None) -> str:
+    """Root CHANGELOG.md plus a do-not-edit banner, for docs/CHANGELOG.md."""
+    text = ROOT_CHANGELOG.read_text(encoding="utf-8") if source is None else source
+    if not text.endswith("\n"):
+        text += "\n"
+    return CHANGELOG_BANNER + text
+
+
+def _matches(path: Path, expected: str) -> bool:
+    try:
+        return path.read_text(encoding="utf-8") == expected
+    except FileNotFoundError:
+        return False
+
+
+def _generated_ok() -> list[tuple[Path, bool]]:
+    skills = load_skills()
+    return [
+        (
+            README,
+            _matches(README, inject_readme(README.read_text(encoding="utf-8"), skills)),
+        ),
+        (
+            LANDING,
+            _matches(
+                LANDING, inject_landing_page(LANDING.read_text(encoding="utf-8"), skills)
+            ),
+        ),
+        (DOCS_CHANGELOG, _matches(DOCS_CHANGELOG, docs_changelog())),
+    ]
+
+
 def sync(write: bool = True) -> tuple[Path, ...]:
     skills = load_skills()
     readme = inject_readme(README.read_text(encoding="utf-8"), skills)
     landing = inject_landing_page(LANDING.read_text(encoding="utf-8"), skills)
+    changelog = docs_changelog()
     if write:
         README.write_text(readme, encoding="utf-8")
         LANDING.write_text(landing, encoding="utf-8")
-    return README, LANDING
+        DOCS_CHANGELOG.write_text(changelog, encoding="utf-8")
+    return README, LANDING, DOCS_CHANGELOG
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -183,33 +224,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="exit 1 if README.md or docs/index.html are out of date",
+        help="exit 1 if README.md, docs/index.html, or docs/CHANGELOG.md are out of date",
     )
     args = parser.parse_args(argv)
-    skills = load_skills()
-    readme_ok = README.read_text(encoding="utf-8") == inject_readme(
-        README.read_text(encoding="utf-8"), skills
-    )
-    landing_ok = LANDING.read_text(encoding="utf-8") == inject_landing_page(
-        LANDING.read_text(encoding="utf-8"), skills
-    )
+    status = _generated_ok()
     if args.check:
-        if readme_ok and landing_ok:
+        stale = [path for path, ok in status if not ok]
+        if not stale:
             return 0
-        stale = [
-            path
-            for path, ok in ((README, readme_ok), (LANDING, landing_ok))
-            if not ok
-        ]
         print(
-            "Skill catalog is stale. Run:\n"
+            "Generated files are stale. Run:\n"
             "  python docs/hooks/skill_catalog.py\n"
             "Out of date: " + ", ".join(p.as_posix() for p in stale),
             file=sys.stderr,
         )
         return 1
     sync(write=True)
-    print(f"Updated {README.relative_to(REPO_ROOT)} and {LANDING.relative_to(REPO_ROOT)}")
+    names = ", ".join(p.relative_to(REPO_ROOT).as_posix() for p, _ in status)
+    print(f"Updated {names}")
     return 0
 
 

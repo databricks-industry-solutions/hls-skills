@@ -59,7 +59,7 @@ The `description` field is the discovery hook agents use before loading the full
 - No promotional adjectives (`powerful`, `comprehensive`, `state-of-the-art`)
 - Set `category` to one of `Bioinformatics`, `Clinical`, `Others`
 - Set `summary` to a one-line outcome for the README and landing-page tables (≤ 200 chars; quote the value if it contains a colon)
-- After adding or changing a skill, run `python docs/hooks/skill_catalog.py` so those tables stay in sync
+- After adding or changing a skill, run `python docs/hooks/skill_catalog.py` so those tables stay in sync (also copies `CHANGELOG.md` → `docs/CHANGELOG.md`)
 
 ### Step 4. Bundled Resources
 

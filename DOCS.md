@@ -14,7 +14,7 @@ The [GitHub Pages site](https://databricks-industry-solutions.github.io/vital-sk
 | Evaluation | The `#### 3. Evaluate with and without skill` section of [CONTRIBUTING.md](CONTRIBUTING.md) | `CONTRIBUTING.md` |
 | FAQ | `docs/guide/faq.md` | The page itself |
 | Links | `docs/guide/links.md` | The page itself |
-| Changelog | `docs/CHANGELOG.md` | The page itself |
+| Changelog | Root [CHANGELOG.md](CHANGELOG.md); `docs/CHANGELOG.md` is a generated copy | The root file, then `python docs/hooks/skill_catalog.py` |
 
 A page under `docs/guide/` that holds only a title and a line like `<!-- include: README.md#Setup -->` is a copy. Editing that page changes nothing you can see.
 

@@ -12,6 +12,8 @@ from skill_catalog import (  # noqa: E402
     CATEGORY_INDEX,
     CATEGORY_NAMES,
     CatalogError,
+    DOCS_CHANGELOG,
+    docs_changelog,
     inject_landing_page,
     inject_readme,
     js_catalog,
@@ -28,7 +30,8 @@ def test_catalog_order_follows_category_then_name():
     """Catalog membership comes from skills/*/SKILL.md — no golden name list.
 
     A new skill is picked up automatically. Contributors still run
-    ``python docs/hooks/skill_catalog.py`` so README.md and docs/index.html match.
+    ``python docs/hooks/skill_catalog.py`` so README.md, docs/index.html, and
+    docs/CHANGELOG.md match.
     """
     skills = load_skills()
     folders = {p.parent.name for p in (REPO_ROOT / "skills").glob("*/SKILL.md")}
@@ -48,6 +51,7 @@ def test_readme_and_landing_page_match_generated_catalog():
     assert LANDING.read_text(encoding="utf-8") == inject_landing_page(
         LANDING.read_text(encoding="utf-8"), skills
     )
+    assert DOCS_CHANGELOG.read_text(encoding="utf-8") == docs_changelog()
     assert "sc-rnaseq" in readme_table(skills)
     assert "Bioinformatics" in js_catalog(skills)
 

@@ -1,151 +1,50 @@
-# Changelog — Vital Skills landing page
+<!-- Generated from CHANGELOG.md. Edit that file, then run python docs/hooks/skill_catalog.py -->
+# Changelog
 
-All notable changes to the `docs/` landing page (the Vital Skills GitHub Pages
-site) are recorded here. Format follows
-[Keep a Changelog](https://keepachangelog.com/).
+All notable changes to Vital Skills are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/).
+Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed
-- Landing page: Explore (the skill table) comes first; Quick start is at the bottom.
-- The skill table starts compressed; click it or “Show all skills” to expand.
+## [1.0.0] — 2026-10-23
+
+First public release: Health & Life Sciences **Genie Code** skills, a generated
+catalog, and a docs site. Clone the repo into Databricks, point Genie Code at
+`skills/`, optionally sync to Unity Gateway.
 
 ### Added
-- The Evaluation page now explains how to test skills against BiomniBench-DA,
-  with a diagram of the pipeline (`docs/guide/assets/biomnibench-eval.svg`, from
-  the editable `biomnibench-eval.excalidraw`). The text comes from
-  `benchmarks/biomnibench/README.md`.
 
-## [0.1.3] — 2026-10-15
+**Skills** (Agent Skills `SKILL.md` bundles: references, scripts, tests, eval)
 
-### Added
-- Light/dark theme choice now carries between the landing page and the docs
-  pages — a single stored preference seeds both before first paint
-  (`docs/overrides/main.html`).
+- Bioinformatics: `bulk-rnaseq`, `open-weight-models`, `pathway-enrichment-analysis`, `sc-rnaseq`
+- Clinical: `cohort-builder`, `phi-deidentifier`, `rwe-cohortstudy`, `semantic-builder`
+- Others: `accelerators`, `presentation-builder`, `skill-eval`
 
-### Changed
-- The Changelog is no longer a page in the published site navigation; this file
-  remains in the repository as the record of docs-site changes.
-- Docs header and footer use one solid navy (#0B2026) in both light and dark
-  (the footer was previously a translucent near-black in dark mode).
-- Docs search collapses to a single magnifier icon that opens on click; when
-  open it widens leftward over the page, reads clearly in dark mode, and its
-  results scroll within the panel. The theme toggle reuses the landing page's
-  sun/moon icons and sits far-right, grouped tightly with the repository link.
-- Landing hero video fills its frame without cropping when enlarged
-  (`object-fit: contain`); the play overlay adapts to light/dark and the play
-  button is icon-only (keeps its screen-reader label).
+**Catalog and site**
 
-## [0.1.2] — 2026-10-14
+- README and landing-page tables generated from each skill’s `category` and `summary` (`docs/hooks/skill_catalog.py`)
+- GitHub Pages landing page plus MkDocs Material guide under `/guide/` (one page per skill)
+- Categories: Bioinformatics, Clinical, Others
+- Dark/light theme (persists in `localStorage`; follows the OS until the visitor chooses)
 
-### Added
-- Guide overview: a UMAP cell-type comparison screenshot logged to an MLflow
-  experiment (`docs/guide/assets/umap.png`).
-- `docs/hooks/repo_sections.py`: a guide page can copy a repository Markdown
-  file, or one section of it, with `<!-- include: FILE#Heading -->`, and leave
-  out sections with `omit="Heading"`. Headings are shifted to fit the page,
-  relative links point at GitHub, and a missing file or heading fails the build.
-- `DOCS.md` at the repo root: where each page comes from, which headings are
-  copied by name, and how to preview and publish. It replaces the Docs site
-  section of CONTRIBUTING.md, which now points to it.
-- FAQ and Links guide pages.
-- README: Contributors and Acknowledgements sections.
-- Skill tables on README and the landing page are generated from each skill's
-  `category` and `summary` frontmatter (`docs/hooks/skill_catalog.py`).
+**Authoring and CI**
+
+- Pipeline and guide templates; `AGENTS.md` authoring rules
+- `sync_skills_git2unity.py` to register skills on Unity Gateway
+- `skill-eval` paired with/without-skill benchmarking (MLflow); BiomniBench-DA harness
+- PR checks: skill quality, per-skill tests, catalog `--check`, docs `--strict` build, gitleaks
 
 ### Changed
-- Links page: external links open in a new tab.
-- The `oss-models` skill is renamed `open-weight-models` (its guide page moves
-  from `/guide/skills/oss-models/` to `/guide/skills/open-weight-models/`; the
-  old URL no longer exists). The README and landing-page rows are regenerated
-  from its frontmatter.
-- Getting started is renamed Setup (`/guide/setup/`) and now copies README.md's
-  Setup section, Contributing copies CONTRIBUTING.md without its CLA section,
-  and Evaluation copies section 3 of CONTRIBUTING.md's Test section, instead of
-  keeping their own versions. On Contributing, section 3 is replaced by a link to
-  Evaluation (`replace="Heading=Markdown"`). GitHub alerts (`> [!WARNING]`) in
-  copied text become admonitions.
-- Landing page: skills are listed in a table instead of cards, filtered by four
-  categories (Bioinformatics, Clinical RWE, Payer and provider, Others); the
-  Content type filter is removed. Each row has two icon links, under a Links
-  column header: a book to the skill's guide page and a folder to its GitHub
-  folder. The accelerators skill is listed. "Get started" is renamed
-  "Quick start".
-- Guide header shows the Vital Skills logo; the Databricks logo moves to the
-  footer, next to the license line (`docs/overrides/partials/copyright.html`).
-  `vitalskills.png` moves from the repo root to `docs/guide/assets/`.
-- The overview video (`vitalskills.mp4`) moves from the repo root to
-  `docs/guide/assets/` and is updated (the dark-flash-trimmed cut).
-- `docs/hooks/repo_links.py`: link rewriting shared by both hooks. Relative
-  images now point at the raw file so they render.
-- `.github/workflows/pages.yml`: PRs that change root Markdown files also build
-  the site.
 
-## [0.1.1] — 2026-10-06
+Names that existed before this tag, now canonical in 1.0:
 
-### Changed
-- Publishing: the site is deployed with `mkdocs gh-deploy` to the `gh-pages`
-  branch, and Pages serves `gh-pages` / root. The Actions deploy job was removed
-  because the organization's IP allow list blocks the Pages API from
-  GitHub-hosted runners. `.github/workflows/pages.yml` still runs
-  `mkdocs build --strict` on PRs and on pushes to `dev`.
-
-## [0.1.0] — 2026-10-06
-
-Adds a documentation section under `/guide/`, built with MkDocs Material, and
-moves deployment to GitHub Actions.
-
-### Added
-- `/guide/`: overview, getting started, evaluation, and contributing pages.
-- Skill catalog and one page per skill, generated at build time from
-  `skills/*/SKILL.md` frontmatter and content (`docs/hooks/skill_pages.py`), with
-  an evaluation column linking each skill's `eval/` evidence.
-- Databricks logo and Navy/Lava/Oat palette in the guide, matching this page,
-  with a light/dark toggle.
-- "Docs" link in the landing page top bar.
-- `.github/workflows/pages.yml`: `mkdocs build --strict` on PRs, deploy on
-  pushes to `dev`.
-
-### Changed
-- Go-live: set Settings → Pages → Source to **GitHub Actions** instead of
-  flipping the publishing folder to `/docs`. The landing page is copied into the
-  build unchanged.
-
-## [0.0.1] — 2026-10-06
-
-Initial landing page — a Databricks-branded static site for the Vital Skills
-catalog of Genie Code skills, served from `docs/` on GitHub Pages. Additive
-only; no changes to `skills/`.
-
-### Added
-- `index.html` — self-contained static landing page:
-  - Hero wordmark with a self-drawing signal-line animation (heartbeat, a
-    two-tone DNA double helix, and a molecule/waveform motif) plus an overview
-    video. Honors `prefers-reduced-motion` with a static final state.
-  - Filterable catalog of Genie Code skill cards, each linking to the skill
-    folder and its `SKILL.md` on GitHub.
-  - Minimal top bar: logo (to the `skills/` folder on GitHub), a GitHub repo
-    link, and a sun/moon dark-mode toggle.
-  - Footer with a back-to-top logo and a Contribute link.
-- `.nojekyll` — serve the static files as-is (no Jekyll processing).
-- `vitalskills.mp4` — hero overview video.
-
-### Design
-- Databricks brand palette (Lava, Navy, Oat) and DM Sans / DM Mono typography.
-- Terminology is "Genie Code skills" throughout.
-- WCAG-AA color contrast for text, plus a 3:1 minimum for interactive and
-  graphical elements (chip outlines, topic accents). External links open in a
-  new tab with an accessibility cue.
-- Dark/light theme persists across reloads (stored in `localStorage`), with a
-  single source of truth — `data-theme` on `<html>`, applied before first paint
-  — driving both the CSS and the toggle script. Falls back to the
-  operating-system preference on first visit and follows live OS changes until
-  the visitor makes an explicit choice.
+- `oss-models` → `open-weight-models`
+- `payer-provider-measure-catalog` → `semantic-builder`
+- `Clinical RWE` and `Payer and provider` → one **Clinical** category
 
 ### Notes
-- Go-live is a maintainer action: in Settings → Pages, flip the publishing
-  folder from `/ (root)` to `/docs`. Reversible and non-disruptive. `baseurl`
-  is `/vital-skills`.
-- JavaScript is required: the skill cards are rendered client-side, and without
-  JavaScript the page renders in light mode (the single-source-of-truth theme is
-  set by script). This is acceptable because the catalog itself needs JavaScript.
+
+- Site publish is `mkdocs gh-deploy` to `gh-pages` (GitHub-hosted runners cannot deploy Pages on this org). PRs still run `mkdocs build --strict`.
+- The landing-page catalog needs JavaScript.
+- Compliance (HIPAA and similar) remains the user’s obligation; see the README disclaimer.
