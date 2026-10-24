@@ -63,7 +63,7 @@ Copied text is shown in two places, so it has to render in both.
 ## Preview, check, publish
 
 - **Preview:** `uv run --isolated --with-requirements docs/requirements.txt mkdocs serve`. Edits to `docs/`, `README.md`, `CONTRIBUTING.md`, and `CHANGELOG.md` reload on save. After editing `docs/hooks/`, restart the server; it caches hook code.
-- **Check:** `uv run --isolated --with pytest python -m pytest -q tests` includes `tests/test_docs_sections.py`, which expands every include line.
+- **Check:** `uv run --isolated --with pytest --with pyyaml python -m pytest -q tests` includes `tests/test_docs_sections.py`, which expands every include line.
 - **CI:** `.github/workflows/pages.yml` runs `mkdocs build --strict` on PRs that touch `docs/`, `skills/`, root Markdown files, or `mkdocs.yml`. It does not deploy: the organization's IP allow list blocks Pages deployments from GitHub-hosted runners.
 - **Publish** (maintainers, after docs or skill changes merge): from an up-to-date `main` checkout on an allowed network, run
 

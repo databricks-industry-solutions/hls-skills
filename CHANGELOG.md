@@ -4,7 +4,7 @@ All notable changes to Vital Skills are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] — Unreleased
+## 1.0.0 — Unreleased
 
 First public release: Health & Life Sciences **Genie Code** skills, a generated
 catalog, and a docs site. Clone the repo into Databricks, point Genie Code at
@@ -30,7 +30,7 @@ catalog, and a docs site. Clone the repo into Databricks, point Genie Code at
 - Pipeline and guide templates; `AGENTS.md` authoring rules
 - `sync_skills_git2unity.py` to register skills on Unity Gateway
 - `skill-eval` paired with/without-skill benchmarking (MLflow); BiomniBench-DA harness
-- PR checks: skill quality, per-skill tests, catalog `--check`, docs `--strict` build, gitleaks
+- PR checks: skill quality, per-skill tests, catalog sync, docs `--strict` build, gitleaks
 
 ### Changed
 

@@ -9,7 +9,8 @@ description: <Tool/Domain keyword> <what it does>. <Inputs → outputs>. <Disamb
 #   - Lead with tool name or domain keyword — NOT stop verbs (Use/A/An/The/Query/Fetch/Run)
 #   - Cross-references ("For X use Y") go at the END
 #   - No promotional adjectives (powerful/comprehensive/state-of-the-art/...)
-category: Bioinformatics  # Bioinformatics | Clinical | Others
+# category: one of Bioinformatics | Clinical | Others
+category: Bioinformatics
 summary: "<one-line outcome for the README and landing-page tables>"
 version: 1.0.0
 author: your name

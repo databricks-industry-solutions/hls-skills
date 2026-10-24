@@ -19,7 +19,7 @@ Several levels of testing is advised.
 
 Both these tests can be invoked on all skills with 
 ```
-uv run --isolated --with pytest python -m pytest -q tests
+uv run --isolated --with pytest --with pyyaml python -m pytest -q tests
 ```
 
 #### 2.Skill-level unit tests

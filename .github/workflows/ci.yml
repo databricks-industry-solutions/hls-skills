@@ -4,7 +4,7 @@ name: CI
 # pushes to dev and main. ready_for_review refires the workflow when a draft is
 # promoted. Three independent jobs:
 #   overall-test-check  tests/: SKILL.md quality gate for every skill + sync bundle filter
-#                     + skill_catalog.py --check (README.md / docs/index.html vs skills/*/SKILL.md)
+#                     + skill catalog sync (README.md / docs/index.html vs skills/*/SKILL.md)
 #                     + benchmarks/biomnibench/tests (offline harness tests)
 #   skill-tests       one matrix entry per skills/<name>/tests/, discovered at run time,
 #                     so a new skill's tests run without editing this file
@@ -43,7 +43,7 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
       - name: Skill quality gate and sync bundle filter
-        run: uv run --isolated --with pytest python -m pytest -q tests
+        run: uv run --isolated --with pytest --with pyyaml python -m pytest -q tests
       - name: BiomniBench harness
         run: uv run --isolated --with pytest --with pyyaml python -m pytest -q benchmarks/biomnibench/tests
 

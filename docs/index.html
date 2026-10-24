@@ -106,7 +106,7 @@
   /* ---------- top bar ---------- */
   .topbar { border-bottom: 1px solid var(--rule); background: var(--paper); }
   .topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; }
-  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-weight: 600; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 600; }
   /* No backing tile: the mark's mid-tone gradient strokes read cleanly on both the white and the navy bar. */
   .logo { width: 34px; height: 34px; display: block; object-fit: contain; }
   /* Icon-only controls: no box, just a quiet glyph that darkens on hover. */
@@ -189,6 +189,8 @@
   .trace .t-rungs { --o: .7; }
   /* Sized so the tagline sits on one line in the desktop hero column (about 540px wide). */
   .tagline { font-size: clamp(1.1rem, 2.4vw, 1.3rem); letter-spacing: -0.01em; color: var(--ink-soft); max-width: 52ch; margin: 0; }
+  /* Direct link for networks that block the Vimeo player. */
+  .hero-video-alt { margin: 8px 0 0; font-size: .85rem; color: var(--ink-soft); text-align: right; }
   .hero-note { margin: 14px 0 0; font-size: .92rem; color: var(--ink-soft); max-width: 62ch; }
 
   /* ---------- section heads ---------- */
@@ -257,12 +259,11 @@
   .table-panel { position: relative; }
   .table-panel[hidden] { display: none; }
   .table-wrap { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--r-lg); overflow-x: auto; }
-  .table-wrap[hidden] { display: none; }
-  /* Closed: a short window of dense rows. Open / few-rows: full height. */
+  /* Closed: a short window of dense rows. Open / few-rows: full height.
+     The closed preview does not scroll sideways, so the fade never hides a scrollbar. */
   .table-panel:not(.is-open):not(.fits) .table-wrap {
     max-height: 15.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
   }
   .table-panel:not(.is-open):not(.fits) .skills tbody th,
   .table-panel:not(.is-open):not(.fits) .skills td { padding: 8px 12px; }
@@ -281,7 +282,9 @@
     border-radius: 0 0 var(--r-lg) var(--r-lg);
     background: linear-gradient(to bottom, transparent, var(--paper) 55%);
     text-decoration: none;
+    pointer-events: none; /* the fade lets clicks through to the rows; only the label is a target */
   }
+  .table-panel:not(.is-open):not(.fits) .table-toggle span { pointer-events: auto; }
   .table-panel:not(.is-open):not(.fits) .table-toggle:hover { color: var(--lava-text); }
   .table-panel.is-open .table-toggle { display: block; margin: 10px auto 0; }
   .table-panel.fits .table-toggle { display: none; }
@@ -395,6 +398,7 @@
           </span>
         </button>
         </div>
+        <figcaption class="hero-video-alt"><a href="https://vimeo.com/1239002819" target="_blank" rel="noopener noreferrer" aria-label="Watch on Vimeo (opens in new tab)">Watch on Vimeo</a></figcaption>
       </figure>
     </div>
   </div>
@@ -428,7 +432,7 @@
             <tbody id="rows"></tbody>
           </table>
         </div>
-        <button class="table-toggle" type="button" id="tableToggle" aria-expanded="false" aria-controls="results">Show all skills</button>
+        <button class="table-toggle" type="button" id="tableToggle" aria-expanded="false" aria-controls="results"><span>Show all skills</span></button>
       </div>
 
       <div class="empty" id="empty" hidden>
@@ -522,22 +526,20 @@
   const resetTop = document.getElementById("resetTop");
   const panel = document.getElementById("tablePanel");
   const toggle = document.getElementById("tableToggle");
+  const toggleLabel = toggle.querySelector("span");
   const COMPACT_AT = 5;
 
   const setOpen = (open) => {
     panel.classList.toggle("is-open", open);
     toggle.setAttribute("aria-expanded", String(open));
-    toggle.textContent = open ? "Show fewer skills" : "Show all skills";
+    toggleLabel.textContent = open ? "Show fewer skills" : "Show all skills";
   };
 
   const syncFold = (shown) => {
     const fits = shown > 0 && shown <= COMPACT_AT;
     panel.classList.toggle("fits", fits);
     toggle.hidden = shown === 0 || fits;
-    if (!fits && shown > 0) {
-      toggle.setAttribute("aria-expanded", String(panel.classList.contains("is-open")));
-      toggle.textContent = panel.classList.contains("is-open") ? "Show fewer skills" : "Show all skills";
-    }
+    if (!fits && shown > 0) setOpen(panel.classList.contains("is-open"));
   };
 
   // Build chips. The facet is single-select; "All" is selected by default.
@@ -595,7 +597,6 @@
     const filtered = state.topic !== "All";
     count.textContent = `Showing ${shown} of ${SKILLS.length} items`;
     resetTop.hidden = !filtered;
-    results.hidden = shown === 0;
     panel.hidden = shown === 0;
     empty.hidden = shown !== 0;
     syncFold(shown);
@@ -618,7 +619,11 @@
     setOpen(true);
   });
   // Rows clipped by the closed panel stay tabbable, so open it before focus lands out of view.
-  results.addEventListener("focusin", () => {
+  // Keyboard focus only: a mouse click on a row link must not reflow the table mid-click.
+  results.addEventListener("focusin", (e) => {
+    let keyboard = true; // browsers without :focus-visible keep the open-on-any-focus behavior
+    try { keyboard = e.target.matches(":focus-visible"); } catch {}
+    if (!keyboard) return;
     if (!panel.classList.contains("is-open") && !panel.classList.contains("fits")) setOpen(true);
   });
 

@@ -45,12 +45,6 @@ def test_catalog_order_is_category_then_name(tmp_path: Path):
     ]
 
 
-def test_repo_skill_names_match_folders():
-    """AGENTS.md: folder name must match frontmatter `name`."""
-    for skill in load_skills():
-        assert skill["name"] == skill["folder"], skill["folder"]
-
-
 def test_readme_and_landing_page_match_generated_catalog():
     stale = [p.relative_to(REPO_ROOT).as_posix() for p in sync(write=False)]
     assert not stale, (
@@ -85,3 +79,17 @@ def test_main_reports_catalog_error_without_traceback(tmp_path, monkeypatch, cap
     )
     assert main(["--check"]) == 1
     assert "Skill catalog error: demo: frontmatter category" in capsys.readouterr().err
+
+
+def test_sync_writes_nothing_when_a_target_is_broken(tmp_path, monkeypatch):
+    readme = tmp_path / "README.md"
+    stale_row = (REPO_ROOT / "README.md").read_text(encoding="utf-8").replace("**sc-rnaseq**", "**old**")
+    readme.write_text(stale_row, encoding="utf-8")
+    landing = tmp_path / "index.html"
+    landing.write_text("<html>no catalog markers</html>", encoding="utf-8")
+    monkeypatch.setattr("skill_catalog.README", readme)
+    monkeypatch.setattr("skill_catalog.LANDING", landing)
+    before = readme.read_text(encoding="utf-8")
+    with pytest.raises(CatalogError, match="missing markers"):
+        sync(write=True)
+    assert readme.read_text(encoding="utf-8") == before

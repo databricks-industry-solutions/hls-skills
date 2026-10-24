@@ -213,7 +213,7 @@ def test_changelog_page_copies_root_file():
     out, used = expand_includes(page.read_text(encoding="utf-8"))
     assert used == {REPO_ROOT / "CHANGELOG.md"}
     assert out.startswith("# Changelog")
-    assert "## [1.0.0]" in out
+    assert "## 1.0.0" in out
     assert "<!-- include:" not in out
     assert out.count("\n# ") == 0
 

@@ -171,15 +171,17 @@ def inject_landing_page(text: str, skills: list[dict] | None = None) -> str:
 def sync(write: bool = True) -> list[Path]:
     """Regenerate README.md and docs/index.html; return the files that were stale."""
     skills = load_skills()
-    stale = []
+    # Generate both before writing either, so a bad marker never leaves a half-updated tree.
+    pending = {}
     for path, inject in ((README, inject_readme), (LANDING, inject_landing_page)):
         current = path.read_text(encoding="utf-8")
         generated = inject(current, skills)
         if generated != current:
-            stale.append(path)
-            if write:
-                path.write_text(generated, encoding="utf-8")
-    return stale
+            pending[path] = generated
+    if write:
+        for path, generated in pending.items():
+            path.write_text(generated, encoding="utf-8")
+    return list(pending)
 
 
 def main(argv: list[str] | None = None) -> int:
