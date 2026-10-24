@@ -30,7 +30,7 @@ uv run --isolated --with pytest --with-requirements skills/<name>/tests/requirem
 ```
 
 #### Automated CI
-Both overall formatting and unit tests can be automated with CI (`.github/workflows/ci.yml`) which runs on every non-draft PR. It also runs `python docs/hooks/skill_catalog.py --check`; if README.md or `docs/index.html` lag the skills, the job fails and prints the regenerate command.
+Both overall formatting and unit tests can be automated with CI (`.github/workflows/ci.yml`) which runs on every non-draft PR. The repo tests also check that README.md and `docs/index.html` match the skills; if they lag, the job fails and prints the regenerate command.
 - Put a skill's test-only dependencies in `skills/<name>/tests/requirements.txt`, pinned to versions you ran. CI finds every `skills/*/tests/` folder automatically.
 - A skill's `eval/` or `tests/` folder is never published by `sync_skills_git2unity.py`; `tests/test_sync_bundle.py` fails if that filter is removed.
 - CI also scans the full git history for secrets with gitleaks.

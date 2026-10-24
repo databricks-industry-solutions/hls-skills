@@ -42,8 +42,6 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           version: ${{ env.UV_VERSION }}
-      - name: Skill catalog is current
-        run: uv run --isolated --with pyyaml python docs/hooks/skill_catalog.py --check
       - name: Skill quality gate and sync bundle filter
         run: uv run --isolated --with pytest python -m pytest -q tests
       - name: BiomniBench harness

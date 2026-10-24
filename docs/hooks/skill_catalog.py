@@ -190,7 +190,11 @@ def main(argv: list[str] | None = None) -> int:
         help="exit 1 if README.md or docs/index.html are out of date",
     )
     args = parser.parse_args(argv)
-    stale = sync(write=not args.check)
+    try:
+        stale = sync(write=not args.check)
+    except CatalogError as exc:
+        print(f"Skill catalog error: {exc}", file=sys.stderr)
+        return 1
     names = ", ".join(p.relative_to(REPO_ROOT).as_posix() for p in stale)
     if args.check:
         if not stale:

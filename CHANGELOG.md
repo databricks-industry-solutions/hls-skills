@@ -4,8 +4,6 @@ All notable changes to Vital Skills are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
 ## [1.0.0] — Unreleased
 
 First public release: Health & Life Sciences **Genie Code** skills, a generated

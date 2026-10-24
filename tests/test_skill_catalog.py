@@ -9,45 +9,54 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "docs" / "hooks"))
 
 from skill_catalog import (  # noqa: E402
-    CATEGORY_INDEX,
-    CATEGORY_NAMES,
     CatalogError,
-    inject_landing_page,
-    inject_readme,
     js_catalog,
     load_skills,
+    main,
     readme_table,
     replace_block,
+    sync,
 )
 
-README = REPO_ROOT / "README.md"
-LANDING = REPO_ROOT / "docs" / "index.html"
+def _write_skill(root: Path, name: str, category: str) -> None:
+    path = root / name / "SKILL.md"
+    path.parent.mkdir()
+    path.write_text(
+        f"---\nname: {name}\ndescription: {name} skill.\n"
+        f"category: {category}\nsummary: {name}.\n---\n",
+        encoding="utf-8",
+    )
 
 
-def test_catalog_order_follows_category_then_name():
-    """Catalog membership comes from skills/*/SKILL.md — no golden name list.
+def test_catalog_order_is_category_then_name(tmp_path: Path):
+    # Folder order on disk deliberately differs from the expected output order.
+    for name, category in [
+        ("zeta", "Others"),
+        ("alpha", "Clinical"),
+        ("mu", "Bioinformatics"),
+        ("beta", "Others"),
+        ("aa", "Bioinformatics"),
+    ]:
+        _write_skill(tmp_path, name, category)
+    assert [s["name"] for s in load_skills(tmp_path)] == [
+        "aa", "mu",  # Bioinformatics
+        "alpha",  # Clinical
+        "beta", "zeta",  # Others
+    ]
 
-    A new skill is picked up automatically. Contributors still run
-    ``python docs/hooks/skill_catalog.py`` so README.md and docs/index.html match.
-    """
-    skills = load_skills()
-    folders = {p.parent.name for p in (REPO_ROOT / "skills").glob("*/SKILL.md")}
-    assert {s["folder"] for s in skills} == folders
-    for skill in skills:
-        assert skill["name"] == skill["folder"]
-        assert skill["category"] in CATEGORY_NAMES
-    expected = sorted(skills, key=lambda s: (CATEGORY_INDEX[s["category"]], s["name"]))
-    assert [s["name"] for s in skills] == [s["name"] for s in expected]
+
+def test_repo_skill_names_match_folders():
+    """AGENTS.md: folder name must match frontmatter `name`."""
+    for skill in load_skills():
+        assert skill["name"] == skill["folder"], skill["folder"]
 
 
 def test_readme_and_landing_page_match_generated_catalog():
+    stale = [p.relative_to(REPO_ROOT).as_posix() for p in sync(write=False)]
+    assert not stale, (
+        f"Skill catalog is stale ({', '.join(stale)}). Run: python docs/hooks/skill_catalog.py"
+    )
     skills = load_skills()
-    assert README.read_text(encoding="utf-8") == inject_readme(
-        README.read_text(encoding="utf-8"), skills
-    )
-    assert LANDING.read_text(encoding="utf-8") == inject_landing_page(
-        LANDING.read_text(encoding="utf-8"), skills
-    )
     assert "sc-rnaseq" in readme_table(skills)
     assert "Bioinformatics" in js_catalog(skills)
 
@@ -67,3 +76,12 @@ def test_invalid_category_fails(tmp_path: Path):
     )
     with pytest.raises(CatalogError, match="category must be one of"):
         load_skills(tmp_path)
+
+
+def test_main_reports_catalog_error_without_traceback(tmp_path, monkeypatch, capsys):
+    _write_skill(tmp_path, "demo", "Clinical RWE")
+    monkeypatch.setattr(
+        "skill_catalog.load_skills", lambda: load_skills(tmp_path)
+    )
+    assert main(["--check"]) == 1
+    assert "Skill catalog error: demo: frontmatter category" in capsys.readouterr().err
