@@ -61,13 +61,7 @@ def test_missing_markers_fail():
 
 
 def test_invalid_category_fails(tmp_path: Path):
-    skill = tmp_path / "demo" / "SKILL.md"
-    skill.parent.mkdir()
-    skill.write_text(
-        "---\nname: demo\ndescription: Demo skill.\n"
-        "category: Not a category\nsummary: Demo.\n---\n",
-        encoding="utf-8",
-    )
+    _write_skill(tmp_path, "demo", "Not a category")
     with pytest.raises(CatalogError, match="category must be one of"):
         load_skills(tmp_path)
 

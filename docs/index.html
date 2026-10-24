@@ -262,7 +262,7 @@
   /* Closed: a short window of dense rows. Open / few-rows: full height.
      The closed preview does not scroll sideways, so the fade never hides a scrollbar. */
   .table-panel:not(.is-open):not(.fits) .table-wrap {
-    max-height: 15.5rem;
+    max-height: var(--fold-h, 15.5rem); /* set by sizeFold() from COMPACT_AT */
     overflow: hidden;
   }
   .table-panel:not(.is-open):not(.fits) .skills tbody th,
@@ -529,11 +529,23 @@
   const toggleLabel = toggle.querySelector("span");
   const COMPACT_AT = 5;
 
+  // Closed, the panel shows COMPACT_AT full rows with the fade and toggle below them,
+  // so the preview matches the "fits" threshold whatever the row height.
+  const sizeFold = () => {
+    if (panel.hidden || panel.classList.contains("is-open") || panel.classList.contains("fits")) return;
+    const last = results.querySelectorAll("tbody tr:not([hidden])")[COMPACT_AT - 1];
+    if (!last) return;
+    const height = last.getBoundingClientRect().bottom - results.getBoundingClientRect().top + toggle.offsetHeight;
+    panel.style.setProperty("--fold-h", `${Math.ceil(height)}px`);
+  };
+
   const setOpen = (open) => {
     panel.classList.toggle("is-open", open);
     toggle.setAttribute("aria-expanded", String(open));
     toggleLabel.textContent = open ? "Show fewer skills" : "Show all skills";
+    sizeFold();
   };
+  addEventListener("resize", sizeFold);
 
   const syncFold = (shown) => {
     const fits = shown > 0 && shown <= COMPACT_AT;
