@@ -6,7 +6,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.0.0] — 2026-10-23
+## [1.0.0] — Unreleased
 
 First public release: Health & Life Sciences **Genie Code** skills, a generated
 catalog, and a docs site. Clone the repo into Databricks, point Genie Code at
@@ -18,7 +18,7 @@ catalog, and a docs site. Clone the repo into Databricks, point Genie Code at
 
 - Bioinformatics: `bulk-rnaseq`, `open-weight-models`, `pathway-enrichment-analysis`, `sc-rnaseq`
 - Clinical: `cohort-builder`, `phi-deidentifier`, `rwe-cohortstudy`, `semantic-builder`
-- Others: `accelerators`, `presentation-builder`, `skill-eval`
+- Others: `accelerators`, `presentation-builder`, `scientific-figures`, `skill-eval`
 
 **Catalog and site**
 
@@ -41,6 +41,10 @@ Names that existed before this tag, now canonical in 1.0:
 - `oss-models` → `open-weight-models`
 - `payer-provider-measure-catalog` → `semantic-builder`
 - `Clinical RWE` and `Payer and provider` → one **Clinical** category
+
+`sync_skills_git2unity.py` never deletes skills. If you synced before 1.0, drop the
+old `oss-models` and `payer-provider-measure-catalog` skills from your Unity Catalog
+schema by hand.
 
 ### Notes
 
