@@ -38,6 +38,7 @@ You can get the SQL warehouse id from the Databricks left menu bar: SQL Warehous
 | [**semantic-builder**](skills/semantic-builder/SKILL.md) | Clinical | Canonical payer+provider measure catalog mapped to Unity Catalog metric views. |
 | [**accelerators**](skills/accelerators/SKILL.md) | Others | Route imaging and biology-model tasks to an HLS accelerator — Pixels or Genesis Workbench — with the exact next step. |
 | [**presentation-builder**](skills/presentation-builder/SKILL.md) | Others | Turn a cohort, dataset, model, or analysis into a grounded, shareable HTML deck (PHI de-id delegated to phi-deidentifier). |
+| [**scientific-figures**](skills/scientific-figures/SKILL.md) | Others | Publication-quality scientific and biopharma figures for notebooks, apps, and reports. |
 | [**skill-eval**](skills/skill-eval/SKILL.md) | Others | Benchmark a skill: paired runs with/without it, MLflow genai.evaluate scoring, win/loss + failure taxonomy. |
 <!-- skill-catalog:end -->
 
